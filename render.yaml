@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: sportcal
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build && npx prisma migrate deploy && node dist/utils/seed.js
+    startCommand: node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:/var/data/sportcal.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: PORT
+        value: 10000
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: MAX_FILE_SIZE
+        value: 5242880
+    disk:
+      name: sportcal-data
+      mountPath: /var/data
+      sizeGB: 1

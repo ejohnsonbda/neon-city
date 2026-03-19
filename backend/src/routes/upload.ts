@@ -8,8 +8,8 @@ import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../../uploads');
+// Ensure uploads directory exists — use UPLOAD_DIR env var for persistent disk on Render
+const uploadsDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }

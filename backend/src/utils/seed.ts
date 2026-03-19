@@ -110,13 +110,14 @@ const SAMPLE_EVENTS = [
 async function main() {
   console.log('🌱 Seeding SportCal database...');
 
-  // Clear existing data
-  await prisma.auditLog.deleteMany();
-  await prisma.event.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.organization.deleteMany();
+  // Check if already seeded — skip if organizations exist (idempotent for production)
+  const existingOrgs = await prisma.organization.count();
+  if (existingOrgs > 0) {
+    console.log(`✅ Database already seeded (${existingOrgs} organizations found). Skipping.`);
+    return;
+  }
 
-  console.log('✅ Cleared existing data');
+  console.log('🆕 Fresh database — seeding now...');
 
   // Seed organizations
   const createdOrgs: Record<string, string> = {};

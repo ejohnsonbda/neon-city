@@ -27,7 +27,8 @@ export const deleteImage = async (req: Request, res: Response): Promise<void> =>
 
   // Security: prevent path traversal
   const safeName = path.basename(filename);
-  const filePath = path.join(__dirname, '../../uploads', safeName);
+  const uploadsBase = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+  const filePath = path.join(uploadsBase, safeName);
 
   if (!fs.existsSync(filePath)) {
     res.status(404).json({ error: 'File not found.' });

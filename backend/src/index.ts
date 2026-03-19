@@ -22,7 +22,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // ─── Security Middleware ────────────────────────────────────────────────────
 app.use(helmet({
@@ -66,11 +66,15 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ─── Static Files ───────────────────────────────────────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+const uploadsDir = process.env.UPLOAD_DIR || path.resolve(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsDir));
 
 // Serve the HTML frontend from /public
-const publicDir = path.join(__dirname, '../../public');
-app.use(express.static(publicDir));
+// Works both locally (../../public) and on Render (same relative path from dist/)
+const publicDir = path.resolve(__dirname, '../../public');
+app.use(express.static(publicDir, {
+  maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0,
+}));
 
 // ─── Health Check ───────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
@@ -108,7 +112,7 @@ app.get('/api', (_req, res) => {
 
 // ─── SPA Fallback — serve index.html for all non-API routes ────────────────
 app.get('*', (_req, res) => {
-  const indexPath = path.join(__dirname, '../../public/index.html');
+  const indexPath = path.resolve(__dirname, '../../public/index.html');
   res.sendFile(indexPath, err => {
     if (err) res.status(404).json({ error: 'Not found' });
   });
