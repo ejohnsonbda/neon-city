@@ -70,12 +70,11 @@
     /* ── Navbar ── */
     .navbar {
       position: sticky; top: 0; z-index: 100;
-      background: rgba(10,14,26,0.92);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--glass-border);
       padding: 0 1.5rem;
-      box-shadow: 0 1px 0 0 rgba(232,67,147,0.2), 0 4px 24px rgba(0,0,0,0.4);
     }
     .navbar-inner {
       max-width: 1280px; margin: 0 auto;
@@ -148,23 +147,18 @@
 
     /* ── Footer ── */
     .footer {
-      background: var(--navy-900);
+      background: var(--navy-800);
       border-top: 1px solid var(--glass-border);
-      padding: 2.5rem 1.5rem;
+      padding: 2rem 1.5rem;
       text-align: center;
       color: var(--text-muted);
       font-size: 0.8125rem;
-      position: relative;
-    }
-    .footer::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: var(--brand-grad);
     }
     .footer-brand {
-      font-weight: 800; font-size: 1.125rem;
+      font-weight: 700; font-size: 1rem;
       background: var(--brand-grad); -webkit-background-clip: text;
       -webkit-text-fill-color: transparent; background-clip: text;
-      margin-bottom: 0.625rem; letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -210,9 +204,9 @@
       transition: var(--transition);
     }
     .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 40px rgba(232,67,147,0.15), 0 4px 16px rgba(0,0,0,0.5);
-      border-color: rgba(232,67,147,0.3);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-hover);
+      border-color: rgba(255,255,255,0.18);
     }
 
     /* Buttons */
@@ -351,71 +345,55 @@
        HOME PAGE
     ═══════════════════════════════════════════════════════════════ */
     .hero {
-      position: relative;
-      min-height: 88vh;
+      min-height: 100vh;
       display: flex; align-items: center; justify-content: center;
       text-align: center;
-      overflow: hidden;
-      border-bottom: 1px solid var(--glass-border);
-      padding: 6rem 1.5rem 5rem;
+      position: relative; overflow: hidden;
+      padding: 6rem 1.5rem 4rem;
     }
-    /* Video background */
     .hero-video {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      object-fit: cover; z-index: 0;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      opacity: 0.45;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0; z-index: 1;
+      background: linear-gradient(135deg,
+        rgba(10,14,26,0.75) 0%,
+        rgba(30,55,153,0.55) 40%,
+        rgba(232,67,147,0.45) 70%,
+        rgba(10,14,26,0.85) 100%);
       pointer-events: none;
     }
-    /* Dark gradient overlay — navy bottom, pink-blue top */
-    .hero-overlay {
-      position: absolute; inset: 0; z-index: 1;
-      background:
-        linear-gradient(180deg,
-          rgba(10,14,26,0.55) 0%,
-          rgba(30,55,153,0.45) 30%,
-          rgba(232,67,147,0.35) 65%,
-          rgba(10,14,26,0.92) 100%
-        );
+    .hero::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px; z-index: 1;
+      background: linear-gradient(to bottom, transparent, var(--navy-900));
+      pointer-events: none;
     }
-    .hero-content { position: relative; z-index: 2; max-width: 760px; margin: 0 auto; }
+    .hero-content { position: relative; z-index: 2; max-width: 700px; margin: 0 auto; }
     .hero-eyebrow {
       display: inline-flex; align-items: center; gap: 0.5rem;
-      background: rgba(232,67,147,0.18); border: 1px solid rgba(232,67,147,0.45);
+      background: rgba(30,55,153,0.2); border: 1px solid rgba(30,55,153,0.4);
       border-radius: 999px; padding: 0.35rem 0.875rem;
       font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em;
-      text-transform: uppercase; color: #f9a8d4; margin-bottom: 1.5rem;
-      backdrop-filter: blur(8px);
+      text-transform: uppercase; color: #93c5fd; margin-bottom: 1.25rem;
     }
     .hero h1 {
-      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-size: clamp(2rem, 5vw, 3.25rem);
       font-weight: 900; letter-spacing: -0.04em;
-      line-height: 1.05; margin-bottom: 1.25rem;
-      text-shadow: 0 2px 24px rgba(0,0,0,0.6);
+      line-height: 1.1; margin-bottom: 1rem;
     }
     .hero p {
-      font-size: 1.125rem; color: rgba(240,244,255,0.85);
-      max-width: 540px; margin: 0 auto 2.5rem;
-      text-shadow: 0 1px 8px rgba(0,0,0,0.5);
+      font-size: 1.0625rem; color: var(--text-secondary);
+      max-width: 520px; margin: 0 auto 2rem;
     }
-    .hero-actions { display: flex; gap: 0.875rem; justify-content: center; flex-wrap: wrap; }
-    /* Pink glow button variant for hero */
-    .btn-hero-primary {
-      background: linear-gradient(135deg, #e84393 0%, #1e3799 100%);
-      color: white; box-shadow: 0 4px 24px rgba(232,67,147,0.45);
-    }
-    .btn-hero-primary:hover { opacity: 0.92; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(232,67,147,0.55); }
-    .btn-hero-secondary {
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.25);
-      color: white;
-    }
-    .btn-hero-secondary:hover { background: rgba(255,255,255,0.18); transform: translateY(-2px); }
+    .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 
     /* Search + filters */
     .filters-bar {
-      background: rgba(10,14,26,0.95);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: var(--navy-800);
       border-bottom: 1px solid var(--glass-border);
       padding: 1rem 1.5rem; position: sticky; top: 64px; z-index: 90;
     }
@@ -706,10 +684,7 @@
       min-height: calc(100vh - 64px);
       display: flex; align-items: center; justify-content: center;
       padding: 2rem 1rem;
-      background:
-        radial-gradient(ellipse 70% 50% at 20% 50%, rgba(232,67,147,0.18) 0%, transparent 60%),
-        radial-gradient(ellipse 70% 50% at 80% 50%, rgba(30,55,153,0.22) 0%, transparent 60%),
-        var(--navy-900);
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(30,55,153,0.25) 0%, transparent 70%);
     }
     .login-card {
       width: 100%; max-width: 420px;
@@ -751,18 +726,9 @@
     .stat-card {
       background: var(--navy-700); border: 1px solid var(--glass-border);
       border-radius: var(--radius-lg); padding: 1.25rem;
-      position: relative; overflow: hidden;
-    }
-    .stat-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: var(--brand-grad);
     }
     .stat-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
-    .stat-value {
-      font-size: 2rem; font-weight: 800; letter-spacing: -0.04em;
-      background: var(--brand-grad); -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent; background-clip: text;
-    }
+    .stat-value { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; }
     .stat-sub { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.25rem; }
     .dash-section-title {
       font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
@@ -844,20 +810,16 @@
     <!-- HOME PAGE -->
     <div id="page-home" class="page">
       <section class="hero">
-        <!-- Background video -->
-        <video class="hero-video" autoplay muted loop playsinline preload="auto"
-          src="https://video.wixstatic.com/video/e14749_122835b6f8854ee9a6911ac79b270989/1080p/mp4/file.mp4">
+        <video class="hero-video" autoplay muted loop playsinline poster="">
+          <source src="https://video.wixstatic.com/video/e14749_122835b6f8854ee9a6911ac79b270989/1080p/mp4/file.mp4" type="video/mp4">
         </video>
-        <!-- Gradient overlay -->
-        <div class="hero-overlay"></div>
-        <!-- Content -->
         <div class="hero-content">
           <div class="hero-eyebrow">🇧🇲 Bermuda Sports Events</div>
           <h1>Your <span class="grad-text">Sports Calendar</span><br/>for Bermuda</h1>
           <p>Discover upcoming games, tournaments, and sporting events across all disciplines on the island.</p>
           <div class="hero-actions">
-            <button class="btn btn-lg btn-hero-primary" onclick="navigate('calendar')">📅 View Calendar</button>
-            <button class="btn btn-lg btn-hero-secondary" id="hero-add-btn" style="display:none" onclick="navigate('create-event')">＋ Add Event</button>
+            <button class="btn btn-primary btn-lg" onclick="navigate('calendar')">📅 View Calendar</button>
+            <button class="btn btn-secondary btn-lg" id="hero-add-btn" style="display:none" onclick="navigate('create-event')">＋ Add Event</button>
           </div>
         </div>
       </section>
@@ -1761,8 +1723,17 @@ function escHtml(str) {
 }
 
 function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
+  if (!dateStr) return 'TBD';
+  // Handle both ISO timestamps (2026-03-02T16:00:00+00:00) and plain dates (2026-03-02)
+  let d;
+  if (dateStr.includes('T')) {
+    // ISO timestamp — parse directly
+    d = new Date(dateStr);
+  } else {
+    // Plain date string — append time to avoid timezone shift
+    d = new Date(dateStr + 'T12:00:00');
+  }
+  if (isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
 }
 
