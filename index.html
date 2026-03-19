@@ -1022,6 +1022,12 @@
             <label class="form-label" for="ev-image">Image URL</label>
             <input type="url" id="ev-image" class="form-control" placeholder="https://…" />
           </div>
+          <div class="form-group" id="ev-org-group" style="display:none">
+            <label class="form-label" for="ev-org">Organisation</label>
+            <select id="ev-org" class="form-control">
+              <option value="">Select organisation…</option>
+            </select>
+          </div>
           <input type="hidden" id="ev-id" />
           <div class="form-actions">
             <button class="btn btn-ghost" onclick="navigate('home')">Cancel</button>
@@ -1239,7 +1245,11 @@ async function doLogin() {
   // Check super_admin codes first
   const superCodes = { 'safehands':'Department of Sports & Recreation', 'juren':'UMIN Design' };
   if (superCodes[code]) {
-    currentOrg = { id: null, name: superCodes[code], sport: null, role: 'super_admin' };
+    // Look up the real org ID from the database
+    const orgName = superCodes[code];
+    const { data: orgData } = await sb.from('organizations').select('id,name').eq('name', orgName).maybeSingle();
+    const orgId = orgData ? orgData.id : null;
+    currentOrg = { id: orgId, name: orgName, sport: null, role: 'super_admin' };
     localStorage.setItem('sportcal_org', JSON.stringify(currentOrg));
     updateNavAuth();
     showToast('Welcome, ' + currentOrg.name, 'success');
@@ -1404,6 +1414,23 @@ async function initEventForm(id) {
   document.getElementById('form-alert').innerHTML = '';
   document.getElementById('form-page-title').textContent = id ? 'Edit Event' : 'Add New Event';
   document.querySelector('#page-create-event .btn-gradient').textContent = id ? 'Save Changes' : 'Publish Event';
+  // Show org selector for super_admin and populate it
+  const orgGroup = document.getElementById('ev-org-group');
+  const orgSel   = document.getElementById('ev-org');
+  if (currentOrg?.role === 'super_admin') {
+    orgGroup.style.display = 'block';
+    const { data: orgs } = await sb.from('organizations').select('id,name').order('name');
+    orgSel.innerHTML = '<option value="">Select organisation…</option>';
+    (orgs || []).forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.id; opt.textContent = o.name;
+      // Pre-select DSR org for safehands
+      if (currentOrg.id === o.id) opt.selected = true;
+      orgSel.appendChild(opt);
+    });
+  } else {
+    orgGroup.style.display = 'none';
+  }
   if (id) {
     const { data: e } = await sb.from('events').select('*').eq('id', id).single();
     if (e) {
@@ -1415,6 +1442,10 @@ async function initEventForm(id) {
       document.getElementById('ev-location').value = e.location || '';
       document.getElementById('ev-desc').value = e.description || '';
       document.getElementById('ev-image').value = e.image_url || '';
+      // Pre-select org in dropdown when editing
+      if (currentOrg?.role === 'super_admin' && e.organization_id) {
+        orgSel.value = e.organization_id;
+      }
     }
   }
 }
@@ -1428,11 +1459,22 @@ async function submitEvent() {
   const desc     = document.getElementById('ev-desc').value.trim();
   const imageUrl = document.getElementById('ev-image').value.trim();
   if (!title || !sport || !date) { showAlert('form-alert','Please fill in Title, Sport, and Date.','error'); return; }
+  // Determine org — super_admin can pick from dropdown, others use their own org
+  let orgId   = currentOrg?.id || null;
+  let orgName = currentOrg?.name || null;
+  if (currentOrg?.role === 'super_admin') {
+    const sel = document.getElementById('ev-org');
+    if (sel && sel.value) {
+      orgId   = sel.value;
+      orgName = sel.options[sel.selectedIndex].text;
+    }
+  }
+  if (!orgId) { showAlert('form-alert','Please select an organisation for this event.','error'); return; }
   const payload = {
     title, sport, date, time: time||null, location: location||null,
     description: desc||null, image_url: imageUrl||null,
-    organization_id: currentOrg?.id || null,
-    organization_name: currentOrg?.name || null
+    organization_id: orgId,
+    organization_name: orgName
   };
   let error;
   if (id) {
