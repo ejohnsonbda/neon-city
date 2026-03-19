@@ -11,88 +11,103 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     /* ═══════════════════════════════════════════════════════════════
-       NSGB HUB 2.0 — Design System Tokens
+       NSGB HUB 2.0 — Exact Design System Tokens
     ═══════════════════════════════════════════════════════════════ */
     :root {
-      --brand-blue:   #1e3799;
-      --brand-pink:   #e84393;
-      --brand-grad:   linear-gradient(135deg, #1e3799 0%, #e84393 100%);
-      --brand-grad-r: linear-gradient(135deg, #e84393 0%, #1e3799 100%);
-      /* Light theme surfaces */
-      --navy-900:     #ffffff;
-      --navy-800:     #f4f6fb;
-      --navy-700:     #edf0f7;
-      --navy-600:     #e2e8f4;
-      --navy-500:     #d0d8ed;
-      --navy-400:     #b8c4df;
-      --glass-bg:     rgba(30,55,153,0.06);
-      --glass-border: rgba(30,55,153,0.15);
-      --text-primary: #0f172a;
-      --text-secondary:#374151;
-      --text-muted:   #6b7a99;
-      --success:      #059669;
-      --warning:      #d97706;
-      --danger:       #dc2626;
-      --radius-sm:    6px;
-      --radius-md:    12px;
-      --radius-lg:    16px;
-      --radius-xl:    24px;
-      --shadow-card:  0 2px 16px rgba(30,55,153,0.10);
-      --shadow-hover: 0 8px 32px rgba(30,55,153,0.18);
-      --transition:   all 0.2s cubic-bezier(0.4,0,0.2,1);
+      /* Brand */
+      --blue:          #1e3799;
+      --blue-dark:     #152a70;
+      --blue-light:    #2d4fc4;
+      --pink:          #e84393;
+      --pink-light:    #f06ab5;
+      --gradient:      linear-gradient(135deg, #1e3799 0%, #e84393 100%);
+      --gradient-r:    linear-gradient(135deg, #e84393 0%, #1e3799 100%);
+      /* Semantic */
+      --success:       #10b981;
+      --danger:        #ef4444;
+      --warning:       #f59e0b;
+      /* Grayscale (Slate) */
+      --gray-50:       #f8fafc;
+      --gray-100:      #f1f5f9;
+      --gray-200:      #e2e8f0;
+      --gray-300:      #cbd5e1;
+      --gray-400:      #94a3b8;
+      --gray-500:      #64748b;
+      --gray-600:      #475569;
+      --gray-700:      #334155;
+      --gray-800:      #1e293b;
+      --gray-900:      #0f172a;
+      /* Radii */
+      --radius-sm:     6px;
+      --radius:        10px;
+      --radius-lg:     16px;
+      --radius-xl:     24px;
+      /* Shadows */
+      --shadow-sm:     0 1px 3px rgba(0,0,0,.08);
+      --shadow:        0 4px 16px rgba(0,0,0,.10);
+      --shadow-lg:     0 8px 32px rgba(0,0,0,.14);
+      --shadow-xl:     0 16px 48px rgba(0,0,0,.18);
+      /* Layout */
+      --nav-h:         68px;
+      --container:     1200px;
+      --transition:    all .2s ease;
     }
 
     /* ── Reset ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: var(--navy-800);
-      color: var(--text-primary);
-      min-height: 100vh;
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      font-size: 16px;
       line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
     a { color: inherit; text-decoration: none; }
     button { cursor: pointer; font-family: inherit; }
     input, select, textarea { font-family: inherit; }
     img { max-width: 100%; display: block; }
-
-    /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--navy-800); }
-    ::-webkit-scrollbar-thumb { background: var(--navy-400); border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: var(--gray-100); }
+    ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
 
-    /* ═══════════════════════════════════════════════════════════════
-       LAYOUT
-    ═══════════════════════════════════════════════════════════════ */
+    /* ── App Shell ── */
     #app { display: flex; flex-direction: column; min-height: 100vh; }
     #main-content { flex: 1; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .container { max-width: var(--container); margin: 0 auto; padding: 0 1.5rem; }
 
-    /* ── Navbar ── */
+    /* ═══════════════════════════════════════════════════════════════
+       NAVBAR — NSGB HUB 2.0 Spec
+    ═══════════════════════════════════════════════════════════════ */
     .navbar {
-      position: sticky; top: 0; z-index: 100;
-      background: #1e3799;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 3px solid var(--brand-pink);
-      padding: 0 1.5rem;
-      box-shadow: 0 2px 20px rgba(30,55,153,0.25);
+      position: sticky; top: 0; z-index: 1000;
+      height: var(--nav-h);
+      background: rgba(15,23,42,.97);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 2px 20px rgba(0,0,0,.25);
     }
     .navbar-inner {
-      max-width: 1280px; margin: 0 auto;
-      display: flex; align-items: center; gap: 1rem;
-      height: 64px;
+      max-width: var(--container); margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      height: 100%;
     }
     .navbar-brand {
       display: flex; align-items: center; gap: 0.75rem;
-      font-weight: 800; font-size: 1.125rem; letter-spacing: -0.02em;
-      color: white;
-      white-space: nowrap;
+      color: white; font-weight: 800; font-size: 1.125rem;
+      letter-spacing: -0.02em; white-space: nowrap; flex-shrink: 0;
     }
     .navbar-brand .dsr-logo {
-      height: 44px; width: auto;
-      display: block; flex-shrink: 0;
+      height: 42px; width: auto;
       filter: brightness(0) invert(1);
+    }
+    .navbar-brand .brand-name {
+      font-size: 1.125rem; font-weight: 800; color: white;
     }
     .navbar-nav {
       display: flex; align-items: center; gap: 0.25rem;
@@ -100,226 +115,260 @@
     }
     .nav-link {
       padding: 0.5rem 0.875rem; border-radius: var(--radius-sm);
-      font-size: 0.875rem; font-weight: 500; color: rgba(255,255,255,0.8);
-      transition: var(--transition); cursor: pointer; border: none;
-      background: transparent;
+      font-size: 0.875rem; font-weight: 500;
+      color: rgba(255,255,255,.75);
+      transition: var(--transition); cursor: pointer;
+      border: none; background: transparent;
     }
-    .nav-link:hover, .nav-link.active {
-      color: white;
-      background: rgba(255,255,255,0.12);
-    }
-    .nav-link.active { color: white; font-weight: 600; }
+    .nav-link:hover { color: white; background: rgba(255,255,255,.1); }
+    .nav-link.active { color: white; font-weight: 600; background: rgba(255,255,255,.12); }
     .nav-btn {
-      padding: 0.5rem 1rem; border-radius: var(--radius-sm);
+      padding: 0.5rem 1.125rem; border-radius: var(--radius-sm);
       font-size: 0.875rem; font-weight: 600; border: none;
-      background: var(--brand-pink); color: white;
+      background: var(--gradient); color: white;
       transition: var(--transition);
     }
-    .nav-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(232,67,147,0.4); }
+    .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(232,67,147,.4); }
     .nav-user {
       display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.375rem 0.75rem; border-radius: var(--radius-sm);
-      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
-      font-size: 0.8125rem; color: rgba(255,255,255,0.9);
+      padding: 0.375rem 0.875rem; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+      font-size: 0.8125rem; color: rgba(255,255,255,.9); font-weight: 500;
     }
     .nav-user .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--success);
+      width: 8px; height: 8px; border-radius: 50%; background: var(--success); flex-shrink: 0;
     }
     .hamburger {
       display: none; flex-direction: column; gap: 5px;
-      background: none; border: none; padding: 4px; cursor: pointer;
+      background: none; border: none; padding: 0.5rem; margin-left: auto;
     }
     .hamburger span {
       display: block; width: 22px; height: 2px;
-      background: rgba(255,255,255,0.85); border-radius: 2px;
+      background: rgba(255,255,255,.8); border-radius: 2px;
       transition: var(--transition);
     }
     .mobile-menu {
       display: none; flex-direction: column; gap: 0.25rem;
       padding: 0.75rem 1.5rem 1rem;
-      border-top: 1px solid rgba(255,255,255,0.15);
-      background: #1e3799;
+      background: rgba(15,23,42,.98);
+      border-top: 1px solid rgba(255,255,255,.08);
     }
     .mobile-menu.open { display: flex; }
-    .mobile-menu .nav-link { padding: 0.625rem 0.75rem; }
+    .mobile-menu .nav-link { text-align: left; }
+    @media (max-width: 768px) {
+      .navbar-nav { display: none; }
+      .hamburger { display: flex; }
+    }
 
-    /* ── Footer ── */
-    .footer {
-      background: #1e3799;
-      border-top: 3px solid var(--brand-pink);
-      padding: 2rem 1.5rem;
+    /* ═══════════════════════════════════════════════════════════════
+       HERO — NSGB HUB 2.0 Video Variant
+    ═══════════════════════════════════════════════════════════════ */
+    .hero {
+      position: relative; overflow: hidden;
+      min-height: 56vh;
+      display: flex; align-items: center; justify-content: center;
       text-align: center;
-      color: rgba(255,255,255,0.7);
-      font-size: 0.8125rem;
+      padding: 5rem 1.5rem 4rem;
     }
-    .footer-brand {
-      font-weight: 700; font-size: 1rem;
-      color: white;
-      margin-bottom: 0.5rem;
+    .hero-video {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; z-index: 0;
+      filter: brightness(0.75) saturate(1.05);
     }
+    .hero-video-overlay {
+      position: absolute; inset: 0; z-index: 1;
+      background: linear-gradient(135deg,
+        rgba(30,55,153,0.72) 0%,
+        rgba(99,102,241,0.55) 40%,
+        rgba(236,72,153,0.65) 100%);
+      pointer-events: none;
+    }
+    .hero-content {
+      position: relative; z-index: 2;
+      max-width: 680px; margin: 0 auto;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center;
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 999px;
+      padding: 0.35rem 1rem;
+      font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: white; margin-bottom: 1.25rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 900; color: white;
+      line-height: 1.15; letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+    }
+    .hero h1 .grad-text {
+      background: linear-gradient(135deg, #fff 0%, var(--pink-light) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.0625rem; color: rgba(255,255,255,.85);
+      max-width: 520px; margin: 0 auto 2rem; line-height: 1.7;
+    }
+    .hero-actions { display: flex; gap: 0.875rem; justify-content: center; flex-wrap: wrap; }
 
     /* ═══════════════════════════════════════════════════════════════
-       PAGES — visibility
+       BUTTONS — NSGB HUB 2.0 Spec
     ═══════════════════════════════════════════════════════════════ */
-    .page { display: none; }
-    .page.active { display: block; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: .6rem 1.25rem; font-size: .875rem; font-weight: 600;
+      border-radius: var(--radius-sm); border: none;
+      cursor: pointer; transition: var(--transition);
+      white-space: nowrap; text-decoration: none;
+    }
+    .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
+    .btn-lg { padding: .8rem 1.75rem; font-size: 1rem; }
+    .btn-gradient {
+      background: var(--gradient); color: white;
+    }
+    .btn-gradient:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(232,67,147,.35); }
+    .btn-blue { background: var(--blue); color: white; }
+    .btn-blue:hover { background: var(--blue-dark); transform: translateY(-1px); }
+    .btn-primary { background: white; color: var(--blue); font-weight: 700; }
+    .btn-primary:hover { background: var(--gray-100); }
+    .btn-outline {
+      background: transparent; color: var(--gray-700);
+      border: 1.5px solid var(--gray-300);
+    }
+    .btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-ghost { background: var(--gray-100); color: var(--gray-700); border: none; }
+    .btn-ghost:hover { background: var(--gray-200); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { opacity: .9; transform: translateY(-1px); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { opacity: .9; }
 
     /* ═══════════════════════════════════════════════════════════════
-       SHARED COMPONENTS
+       FILTERS BAR
     ═══════════════════════════════════════════════════════════════ */
-
-    /* Container */
-    .container { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
-
-    /* Section heading */
-    .section-title {
-      font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em;
-      margin-bottom: 0.5rem;
+    .filters-bar {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      box-shadow: var(--shadow-sm);
+      position: sticky; top: var(--nav-h); z-index: 50;
     }
-    .section-sub { color: var(--text-secondary); margin-bottom: 2rem; }
-
-    /* Gradient text */
-    .grad-text {
-      background: var(--brand-grad); -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent; background-clip: text;
+    .filters-inner {
+      max-width: var(--container); margin: 0 auto;
+      padding: 0.875rem 1.5rem;
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
     }
-
-    /* Badge */
-    .badge {
-      display: inline-flex; align-items: center; gap: 0.25rem;
-      padding: 0.2rem 0.6rem; border-radius: 999px;
-      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em;
-      text-transform: uppercase;
+    .search-wrap {
+      position: relative; flex: 1; min-width: 200px;
     }
-
-    /* Card */
-    .card {
-      background: var(--navy-700);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
+    .search-icon {
+      position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+      color: var(--gray-400); display: flex; align-items: center;
+    }
+    .search-input {
+      width: 100%; padding: .65rem .9rem .65rem 2.25rem;
+      border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+      font-size: 0.875rem; background: white; color: var(--gray-800);
+      box-shadow: var(--shadow-sm); transition: var(--transition);
+    }
+    .search-input:focus {
+      outline: none; border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(30,55,153,.1);
+    }
+    .chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .chip {
+      padding: 0.35rem 0.875rem; border-radius: 20px;
+      font-size: 0.8125rem; font-weight: 500; cursor: pointer;
+      border: 1.5px solid var(--gray-300); background: white;
+      color: var(--gray-600); transition: var(--transition);
+    }
+    .chip:hover { border-color: var(--blue); color: var(--blue); }
+    .chip.active {
+      background: var(--gradient); color: white; border-color: transparent;
+    }
+    .sort-select {
+      padding: .65rem .9rem; border: 1.5px solid var(--gray-200);
+      border-radius: var(--radius); font-size: 0.875rem;
+      background: white; color: var(--gray-700);
+      box-shadow: var(--shadow-sm); cursor: pointer;
       transition: var(--transition);
+    }
+    .sort-select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(30,55,153,.1); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       EVENTS SECTION & CARDS
+    ═══════════════════════════════════════════════════════════════ */
+    .events-section {
+      max-width: var(--container); margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    .card {
+      background: white; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--gray-200);
+      overflow: hidden; transition: var(--transition);
     }
     .card:hover {
       transform: translateY(-3px);
-      box-shadow: var(--shadow-hover);
-      border-color: rgba(30,55,153,0.30);
+      box-shadow: var(--shadow-lg);
     }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      padding: 0.625rem 1.25rem; border-radius: var(--radius-sm);
-      font-size: 0.875rem; font-weight: 600; border: none;
-      transition: var(--transition); cursor: pointer;
+    .event-card { cursor: pointer; }
+    .event-card-img {
+      height: 160px; position: relative; overflow: hidden;
+      background: var(--gray-100);
     }
-    .btn-primary { background: var(--brand-grad); color: white; }
-    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-secondary {
-      background: var(--glass-bg); color: var(--text-primary);
-      border: 1px solid var(--glass-border);
-    }
-    .btn-secondary:hover { background: var(--navy-500); }
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-danger:hover { opacity: 0.9; }
-    .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
-    .btn-lg { padding: 0.875rem 1.75rem; font-size: 1rem; }
-
-    /* Form elements */
-    .form-group { margin-bottom: 1.25rem; }
-    .form-label {
-      display: block; font-size: 0.8125rem; font-weight: 600;
-      color: var(--text-secondary); margin-bottom: 0.375rem;
-      letter-spacing: 0.02em;
-    }
-    .form-control {
-      width: 100%; padding: 0.625rem 0.875rem;
-      background: var(--navy-600); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-sm); color: var(--text-primary);
-      font-size: 0.9375rem; transition: var(--transition);
-    }
-    .form-control:focus {
-      outline: none; border-color: var(--brand-blue);
-      box-shadow: 0 0 0 3px rgba(30,55,153,0.25);
-    }
-    .form-control::placeholder { color: var(--text-muted); }
-    select.form-control option { background: var(--navy-700); }
-    textarea.form-control { resize: vertical; min-height: 100px; }
-
-    /* Alert */
-    .alert {
-      padding: 0.875rem 1rem; border-radius: var(--radius-sm);
-      font-size: 0.875rem; margin-bottom: 1rem;
-      border: 1px solid transparent;
-    }
-    .alert-error { background: rgba(220,38,38,0.08); border-color: rgba(220,38,38,0.3); color: #dc2626; }
-    .alert-success { background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.3); color: #059669; }
-    .alert-info { background: rgba(30,55,153,0.08); border-color: rgba(30,55,153,0.3); color: #1e3799; }
-
-    /* Spinner */
-    .spinner {
-      width: 40px; height: 40px; border-radius: 50%;
-      border: 3px solid var(--navy-500);
-      border-top-color: var(--brand-pink);
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-wrap { padding: 4rem 0; text-align: center; }
-    .loading-wrap p { color: var(--text-muted); margin-top: 1rem; font-size: 0.875rem; }
-
-    /* Empty state */
-    .empty-state {
-      text-align: center; padding: 4rem 1rem;
-      color: var(--text-muted);
-    }
-    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
-    .empty-state h3 { font-size: 1.125rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
-
-    /* Modal */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0; z-index: 200;
-      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
-      align-items: center; justify-content: center; padding: 1rem;
-    }
-    .modal-overlay.open { display: flex; }
-    .modal {
-      background: var(--navy-700); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-xl); padding: 2rem;
-      width: 100%; max-width: 520px; max-height: 90vh;
-      overflow-y: auto; position: relative;
-    }
-    .modal-title {
-      font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;
-    }
-    .modal-close {
-      position: absolute; top: 1rem; right: 1rem;
-      background: var(--glass-bg); border: 1px solid var(--glass-border);
-      color: var(--text-secondary); width: 32px; height: 32px;
-      border-radius: 50%; font-size: 1rem; cursor: pointer;
+    .event-card-img img { width: 100%; height: 100%; object-fit: cover; }
+    .event-card-img-placeholder {
+      width: 100%; height: 100%;
+      background: var(--gradient);
       display: flex; align-items: center; justify-content: center;
-      transition: var(--transition);
     }
-    .modal-close:hover { color: white; background: var(--navy-500); }
+    .event-card-sport-bar {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
+      background: var(--sc, var(--blue));
+    }
+    .event-card-body { padding: 1.125rem; }
+    .event-card-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .event-card-sport {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--sc, var(--blue));
+    }
+    .event-card-date {
+      font-size: 0.75rem; color: var(--gray-500); font-weight: 500;
+    }
+    .event-card-title {
+      font-size: 1rem; font-weight: 700; color: var(--gray-900);
+      line-height: 1.35; margin-bottom: 0.5rem;
+    }
+    .event-card-loc {
+      font-size: 0.8125rem; color: var(--gray-500);
+      display: flex; align-items: center; gap: 0.3rem;
+      margin-bottom: 0.75rem;
+    }
+    .event-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 0.75rem; border-top: 1px solid var(--gray-100);
+    }
+    .event-card-org {
+      font-size: 0.75rem; color: var(--gray-500); font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;
+    }
+    .event-card-actions { display: flex; gap: 0.375rem; }
 
-    /* Toast */
-    #toast-container {
-      position: fixed; bottom: 1.5rem; right: 1.5rem;
-      z-index: 999; display: flex; flex-direction: column; gap: 0.5rem;
-    }
-    .toast {
-      padding: 0.875rem 1.25rem; border-radius: var(--radius-md);
-      font-size: 0.875rem; font-weight: 500;
-      box-shadow: var(--shadow-card); min-width: 260px;
-      animation: slideIn 0.3s ease;
-    }
-    .toast-success { background: #065f46; color: #6ee7b7; border: 1px solid #10b981; }
-    .toast-error   { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
-    .toast-info    { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; }
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-    /* Sport colour map */
+    /* ═══════════════════════════════════════════════════════════════
+       SPORT COLOUR MAP
+    ═══════════════════════════════════════════════════════════════ */
     .sport-football    { --sc: #10b981; }
     .sport-cricket     { --sc: #f59e0b; }
     .sport-rugby       { --sc: #8b5cf6; }
@@ -337,483 +386,503 @@
     .sport-boxing      { --sc: #dc2626; }
     .sport-sailing     { --sc: #0284c7; }
     .sport-volleyball  { --sc: #d97706; }
-    .sport-default     { --sc: var(--brand-pink); }
-
-    /* ═══════════════════════════════════════════════════════════════
-       HOME PAGE
-    ═══════════════════════════════════════════════════════════════ */
-    .hero {
-      min-height: 60vh;
-      display: flex; align-items: center; justify-content: center;
-      text-align: center;
-      position: relative; overflow: hidden;
-      padding: 4rem 1.5rem 3rem;
-    }
-    .hero-video {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
-      z-index: 0;
-      opacity: 0.45;
-    }
-    .hero::before {
-      content: ''; position: absolute; inset: 0; z-index: 1;
-      background: linear-gradient(135deg,
-        rgba(10,22,40,0.82) 0%,
-        rgba(10,22,40,0.60) 40%,
-        rgba(232,67,147,0.55) 70%,
-        rgba(10,22,40,0.80) 100%);
-      pointer-events: none;
-    }
-    /* hero::after removed — no fade line */
-    .hero-content { position: relative; z-index: 2; max-width: 700px; margin: 0 auto; }
-    .hero-eyebrow {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.35);
-      border-radius: 999px; padding: 0.35rem 0.875rem;
-      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em;
-      text-transform: uppercase; color: white; margin-bottom: 1.25rem;
-    }
-    .hero h1 {
-      font-size: clamp(2rem, 5vw, 3.25rem);
-      font-weight: 900; letter-spacing: -0.04em;
-      line-height: 1.1; margin-bottom: 1rem;
-    }
-    .hero p {
-      font-size: 1.0625rem; color: rgba(255,255,255,0.85);
-      max-width: 520px; margin: 0 auto 2rem;
-    }
-    .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
-
-    /* Search + filters */
-    .filters-bar {
-      background: var(--navy-800);
-      border-bottom: 1px solid var(--glass-border);
-      padding: 1rem 1.5rem; position: sticky; top: 64px; z-index: 90;
-    }
-    .filters-inner {
-      max-width: 1280px; margin: 0 auto;
-      display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
-    }
-    .search-wrap { position: relative; flex: 1; min-width: 200px; }
-    .search-wrap .search-icon {
-      position: absolute; left: 0.75rem; top: 50%;
-      transform: translateY(-50%); color: var(--text-muted);
-      pointer-events: none; font-size: 0.875rem;
-    }
-    .search-input {
-      width: 100%; padding: 0.5625rem 0.875rem 0.5625rem 2.25rem;
-      background: var(--navy-600); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-sm); color: var(--text-primary);
-      font-size: 0.875rem; transition: var(--transition);
-    }
-    .search-input:focus {
-      outline: none; border-color: var(--brand-blue);
-      box-shadow: 0 0 0 3px rgba(30,55,153,0.2);
-    }
-    .search-input::placeholder { color: var(--text-muted); }
-    .chips { display: flex; gap: 0.375rem; flex-wrap: wrap; }
-    .chip {
-      padding: 0.3125rem 0.75rem; border-radius: 999px;
-      font-size: 0.75rem; font-weight: 600; cursor: pointer;
-      border: 1px solid var(--glass-border);
-      background: var(--glass-bg); color: var(--text-secondary);
-      transition: var(--transition); white-space: nowrap;
-    }
-    .chip:hover { color: white; border-color: rgba(255,255,255,0.25); }
-    .chip.active {
-      background: var(--brand-grad); border-color: transparent; color: white;
-    }
-    .sort-select {
-      padding: 0.5rem 0.75rem; background: var(--navy-600);
-      border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
-      color: var(--text-secondary); font-size: 0.8125rem; cursor: pointer;
-    }
-    .sort-select:focus { outline: none; }
-
-    /* Events grid */
-    .events-section { padding: 2.5rem 1.5rem; }
-    .events-grid {
-      max-width: 1280px; margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.25rem;
-    }
-
-    /* Event card */
-    .event-card { cursor: pointer; }
-    .event-card-img {
-      height: 160px; background: var(--navy-600);
-      position: relative; overflow: hidden;
-    }
-    .event-card-img img {
-      width: 100%; height: 100%; object-fit: cover;
-      transition: transform 0.4s ease;
-    }
-    .event-card:hover .event-card-img img { transform: scale(1.05); }
-    .event-card-img-placeholder {
-      width: 100%; height: 100%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 2.5rem;
-      background: linear-gradient(135deg, var(--navy-600), var(--navy-500));
-    }
-    .event-card-sport-bar {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      height: 3px; background: var(--sc, var(--brand-pink));
-    }
-    .event-card-body { padding: 1.125rem; }
-    .event-card-meta {
-      display: flex; align-items: center; gap: 0.5rem;
-      margin-bottom: 0.625rem; flex-wrap: wrap;
-    }
-    .event-card-sport {
-      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
-      text-transform: uppercase; color: var(--sc, var(--brand-pink));
-    }
-    .event-card-date {
-      font-size: 0.75rem; color: var(--text-muted);
-      margin-left: auto;
-    }
-    .event-card-title {
-      font-size: 1rem; font-weight: 700; line-height: 1.35;
-      margin-bottom: 0.5rem; color: var(--text-primary);
-      display: -webkit-box; -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical; overflow: hidden;
-    }
-    .event-card-loc {
-      font-size: 0.8125rem; color: var(--text-muted);
-      display: flex; align-items: center; gap: 0.3rem;
-      margin-bottom: 0.875rem;
-    }
-    .event-card-footer {
-      display: flex; align-items: center; justify-content: space-between;
-      padding-top: 0.75rem; border-top: 1px solid var(--glass-border);
-    }
-    .event-card-org { font-size: 0.75rem; color: var(--text-muted); }
-    .event-card-actions { display: flex; gap: 0.375rem; }
+    .sport-default     { --sc: var(--blue); }
 
     /* ═══════════════════════════════════════════════════════════════
        CALENDAR PAGE
     ═══════════════════════════════════════════════════════════════ */
-    .cal-page { padding: 2rem 1.5rem; }
-    .cal-wrap { max-width: 1000px; margin: 0 auto; }
+    .cal-page {
+      max-width: var(--container); margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
     .cal-header {
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;
     }
-    .cal-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
-    .cal-nav { display: flex; gap: 0.5rem; align-items: center; }
-    .cal-nav-btn {
-      width: 36px; height: 36px; border-radius: var(--radius-sm);
-      background: var(--glass-bg); border: 1px solid var(--glass-border);
-      color: var(--text-secondary); font-size: 1rem; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: var(--transition);
-    }
-    .cal-nav-btn:hover { color: white; background: var(--navy-500); }
-    .cal-view-toggle {
-      display: flex; background: var(--navy-700);
-      border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
-      overflow: hidden;
-    }
-    .cal-view-btn {
-      padding: 0.375rem 0.875rem; font-size: 0.8125rem; font-weight: 600;
-      border: none; background: transparent; color: var(--text-muted);
+    .cal-header h2 { font-size: 1.5rem; font-weight: 800; color: var(--gray-900); }
+    .cal-nav { display: flex; align-items: center; gap: 0.5rem; }
+    .cal-nav button {
+      padding: 0.5rem 0.875rem; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--gray-200); background: white;
+      font-size: 0.875rem; font-weight: 600; color: var(--gray-700);
       cursor: pointer; transition: var(--transition);
     }
-    .cal-view-btn.active { background: var(--brand-grad); color: white; }
-
-    /* Month grid */
-    .cal-grid-wrap { background: var(--navy-700); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); overflow: hidden; }
-    .cal-dow-row {
-      display: grid; grid-template-columns: repeat(7, 1fr);
-      border-bottom: 1px solid var(--glass-border);
+    .cal-nav button:hover { border-color: var(--blue); color: var(--blue); }
+    .cal-view-toggle { display: flex; gap: 0.375rem; }
+    .cal-view-btn {
+      padding: 0.4rem 0.875rem; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--gray-200); background: white;
+      font-size: 0.8125rem; font-weight: 600; color: var(--gray-600);
+      cursor: pointer; transition: var(--transition);
     }
-    .cal-dow {
+    .cal-view-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+    .cal-grid-wrap { background: white; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); overflow: hidden; }
+    .cal-weekdays {
+      display: grid; grid-template-columns: repeat(7,1fr);
+      background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+    }
+    .cal-weekday {
       padding: 0.625rem; text-align: center;
-      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em;
-      text-transform: uppercase; color: var(--text-muted);
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--gray-500);
     }
-    .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); }
     .cal-cell {
       min-height: 90px; padding: 0.5rem;
-      border-right: 1px solid var(--glass-border);
-      border-bottom: 1px solid var(--glass-border);
-      transition: background 0.15s;
+      border-right: 1px solid var(--gray-100);
+      border-bottom: 1px solid var(--gray-100);
+      vertical-align: top;
     }
     .cal-cell:nth-child(7n) { border-right: none; }
-    .cal-cell.other-month { opacity: 0.35; }
-    .cal-cell.today { background: rgba(30,55,153,0.15); }
-    .cal-day-num {
-      font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary);
-      width: 26px; height: 26px; display: flex; align-items: center;
-      justify-content: center; border-radius: 50%; margin-bottom: 0.25rem;
-    }
+    .cal-cell.other-month { background: var(--gray-50); }
+    .cal-cell.other-month .cal-day-num { color: var(--gray-300); }
+    .cal-cell.today { background: rgba(30,55,153,.04); }
     .cal-cell.today .cal-day-num {
-      background: var(--brand-blue); color: white;
+      background: var(--blue); color: white;
+      width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cal-day-num {
+      font-size: 0.8125rem; font-weight: 600; color: var(--gray-700);
+      margin-bottom: 0.25rem;
     }
     .cal-event-pill {
-      font-size: 0.65rem; font-weight: 600; padding: 0.15rem 0.4rem;
-      border-radius: 4px; margin-bottom: 0.2rem; cursor: pointer;
+      font-size: 0.65rem; font-weight: 600;
+      padding: 0.15rem 0.4rem; border-radius: 4px;
+      background: var(--sc, var(--blue)); color: white;
+      margin-bottom: 0.15rem; cursor: pointer;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      background: rgba(255,255,255,0.08); color: var(--text-primary);
-      border-left: 3px solid var(--sc, var(--brand-pink));
       transition: var(--transition);
     }
-    .cal-event-pill:hover { background: rgba(255,255,255,0.14); }
-
+    .cal-event-pill:hover { opacity: .85; }
     /* List view */
     .cal-list { display: flex; flex-direction: column; gap: 0.75rem; }
     .cal-list-month {
-      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--text-muted);
-      padding: 0.5rem 0; border-bottom: 1px solid var(--glass-border);
+      font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--gray-500);
+      padding: 0.5rem 0; border-bottom: 1px solid var(--gray-200);
       margin-top: 1rem;
     }
     .cal-list-item {
-      display: flex; gap: 1rem; align-items: flex-start;
-      background: var(--navy-700); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-md); padding: 1rem;
-      cursor: pointer; transition: var(--transition);
-      border-left: 4px solid var(--sc, var(--brand-pink));
+      display: flex; align-items: center; gap: 1rem;
+      background: white; border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-200);
+      padding: 1rem 1.25rem; cursor: pointer;
+      transition: var(--transition);
+      border-left: 4px solid var(--sc, var(--blue));
     }
-    .cal-list-item:hover { background: var(--navy-600); transform: translateX(3px); }
+    .cal-list-item:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
     .cal-list-date {
-      text-align: center; min-width: 48px;
-      background: var(--navy-600); border-radius: var(--radius-sm);
-      padding: 0.5rem; flex-shrink: 0;
+      text-align: center; min-width: 44px;
+      flex-shrink: 0;
     }
-    .cal-list-date .day { font-size: 1.375rem; font-weight: 800; line-height: 1; }
-    .cal-list-date .month { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
-    .cal-list-info { flex: 1; }
-    .cal-list-title { font-weight: 700; margin-bottom: 0.25rem; }
-    .cal-list-meta { font-size: 0.8125rem; color: var(--text-muted); }
+    .cal-list-date .day { font-size: 1.5rem; font-weight: 900; color: var(--gray-900); line-height: 1; }
+    .cal-list-date .month { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--gray-500); }
+    .cal-list-info { flex: 1; min-width: 0; }
+    .cal-list-title { font-size: 0.9375rem; font-weight: 700; color: var(--gray-900); margin-bottom: 0.25rem; }
+    .cal-list-meta { font-size: 0.8rem; color: var(--gray-500); }
 
     /* ═══════════════════════════════════════════════════════════════
        EVENT DETAIL PAGE
     ═══════════════════════════════════════════════════════════════ */
-    .detail-page { padding: 2rem 1.5rem; }
-    .detail-wrap { max-width: 800px; margin: 0 auto; }
-    .detail-back {
-      display: inline-flex; align-items: center; gap: 0.375rem;
-      color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;
-      cursor: pointer; transition: var(--transition);
+    .detail-page {
+      max-width: 760px; margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
     }
-    .detail-back:hover { color: var(--text-primary); }
+    .detail-back {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.875rem; font-weight: 600; color: var(--gray-600);
+      margin-bottom: 1.5rem; cursor: pointer;
+      transition: var(--transition);
+    }
+    .detail-back:hover { color: var(--blue); }
     .detail-hero {
-      height: 280px; border-radius: var(--radius-lg);
-      overflow: hidden; margin-bottom: 2rem;
-      background: var(--navy-700); position: relative;
+      border-radius: var(--radius-lg); overflow: hidden;
+      height: 280px; position: relative; margin-bottom: 1.5rem;
+      background: var(--gradient);
     }
     .detail-hero img { width: 100%; height: 100%; object-fit: cover; }
     .detail-hero-placeholder {
       width: 100%; height: 100%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 5rem;
-      background: linear-gradient(135deg, var(--navy-600), var(--navy-500));
     }
     .detail-sport-bar {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      height: 4px; background: var(--sc, var(--brand-pink));
+      position: absolute; bottom: 0; left: 0; right: 0; height: 5px;
+      background: var(--sc, var(--blue));
     }
     .detail-card {
-      background: var(--navy-700); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-lg); padding: 2rem;
+      background: white; border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm);
+      padding: 2rem;
     }
     .detail-sport-badge {
-      display: inline-block; margin-bottom: 1rem;
-      padding: 0.3rem 0.875rem; border-radius: 999px;
+      display: inline-flex; align-items: center;
+      background: rgba(30,55,153,.08); color: var(--blue);
+      border-radius: 20px; padding: 0.3rem 0.875rem;
       font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em;
-      text-transform: uppercase;
-      background: rgba(255,255,255,0.08);
-      color: var(--sc, var(--brand-pink));
-      border: 1px solid var(--sc, var(--brand-pink));
+      text-transform: uppercase; margin-bottom: 0.875rem;
     }
     .detail-title {
-      font-size: clamp(1.5rem, 3vw, 2rem);
-      font-weight: 800; letter-spacing: -0.03em;
-      margin-bottom: 1.5rem; line-height: 1.2;
+      font-size: 1.75rem; font-weight: 900; color: var(--gray-900);
+      line-height: 1.2; margin-bottom: 1.5rem;
     }
     .detail-meta-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr));
       gap: 1rem; margin-bottom: 1.5rem;
     }
     .detail-meta-item {
-      background: var(--navy-600); border-radius: var(--radius-sm);
-      padding: 0.875rem; display: flex; gap: 0.625rem; align-items: flex-start;
+      display: flex; align-items: flex-start; gap: 0.625rem;
     }
-    .detail-meta-icon { font-size: 1.125rem; margin-top: 0.1rem; }
-    .detail-meta-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.2rem; }
-    .detail-meta-value { font-size: 0.9375rem; font-weight: 600; }
-    .detail-desc { color: var(--text-secondary); line-height: 1.75; margin-bottom: 1.5rem; }
+    .detail-meta-icon {
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      background: var(--gray-100); display: flex; align-items: center; justify-content: center;
+      color: var(--blue); flex-shrink: 0;
+    }
+    .detail-meta-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-500); }
+    .detail-meta-value { font-size: 0.9rem; font-weight: 600; color: var(--gray-800); margin-top: 0.1rem; }
+    .detail-desc {
+      font-size: 0.9375rem; color: var(--gray-600); line-height: 1.75;
+      padding-top: 1.25rem; border-top: 1px solid var(--gray-100);
+      margin-bottom: 1.5rem;
+    }
     .detail-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 
     /* ═══════════════════════════════════════════════════════════════
-       CREATE / EDIT EVENT PAGE
+       FORM PAGES (Create / Edit Event)
     ═══════════════════════════════════════════════════════════════ */
-    .form-page { padding: 2rem 1.5rem; }
-    .form-wrap { max-width: 680px; margin: 0 auto; }
+    .form-page {
+      max-width: 680px; margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .form-page-title {
+      font-size: 1.75rem; font-weight: 900; color: var(--gray-900);
+      margin-bottom: 0.375rem;
+    }
+    .form-page-sub { font-size: 0.9375rem; color: var(--gray-500); margin-bottom: 2rem; }
     .form-card {
-      background: var(--navy-700); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-xl); padding: 2rem;
+      background: white; border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm);
+      padding: 2rem;
     }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .form-grid .full { grid-column: 1 / -1; }
     .form-section-title {
-      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--text-muted);
-      margin: 1.5rem 0 1rem; padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--glass-border);
+      font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--gray-500);
+      margin-bottom: 1.25rem; padding-bottom: 0.625rem;
+      border-bottom: 1px solid var(--gray-100);
     }
-    .img-preview {
-      width: 100%; height: 160px; border-radius: var(--radius-sm);
-      object-fit: cover; margin-top: 0.5rem; display: none;
+    .form-group { margin-bottom: 1.25rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-label {
+      display: block; font-size: 0.875rem; font-weight: 600;
+      color: var(--gray-700); margin-bottom: 0.4rem;
     }
-    .img-preview.show { display: block; }
+    .form-control {
+      width: 100%; padding: .65rem .9rem;
+      border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+      font-size: 0.875rem; color: var(--gray-800); background: white;
+      transition: var(--transition);
+    }
+    .form-control:focus {
+      outline: none; border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(30,55,153,.1);
+    }
+    textarea.form-control { resize: vertical; min-height: 100px; }
+    .form-actions {
+      display: flex; gap: 0.75rem; justify-content: flex-end;
+      padding-top: 1.25rem; border-top: 1px solid var(--gray-100);
+      margin-top: 1.5rem;
+    }
+    .pw-wrap { position: relative; }
+    .pw-toggle {
+      position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; font-size: 0.8rem; font-weight: 600;
+      color: var(--gray-500); cursor: pointer; padding: 0.25rem;
+    }
+    .pw-toggle:hover { color: var(--blue); }
 
     /* ═══════════════════════════════════════════════════════════════
        LOGIN PAGE
     ═══════════════════════════════════════════════════════════════ */
     .login-page {
-      min-height: calc(100vh - 64px);
+      min-height: calc(100vh - var(--nav-h));
       display: flex; align-items: center; justify-content: center;
-      padding: 2rem 1rem;
-      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(30,55,153,0.25) 0%, transparent 70%);
+      padding: 2rem 1.5rem;
+      background: linear-gradient(135deg, var(--gray-50) 0%, #eef2ff 50%, #fdf2f8 100%);
     }
     .login-card {
-      width: 100%; max-width: 420px;
-      background: var(--navy-700); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-xl); padding: 2.5rem;
+      background: white; border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--gray-200);
+      padding: 2.5rem; width: 100%; max-width: 420px;
     }
     .login-logo {
-      width: 56px; height: 56px; border-radius: 16px;
-      background: var(--brand-grad);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.75rem; margin: 0 auto 1.5rem;
+      width: 56px; height: 56px; border-radius: var(--radius-lg);
+      background: var(--gradient);
+      margin: 0 auto 1.25rem;
     }
     .login-title {
-      text-align: center; font-size: 1.5rem; font-weight: 800;
-      letter-spacing: -0.03em; margin-bottom: 0.375rem;
+      font-size: 1.5rem; font-weight: 900; color: var(--gray-900);
+      text-align: center; margin-bottom: 0.375rem;
     }
-    .login-sub { text-align: center; color: var(--text-muted); font-size: 0.875rem; margin-bottom: 2rem; }
-    .pw-wrap { position: relative; }
-    .pw-toggle {
-      position: absolute; right: 0.75rem; top: 50%;
-      transform: translateY(-50%); background: none; border: none;
-      color: var(--text-muted); cursor: pointer; font-size: 1rem;
-      padding: 0.25rem;
+    .login-sub {
+      font-size: 0.875rem; color: var(--gray-500);
+      text-align: center; margin-bottom: 1.75rem;
     }
-    .pw-toggle:hover { color: var(--text-primary); }
+    .login-footer {
+      margin-top: 1.25rem; text-align: center;
+      font-size: 0.8rem; color: var(--gray-400);
+    }
 
     /* ═══════════════════════════════════════════════════════════════
        DASHBOARD PAGE
     ═══════════════════════════════════════════════════════════════ */
-    .dash-page { padding: 2rem 1.5rem; }
-    .dash-wrap { max-width: 1280px; margin: 0 auto; }
-    .dash-header { margin-bottom: 2rem; }
-    .dash-header h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; }
-    .dash-header p { color: var(--text-secondary); }
+    .dash-page {
+      max-width: var(--container); margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .dash-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
+    }
+    .dash-header h1 { font-size: 1.75rem; font-weight: 900; color: var(--gray-900); }
+    .dash-header p { font-size: 0.9375rem; color: var(--gray-500); margin-top: 0.25rem; }
     .stats-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem; margin-bottom: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.25rem; margin-bottom: 2rem;
     }
     .stat-card {
-      background: var(--navy-700); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-lg); padding: 1.25rem;
+      background: white; border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm);
+      padding: 1.5rem; position: relative; overflow: hidden;
     }
-    .stat-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
-    .stat-value { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; }
-    .stat-sub { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.25rem; }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--gradient);
+    }
+    .stat-card-label {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--gray-500); margin-bottom: 0.5rem;
+    }
+    .stat-card-value {
+      font-size: 2.25rem; font-weight: 900; line-height: 1;
+      background: var(--gradient); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .stat-card-sub { font-size: 0.8rem; color: var(--gray-400); margin-top: 0.25rem; }
+    .dash-section { margin-bottom: 2rem; }
     .dash-section-title {
-      font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
-      padding-bottom: 0.5rem; border-bottom: 1px solid var(--glass-border);
+      font-size: 1rem; font-weight: 700; color: var(--gray-900);
+      margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
     }
     .dash-table-wrap {
-      background: var(--navy-700); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 2rem;
+      background: white; border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm);
+      overflow: hidden;
     }
-    .dash-table { width: 100%; border-collapse: collapse; }
+    .dash-table {
+      width: 100%; border-collapse: collapse; font-size: 0.875rem;
+    }
     .dash-table th {
-      padding: 0.75rem 1rem; text-align: left;
+      padding: 0.875rem 1.25rem; text-align: left;
       font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em;
-      text-transform: uppercase; color: var(--text-muted);
-      background: var(--navy-800); border-bottom: 1px solid var(--glass-border);
+      text-transform: uppercase; color: var(--gray-500);
+      background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
     }
     .dash-table td {
-      padding: 0.875rem 1rem; font-size: 0.875rem;
-      border-bottom: 1px solid var(--glass-border);
-      vertical-align: middle;
+      padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--gray-100);
+      color: var(--gray-700);
     }
     .dash-table tr:last-child td { border-bottom: none; }
-    .dash-table tr:hover td { background: rgba(255,255,255,0.02); }
-    .dash-actions { display: flex; gap: 0.5rem; }
+    .dash-table tr:hover td { background: var(--gray-50); }
+    .dash-actions { display: flex; gap: 0.375rem; }
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 0.2rem 0.6rem; border-radius: 20px;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .badge-blue { background: rgba(30,55,153,.1); color: var(--blue); }
+    .badge-pink { background: rgba(232,67,147,.1); color: var(--pink); }
+    .badge-green { background: rgba(16,185,129,.1); color: var(--success); }
 
     /* ═══════════════════════════════════════════════════════════════
-       RESPONSIVE
+       SHARED UTILITIES
     ═══════════════════════════════════════════════════════════════ */
-    @media (max-width: 768px) {
-      .navbar-nav { display: none; }
-      .hamburger { display: flex; margin-left: auto; }
-      .form-grid { grid-template-columns: 1fr; }
-      .detail-meta-grid { grid-template-columns: 1fr 1fr; }
-      .stats-grid { grid-template-columns: 1fr 1fr; }
-      .dash-table-wrap { overflow-x: auto; }
+    .page-header {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 2rem 1.5rem;
     }
-    @media (max-width: 480px) {
-      .hero h1 { font-size: 1.75rem; }
-      .detail-meta-grid { grid-template-columns: 1fr; }
-      .stats-grid { grid-template-columns: 1fr; }
-      .cal-cell { min-height: 60px; }
-      .cal-event-pill { display: none; }
-      .cal-cell.has-events::after {
-        content: '●'; font-size: 0.5rem; color: var(--brand-pink);
-        display: block; text-align: center;
-      }
+    .page-header-inner {
+      max-width: var(--container); margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    }
+    .page-header h1 { font-size: 1.75rem; font-weight: 900; color: var(--gray-900); }
+    .page-header p { font-size: 0.9375rem; color: var(--gray-500); margin-top: 0.25rem; }
+    .loading-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 4rem 1rem; color: var(--gray-400);
+    }
+    .spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--blue);
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-wrap p { margin-top: 1rem; font-size: 0.875rem; }
+    .empty-state {
+      text-align: center; padding: 4rem 1rem; color: var(--gray-400);
+    }
+    .empty-state h3 { font-size: 1.125rem; font-weight: 700; color: var(--gray-600); margin-bottom: 0.5rem; }
+    .empty-state p { font-size: 0.9rem; }
+    .alert {
+      padding: 0.875rem 1rem; border-radius: var(--radius);
+      font-size: 0.875rem; font-weight: 500; margin-bottom: 1rem;
+    }
+    .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .alert-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white; border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-xl);
+      width: 100%; max-width: 480px; max-height: 90vh;
+      overflow-y: auto; position: relative;
+      animation: modalIn .2s ease;
+    }
+    @keyframes modalIn {
+      from { transform: scale(.95) translateY(10px); opacity: 0; }
+      to   { transform: scale(1)  translateY(0);     opacity: 1; }
+    }
+    .modal-header {
+      padding: 1.5rem 1.5rem 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { font-size: 1.125rem; font-weight: 800; color: var(--gray-900); }
+    .modal-close {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--gray-100); border: none;
+      color: var(--gray-500); font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: var(--transition);
+    }
+    .modal-close:hover { background: var(--gray-200); color: var(--gray-800); }
+    .modal-body { padding: 1.25rem 1.5rem 1.5rem; }
+    .modal-footer {
+      padding: 0 1.5rem 1.5rem;
+      display: flex; gap: 0.75rem; justify-content: flex-end;
+    }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .toast {
+      padding: 0.875rem 1.25rem; border-radius: var(--radius);
+      font-size: 0.875rem; font-weight: 500;
+      box-shadow: var(--shadow-lg); min-width: 260px;
+      animation: slideIn .3s ease;
+    }
+    .toast-success { background: #065f46; color: #6ee7b7; border: 1px solid #10b981; }
+    .toast-error   { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+    .toast-info    { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Footer ── */
+    .footer {
+      background: var(--gray-900);
+      color: rgba(255,255,255,.6);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      font-size: 0.875rem;
+      border-top: 3px solid transparent;
+      border-image: var(--gradient) 1;
+    }
+    .footer strong { color: white; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .form-row { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .events-grid { grid-template-columns: 1fr; }
+      .detail-meta-grid { grid-template-columns: 1fr 1fr; }
+      .hero h1 { font-size: 1.875rem; }
     }
   </style>
 </head>
 <body>
+<div id="toast-container"></div>
 <div id="app">
 
-  <!-- ── Navbar ── -->
+  <!-- ══════════════════════════════════════════════════════════════
+       NAVBAR
+  ══════════════════════════════════════════════════════════════ -->
   <nav class="navbar">
     <div class="navbar-inner">
-      <a class="navbar-brand" href="#/" onclick="navigate('home')">
-        <img class="dsr-logo" src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663400292171/lgyIIlMnARYoaaBn.png" alt="Department of Sports & Recreation" />
-        SportCal
+      <a class="navbar-brand" href="#/" onclick="navigate('home');return false;">
+        <img class="dsr-logo"
+             src="https://cdn.jsdelivr.net/gh/ejohnsonbda/sportcal@gh-pages/assets/dsr-logo.png"
+             onerror="this.style.display='none'"
+             alt="Department of Sport and Recreation" />
+        <span class="brand-name">SportCal</span>
       </a>
-      <div class="navbar-nav" id="desktop-nav">
+      <nav class="navbar-nav" id="desktop-nav">
         <button class="nav-link" onclick="navigate('home')">Events</button>
         <button class="nav-link" onclick="navigate('calendar')">Calendar</button>
-        <div id="nav-auth-area"></div>
-      </div>
-      <button class="hamburger" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+        <span id="nav-dashboard-wrap" style="display:none">
+          <button class="nav-link" onclick="navigate('dashboard')">Dashboard</button>
+          <button class="nav-link" onclick="navigate('create-event')">Add Event</button>
+        </span>
+        <span id="nav-user-wrap" style="display:none" class="nav-user">
+          <span class="dot"></span>
+          <span id="nav-user-name"></span>
+          <button class="btn btn-sm btn-ghost" onclick="logout()" style="margin-left:.25rem;padding:.2rem .5rem;font-size:.75rem;">Sign Out</button>
+        </span>
+        <button class="nav-btn" id="nav-login-btn" onclick="navigate('login')">Organisation Login</button>
+      </nav>
+      <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
         <span></span><span></span><span></span>
       </button>
     </div>
     <div class="mobile-menu" id="mobile-menu">
-      <button class="nav-link" onclick="navigate('home');closeMobileMenu()">Events</button>
-      <button class="nav-link" onclick="navigate('calendar');closeMobileMenu()">Calendar</button>
-      <div id="mobile-auth-area"></div>
+      <button class="nav-link" onclick="navigate('home');toggleMobileMenu()">Events</button>
+      <button class="nav-link" onclick="navigate('calendar');toggleMobileMenu()">Calendar</button>
+      <span id="mob-dashboard-wrap" style="display:none">
+        <button class="nav-link" onclick="navigate('dashboard');toggleMobileMenu()">Dashboard</button>
+        <button class="nav-link" onclick="navigate('create-event');toggleMobileMenu()">Add Event</button>
+      </span>
+      <button class="nav-btn" id="mob-login-btn" onclick="navigate('login');toggleMobileMenu()">Organisation Login</button>
     </div>
   </nav>
 
-  <!-- ── Main Content ── -->
+  <!-- ══════════════════════════════════════════════════════════════
+       MAIN CONTENT
+  ══════════════════════════════════════════════════════════════ -->
   <main id="main-content">
 
-    <!-- HOME PAGE -->
+    <!-- ── HOME PAGE ── -->
     <div id="page-home" class="page">
       <section class="hero">
-        <video class="hero-video" autoplay muted loop playsinline poster="">
+        <video class="hero-video" autoplay muted loop playsinline>
           <source src="https://video.wixstatic.com/video/e14749_122835b6f8854ee9a6911ac79b270989/1080p/mp4/file.mp4" type="video/mp4">
         </video>
+        <div class="hero-video-overlay"></div>
         <div class="hero-content">
           <div class="hero-eyebrow">Bermuda Sports Events</div>
           <h1>Your <span class="grad-text">Sports Calendar</span><br/>for Bermuda</h1>
           <p>Discover upcoming games, tournaments, and sporting events across all disciplines on the island.</p>
           <div class="hero-actions">
             <button class="btn btn-primary btn-lg" onclick="navigate('calendar')">View Calendar</button>
-            <button class="btn btn-secondary btn-lg" id="hero-add-btn" style="display:none" onclick="navigate('create-event')">＋ Add Event</button>
+            <button class="btn btn-outline btn-lg" id="hero-add-btn" style="display:none;color:white;border-color:rgba(255,255,255,.5);" onclick="navigate('create-event')">Add Event</button>
           </div>
         </div>
       </section>
@@ -821,212 +890,200 @@
       <div class="filters-bar">
         <div class="filters-inner">
           <div class="search-wrap">
-            <span class="search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+            <span class="search-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
             <input type="text" class="search-input" id="search-input" placeholder="Search events…" oninput="filterEvents()" />
           </div>
           <div class="chips" id="sport-chips"></div>
           <select class="sort-select" id="sort-select" onchange="filterEvents()">
             <option value="date-asc">Date ↑</option>
             <option value="date-desc">Date ↓</option>
-            <option value="title">Title A–Z</option>
+            <option value="title-asc">Title A–Z</option>
           </select>
         </div>
       </div>
 
-      <section class="events-section">
+      <div class="events-section">
         <div id="events-loading" class="loading-wrap">
           <div class="spinner"></div>
           <p>Loading events…</p>
         </div>
-        <div class="events-grid" id="events-grid" style="display:none"></div>
         <div id="events-empty" class="empty-state" style="display:none">
           <h3>No events found</h3>
           <p>Try adjusting your search or filters.</p>
         </div>
-      </section>
-    </div>
-
-    <!-- CALENDAR PAGE -->
-    <div id="page-calendar" class="page">
-      <div class="cal-page">
-        <div class="cal-wrap">
-          <div class="cal-header">
-            <div>
-              <h1 class="cal-title" id="cal-month-label">March 2026</h1>
-            </div>
-            <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
-              <div class="cal-view-toggle">
-                <button class="cal-view-btn active" id="cal-btn-month" onclick="setCalView('month')">Month</button>
-                <button class="cal-view-btn" id="cal-btn-list" onclick="setCalView('list')">List</button>
-              </div>
-              <div class="cal-nav">
-                <button class="cal-nav-btn" onclick="calPrev()">‹</button>
-                <button class="cal-nav-btn" onclick="calToday()">Today</button>
-                <button class="cal-nav-btn" onclick="calNext()">›</button>
-              </div>
-            </div>
-          </div>
-          <div id="cal-loading" class="loading-wrap">
-            <div class="spinner"></div>
-            <p>Loading calendar…</p>
-          </div>
-          <div id="cal-content" style="display:none"></div>
-        </div>
+        <div class="events-grid" id="events-grid"></div>
       </div>
     </div>
 
-    <!-- EVENT DETAIL PAGE -->
+    <!-- ── CALENDAR PAGE ── -->
+    <div id="page-calendar" class="page">
+      <div class="page-header">
+        <div class="page-header-inner">
+          <div>
+            <h1>Events Calendar</h1>
+            <p>Browse all upcoming Bermuda sports events</p>
+          </div>
+        </div>
+      </div>
+      <div class="cal-page">
+        <div class="cal-header">
+          <h2 id="cal-title">March 2026</h2>
+          <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+            <div class="cal-nav">
+              <button onclick="calPrev()">&#8592;</button>
+              <button onclick="calToday()">Today</button>
+              <button onclick="calNext()">&#8594;</button>
+            </div>
+            <div class="cal-view-toggle">
+              <button class="cal-view-btn active" id="btn-month" onclick="setCalView('month')">Month</button>
+              <button class="cal-view-btn" id="btn-list" onclick="setCalView('list')">List</button>
+            </div>
+          </div>
+        </div>
+        <div id="cal-loading" class="loading-wrap">
+          <div class="spinner"></div>
+          <p>Loading calendar…</p>
+        </div>
+        <div id="cal-content"></div>
+      </div>
+    </div>
+
+    <!-- ── EVENT DETAIL PAGE ── -->
     <div id="page-event-detail" class="page">
       <div class="detail-page">
-        <div class="detail-wrap">
-          <div class="detail-back" onclick="history.back()">← Back</div>
-          <div id="detail-loading" class="loading-wrap">
-            <div class="spinner"></div>
-            <p>Loading event…</p>
-          </div>
-          <div id="detail-content" style="display:none"></div>
+        <div class="detail-back" onclick="history.back()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to Events
         </div>
+        <div id="detail-loading" class="loading-wrap">
+          <div class="spinner"></div>
+          <p>Loading event…</p>
+        </div>
+        <div id="detail-content"></div>
       </div>
     </div>
 
-    <!-- CREATE / EDIT EVENT PAGE -->
+    <!-- ── CREATE EVENT PAGE ── -->
     <div id="page-create-event" class="page">
-      <div class="form-page">
-        <div class="form-wrap">
-          <div style="margin-bottom:1.5rem">
-            <div class="detail-back" onclick="navigate('home')">← Back to Events</div>
-            <h1 class="section-title" id="form-page-title">Add New Event</h1>
-            <p class="section-sub">Fill in the details below to publish a new sporting event.</p>
+      <div class="page-header">
+        <div class="page-header-inner">
+          <div>
+            <h1 id="form-page-title">Add New Event</h1>
+            <p>Fill in the details below to publish a new sporting event.</p>
           </div>
-          <div class="form-card">
-            <div id="form-alert"></div>
-            <form id="event-form" onsubmit="submitEventForm(event)">
-              <input type="hidden" id="edit-event-id" />
-              <div class="form-section-title">Event Details</div>
-              <div class="form-grid">
-                <div class="full form-group">
-                  <label class="form-label">Event Title *</label>
-                  <input type="text" class="form-control" id="f-title" placeholder="e.g. Football Premier Division Opening Day" required />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Sport / Category *</label>
-                  <select class="form-control" id="f-sport" required>
-                    <option value="">Select sport…</option>
-                    <option>Football (Soccer)</option>
-                    <option>Cricket</option>
-                    <option>Rugby</option>
-                    <option>Basketball</option>
-                    <option>Netball</option>
-                    <option>Tennis</option>
-                    <option>Swimming</option>
-                    <option>Athletics (Track &amp; Field)</option>
-                    <option>Cycling</option>
-                    <option>Triathlon</option>
-                    <option>Squash</option>
-                    <option>Bowling</option>
-                    <option>Golf</option>
-                    <option>Hockey</option>
-                    <option>Boxing</option>
-                    <option>Karate</option>
-                    <option>Equestrian</option>
-                    <option>Sailing</option>
-                    <option>Volleyball</option>
-                    <option>Boccia</option>
-                    <option>Gymnastics</option>
-                    <option>Archery</option>
-                    <option>Pickleball</option>
-                    <option>Karting</option>
-                    <option>Rowing</option>
-                    <option>Motocross</option>
-                    <option>Olympics</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Date *</label>
-                  <input type="date" class="form-control" id="f-date" required />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Start Time</label>
-                  <input type="time" class="form-control" id="f-time" />
-                </div>
-                <div class="full form-group">
-                  <label class="form-label">Location</label>
-                  <input type="text" class="form-control" id="f-location" placeholder="e.g. National Sports Centre, Devonshire" />
-                </div>
-                <div class="full form-group">
-                  <label class="form-label">Description</label>
-                  <textarea class="form-control" id="f-description" rows="4" placeholder="Describe the event…"></textarea>
-                </div>
-              </div>
-              <div class="form-section-title">Image</div>
-              <div class="form-group">
-                <label class="form-label">Event Image</label>
-                <input type="file" class="form-control" id="f-image" accept="image/*" onchange="previewImage(this)" />
-                <img id="img-preview" class="img-preview" alt="Preview" />
-              </div>
-              <div style="display:flex;gap:0.75rem;margin-top:1.5rem">
-                <button type="submit" class="btn btn-primary" id="form-submit-btn">Publish Event</button>
-                <button type="button" class="btn btn-secondary" onclick="navigate('home')">Cancel</button>
-              </div>
-            </form>
+        </div>
+      </div>
+      <div class="form-page">
+        <div class="form-card">
+          <div id="form-alert"></div>
+          <p class="form-section-title">Event Details</p>
+          <div class="form-group">
+            <label class="form-label" for="ev-title">Event Title *</label>
+            <input type="text" id="ev-title" class="form-control" placeholder="e.g. Bermuda Football Cup 2026" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="ev-sport">Sport / Category *</label>
+              <select id="ev-sport" class="form-control" required>
+                <option value="">Select sport…</option>
+                <option>Football (Soccer)</option><option>Cricket</option>
+                <option>Rugby</option><option>Basketball</option>
+                <option>Netball</option><option>Tennis</option>
+                <option>Swimming</option><option>Athletics (Track &amp; Field)</option>
+                <option>Cycling</option><option>Triathlon</option>
+                <option>Squash</option><option>Bowling</option>
+                <option>Golf</option><option>Hockey</option>
+                <option>Boxing</option><option>Sailing</option>
+                <option>Volleyball</option><option>Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ev-date">Date *</label>
+              <input type="date" id="ev-date" class="form-control" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="ev-time">Start Time</label>
+              <input type="time" id="ev-time" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ev-location">Location</label>
+              <input type="text" id="ev-location" class="form-control" placeholder="e.g. National Sports Centre" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ev-desc">Description</label>
+            <textarea id="ev-desc" class="form-control" rows="4" placeholder="Describe the event…"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ev-image">Image URL</label>
+            <input type="url" id="ev-image" class="form-control" placeholder="https://…" />
+          </div>
+          <input type="hidden" id="ev-id" />
+          <div class="form-actions">
+            <button class="btn btn-ghost" onclick="navigate('home')">Cancel</button>
+            <button class="btn btn-gradient btn-lg" onclick="submitEvent()">Publish Event</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- LOGIN PAGE -->
+    <!-- ── LOGIN PAGE ── -->
     <div id="page-login" class="page">
       <div class="login-page">
         <div class="login-card">
           <div class="login-logo"></div>
-          <h1 class="login-title">Organisation Login</h1>
+          <h2 class="login-title">Organisation Login</h2>
           <p class="login-sub">Enter your organisation's access code to manage events.</p>
           <div id="login-alert"></div>
-          <form onsubmit="submitLogin(event)">
-            <div class="form-group">
-              <label class="form-label">Access Code</label>
-              <div class="pw-wrap">
-                <input type="password" class="form-control" id="login-code" placeholder="Enter your access code" required autocomplete="current-password" />
-                <button type="button" class="pw-toggle" onclick="togglePw('login-code',this)">Show</button>
-              </div>
+          <div class="form-group">
+            <label class="form-label" for="login-code">Access Code</label>
+            <div class="pw-wrap">
+              <input type="password" id="login-code" class="form-control" placeholder="Enter access code…"
+                     onkeydown="if(event.key==='Enter')doLogin()" />
+              <button class="pw-toggle" type="button" onclick="togglePw()">Show</button>
             </div>
-            <button type="submit" class="btn btn-primary" style="width:100%" id="login-btn">Sign In</button>
-          </form>
-          <p style="text-align:center;margin-top:1.5rem;font-size:0.8125rem;color:var(--text-muted)">
-            Contact the Department of Sports &amp; Recreation for access.
-          </p>
+          </div>
+          <button class="btn btn-gradient btn-lg" style="width:100%" onclick="doLogin()">Sign In</button>
+          <p class="login-footer">Contact the Department of Sports &amp; Recreation for access.</p>
         </div>
       </div>
     </div>
 
-    <!-- DASHBOARD PAGE -->
+    <!-- ── DASHBOARD PAGE ── -->
     <div id="page-dashboard" class="page">
-      <div class="dash-page">
-        <div class="dash-wrap">
-          <div class="dash-header">
+      <div class="page-header">
+        <div class="page-header-inner">
+          <div>
             <h1>Admin Dashboard</h1>
-            <p id="dash-org-name" class="section-sub"></p>
+            <p id="dash-subtitle">Manage events and view statistics.</p>
           </div>
-          <div id="dash-loading" class="loading-wrap">
-            <div class="spinner"></div>
-            <p>Loading dashboard…</p>
-          </div>
-          <div id="dash-content" style="display:none">
-            <div class="stats-grid" id="dash-stats"></div>
-            <div class="dash-section-title">All Events</div>
-            <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap">
-              <button class="btn btn-primary btn-sm" onclick="navigate('create-event')">＋ Add Event</button>
+          <button class="btn btn-gradient" onclick="navigate('create-event')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Event
+          </button>
+        </div>
+      </div>
+      <div class="dash-page">
+        <div id="dash-loading" class="loading-wrap">
+          <div class="spinner"></div>
+          <p>Loading dashboard…</p>
+        </div>
+        <div id="dash-content" style="display:none">
+          <div class="stats-grid" id="stats-grid"></div>
+          <div class="dash-section">
+            <div class="dash-section-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Your Events
             </div>
             <div class="dash-table-wrap">
-              <table class="dash-table">
+              <table class="dash-table" id="dash-events-table">
                 <thead>
                   <tr>
-                    <th>Title</th>
-                    <th>Sport</th>
-                    <th>Date</th>
-                    <th>Organisation</th>
-                    <th>Actions</th>
+                    <th>Event</th><th>Sport</th><th>Date</th><th>Location</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="dash-events-body"></tbody>
@@ -1039,24 +1096,26 @@
 
   </main>
 
-  <!-- ── Footer ── -->
+  <!-- ── FOOTER ── -->
   <footer class="footer">
-    <div class="footer-brand">SportCal</div>
-    <p>The official Bermuda sports events calendar · Powered by the Department of Sports &amp; Recreation</p>
+    <strong>SportCal</strong> &mdash; The official Bermuda sports events calendar &middot; Powered by the Department of Sports &amp; Recreation
   </footer>
+
 </div>
 
-<!-- Toast container -->
-<div id="toast-container"></div>
-
-<!-- Confirm delete modal -->
-<div class="modal-overlay" id="delete-modal">
-  <div class="modal" style="max-width:400px">
-    <h2 class="modal-title">Delete Event?</h2>
-    <p style="color:var(--text-secondary);margin-bottom:1.5rem">This action cannot be undone.</p>
-    <div style="display:flex;gap:0.75rem">
-      <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
-      <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+<!-- ── DELETE CONFIRM MODAL ── -->
+<div class="modal-overlay" id="delete-modal" onclick="if(event.target===this)closeDeleteModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Delete Event</span>
+      <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--gray-600)">Are you sure you want to delete <strong id="delete-event-name"></strong>? This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete Event</button>
     </div>
   </div>
 </div>
@@ -1065,59 +1124,60 @@
 /* ═══════════════════════════════════════════════════════════════════
    SUPABASE CLIENT
 ═══════════════════════════════════════════════════════════════════ */
-const SUPABASE_URL     = 'https://kufokhkvgqgomicnsmpz.supabase.co';
+const SUPABASE_URL      = 'https://kufokhkvgqgomicnsmpz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1Zm9raGt2Z3Fnb21pY25zbXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MzUzODUsImV4cCI6MjA2NjMxMTM4NX0.hN86JSRhxPqSYolXJN5gn1cQ-Ibu21l1cHpLIaRY-hY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ═══════════════════════════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════════════════════════ */
-let currentOrg   = null;   // { id, name, sport, role:'super_admin'|'admin' }
-let allEvents    = [];
-let calDate      = new Date();
-let calView      = 'month';
+let currentOrg  = null;
+let allEvents   = [];
+let calDate     = new Date();
+let calView     = 'month';
 let deleteTarget = null;
 
 /* ═══════════════════════════════════════════════════════════════════
    SPORT HELPERS
 ═══════════════════════════════════════════════════════════════════ */
-const SPORT_CLASSES = {
-  'Football (Soccer)':'sport-football','Cricket':'sport-cricket',
-  'Rugby':'sport-rugby','Basketball':'sport-basketball',
-  'Netball':'sport-netball','Tennis':'sport-tennis',
-  'Swimming':'sport-swimming','Athletics (Track & Field)':'sport-athletics',
-  'Cycling':'sport-cycling','Triathlon':'sport-triathlon',
-  'Squash':'sport-squash','Bowling':'sport-bowling',
-  'Golf':'sport-golf','Hockey':'sport-hockey','Boxing':'sport-boxing',
-  'Sailing':'sport-sailing','Volleyball':'sport-volleyball',
-  'default':'sport-default'
+const SPORT_CLASS_MAP = {
+  'football':'sport-football','soccer':'sport-football',
+  'cricket':'sport-cricket','rugby':'sport-rugby',
+  'basketball':'sport-basketball','netball':'sport-netball',
+  'tennis':'sport-tennis','swimming':'sport-swimming',
+  'athletics':'sport-athletics','track':'sport-athletics',
+  'cycling':'sport-cycling','triathlon':'sport-triathlon',
+  'squash':'sport-squash','bowling':'sport-bowling',
+  'golf':'sport-golf','hockey':'sport-hockey',
+  'boxing':'sport-boxing','sailing':'sport-sailing',
+  'volleyball':'sport-volleyball'
 };
 function sportClass(sport) {
   if (!sport) return 'sport-default';
   const key = sport.toLowerCase().replace(/[^a-z]/g,'');
-  return SPORT_CLASS[key] || 'sport-default';
+  for (const [k,v] of Object.entries(SPORT_CLASS_MAP)) {
+    if (key.includes(k)) return v;
+  }
+  return 'sport-default';
 }
-function sportEmoji(sport) { return ''; }
 
 /* ═══════════════════════════════════════════════════════════════════
    ROUTER
 ═══════════════════════════════════════════════════════════════════ */
 const PAGES = ['home','calendar','event-detail','create-event','login','dashboard'];
-
 function navigate(page, params={}) {
   let hash = '#/' + page;
   if (params.id) hash += '/' + params.id;
   window.location.hash = hash;
 }
-
 function handleRoute() {
-  const hash = window.location.hash || '#/';
+  const hash  = window.location.hash || '#/';
   const parts = hash.replace('#/','').split('/');
   const page  = parts[0] || 'home';
-  const id    = parts[1] || null;
+  const id    = parts[1];
 
   // Auth guard
-  if ((page === 'dashboard' || page === 'create-event') && !currentOrg) {
+  if ((page === 'create-event' || page === 'dashboard') && !currentOrg) {
     navigate('login'); return;
   }
 
@@ -1129,559 +1189,397 @@ function handleRoute() {
   // Update nav active state
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
 
-  if (page === 'home')         loadHomePage();
-  if (page === 'calendar')     loadCalendarPage();
-  if (page === 'event-detail') loadDetailPage(id);
-  if (page === 'create-event') loadCreatePage(id);
-  if (page === 'dashboard')    loadDashboard();
-}
+  if (page === 'home')         { loadEvents(); updateNavActive('Events'); }
+  if (page === 'calendar')     { renderCalendar(); updateNavActive('Calendar'); }
+  if (page === 'event-detail') { loadEventDetail(id); }
+  if (page === 'create-event') { initEventForm(id); }
+  if (page === 'dashboard')    { loadDashboard(); }
+  if (page === 'login')        { document.getElementById('login-code').value=''; }
 
+  window.scrollTo(0,0);
+}
+function updateNavActive(label) {
+  document.querySelectorAll('.nav-link').forEach(l => {
+    if (l.textContent.trim() === label) l.classList.add('active');
+  });
+}
 window.addEventListener('hashchange', handleRoute);
-window.addEventListener('load', () => { initAuth(); });
 
 /* ═══════════════════════════════════════════════════════════════════
    AUTH
 ═══════════════════════════════════════════════════════════════════ */
-function initAuth() {
-  const saved = localStorage.getItem('sportcal_org');
-  if (saved) {
-    try { currentOrg = JSON.parse(saved); } catch(e) { currentOrg = null; }
+function updateNavAuth() {
+  const loginBtn = document.getElementById('nav-login-btn');
+  const mobLoginBtn = document.getElementById('mob-login-btn');
+  const userWrap = document.getElementById('nav-user-wrap');
+  const dashWrap = document.getElementById('nav-dashboard-wrap');
+  const mobDashWrap = document.getElementById('mob-dashboard-wrap');
+  const heroAdd = document.getElementById('hero-add-btn');
+  if (currentOrg) {
+    loginBtn.style.display = 'none';
+    if (mobLoginBtn) mobLoginBtn.style.display = 'none';
+    userWrap.style.display = 'flex';
+    dashWrap.style.display = 'contents';
+    if (mobDashWrap) mobDashWrap.style.display = 'contents';
+    if (heroAdd) heroAdd.style.display = 'inline-flex';
+    document.getElementById('nav-user-name').textContent = currentOrg.name;
+  } else {
+    loginBtn.style.display = '';
+    if (mobLoginBtn) mobLoginBtn.style.display = '';
+    userWrap.style.display = 'none';
+    dashWrap.style.display = 'none';
+    if (mobDashWrap) mobDashWrap.style.display = 'none';
+    if (heroAdd) heroAdd.style.display = 'none';
   }
-  renderNavAuth();
-  handleRoute();
 }
-
-async function submitLogin(e) {
-  e.preventDefault();
+async function doLogin() {
   const code = document.getElementById('login-code').value.trim();
-  const btn  = document.getElementById('login-btn');
-  const alert = document.getElementById('login-alert');
-  alert.innerHTML = '';
-  btn.disabled = true; btn.textContent = 'Signing in…';
-
-  const { data, error } = await sb
-    .from('organizations')
-    .select('id,name,sport,access_code')
-    .eq('access_code', code)
-    .eq('is_active', true)
-    .single();
-
-  btn.disabled = false; btn.textContent = 'Sign In';
-
-  if (error || !data) {
-    alert.innerHTML = '<div class="alert alert-error">Invalid access code. Please try again.</div>';
+  if (!code) { showAlert('login-alert','Please enter an access code.','error'); return; }
+  showAlert('login-alert','Verifying…','info');
+  // Check super_admin codes first
+  const superCodes = { 'safehands':'Department of Sports & Recreation', 'juren':'UMIN Design' };
+  if (superCodes[code]) {
+    currentOrg = { id: null, name: superCodes[code], sport: null, role: 'super_admin' };
+    localStorage.setItem('sportcal_org', JSON.stringify(currentOrg));
+    updateNavAuth();
+    showToast('Welcome, ' + currentOrg.name, 'success');
+    navigate('dashboard');
     return;
   }
-
-  const role = (data.name === 'Department of Sports & Recreation' || data.name === 'UMIN Design')
-    ? 'super_admin' : 'admin';
-
-  currentOrg = { id: data.id, name: data.name, sport: data.sport, role };
+  // Check org codes in Supabase
+  const { data, error } = await sb.from('organizations').select('*').eq('access_code', code).single();
+  if (error || !data) { showAlert('login-alert','Invalid access code. Please try again.','error'); return; }
+  currentOrg = { id: data.id, name: data.name, sport: data.sport, role: 'admin' };
   localStorage.setItem('sportcal_org', JSON.stringify(currentOrg));
-  renderNavAuth();
-  showToast('Welcome, ' + data.name + '!', 'success');
+  updateNavAuth();
+  showToast('Welcome, ' + currentOrg.name, 'success');
   navigate('dashboard');
 }
-
 function logout() {
   currentOrg = null;
   localStorage.removeItem('sportcal_org');
-  renderNavAuth();
+  updateNavAuth();
   navigate('home');
   showToast('Signed out successfully.', 'info');
 }
-
-function renderNavAuth() {
-  const desktopArea = document.getElementById('nav-auth-area');
-  const mobileArea  = document.getElementById('mobile-auth-area');
-  const heroBtn     = document.getElementById('hero-add-btn');
-
-  if (currentOrg) {
-    const html = `
-      <button class="nav-link" onclick="navigate('dashboard')">Dashboard</button>
-      <div class="nav-user"><span class="dot"></span>${escHtml(currentOrg.name.split(' ')[0])}</div>
-      <button class="nav-link" onclick="logout()">Sign Out</button>`;
-    desktopArea.innerHTML = html;
-    mobileArea.innerHTML  = html;
-    if (heroBtn) heroBtn.style.display = 'inline-flex';
-  } else {
-    const html = `<button class="nav-btn" onclick="navigate('login')">Organisation Login</button>`;
-    desktopArea.innerHTML = html;
-    mobileArea.innerHTML  = html;
-    if (heroBtn) heroBtn.style.display = 'none';
-  }
+function togglePw() {
+  const inp = document.getElementById('login-code');
+  const btn = inp.nextElementSibling;
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide'; }
+  else { inp.type = 'password'; btn.textContent = 'Show'; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   HOME PAGE
+   EVENTS — HOME PAGE
 ═══════════════════════════════════════════════════════════════════ */
-async function loadHomePage() {
-  const grid    = document.getElementById('events-grid');
-  const loading = document.getElementById('events-loading');
-  const empty   = document.getElementById('events-empty');
-
-  loading.style.display = 'block';
-  grid.style.display    = 'none';
-  empty.style.display   = 'none';
-
-  const { data, error } = await sb
-    .from('events')
-    .select('*')
-    .eq('is_published', true)
-    .order('date', { ascending: true });
-
-  loading.style.display = 'none';
-
-  if (error) {
-    empty.style.display = 'block';
-    empty.querySelector('h3').textContent = 'Error loading events';
-    return;
-  }
-
+async function loadEvents() {
+  document.getElementById('events-loading').style.display = 'flex';
+  document.getElementById('events-grid').innerHTML = '';
+  document.getElementById('events-empty').style.display = 'none';
+  const { data, error } = await sb.from('events').select('*').order('date', { ascending: true });
+  if (error) { showToast('Error loading events: ' + error.message, 'error'); document.getElementById('events-loading').style.display='none'; return; }
   allEvents = data || [];
   buildSportChips();
   filterEvents();
+  document.getElementById('events-loading').style.display = 'none';
 }
-
 function buildSportChips() {
   const sports = [...new Set(allEvents.map(e => e.sport).filter(Boolean))].sort();
-  const chips  = document.getElementById('sport-chips');
-  chips.innerHTML = `<button class="chip active" data-sport="" onclick="selectChip(this,'')">All</button>` +
-    sports.map(s => `<button class="chip ${sportClass(s)}" data-sport="${escHtml(s)}" onclick="selectChip(this,'${escHtml(s)}')">${escHtml(s)}</button>`).join('');
+  const chips = document.getElementById('sport-chips');
+  chips.innerHTML = '<button class="chip active" data-sport="all" onclick="setChip(this,\'all\')">All Sports</button>';
+  sports.forEach(s => {
+    chips.innerHTML += `<button class="chip" data-sport="${escHtml(s)}" onclick="setChip(this,'${escHtml(s)}')">${escHtml(s)}</button>`;
+  });
 }
-
-function selectChip(el, sport) {
-  document.querySelectorAll('#sport-chips .chip').forEach(c => c.classList.remove('active'));
+function setChip(el, sport) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   filterEvents();
 }
-
 function filterEvents() {
-  const q     = (document.getElementById('search-input')?.value || '').toLowerCase();
-  const sport = document.querySelector('#sport-chips .chip.active')?.dataset.sport || '';
-  const sort  = document.getElementById('sort-select')?.value || 'date-asc';
-
+  const q     = (document.getElementById('search-input').value || '').toLowerCase();
+  const sport = (document.querySelector('.chip.active') || {}).dataset?.sport || 'all';
+  const sort  = document.getElementById('sort-select').value;
   let filtered = allEvents.filter(e => {
-    const matchQ = !q || e.title.toLowerCase().includes(q) ||
-      (e.location||'').toLowerCase().includes(q) ||
-      (e.organization_name||'').toLowerCase().includes(q);
-    const matchS = !sport || e.sport === sport;
+    const matchQ = !q || (e.title||'').toLowerCase().includes(q) || (e.sport||'').toLowerCase().includes(q) || (e.location||'').toLowerCase().includes(q);
+    const matchS = sport === 'all' || e.sport === sport;
     return matchQ && matchS;
   });
-
-  if (sort === 'date-asc')  filtered.sort((a,b) => a.date.localeCompare(b.date));
-  if (sort === 'date-desc') filtered.sort((a,b) => b.date.localeCompare(a.date));
-  if (sort === 'title')     filtered.sort((a,b) => a.title.localeCompare(b.title));
-
-  renderEventsGrid(filtered);
-}
-
-function renderEventsGrid(events) {
-  const grid  = document.getElementById('events-grid');
+  if (sort === 'date-asc')  filtered.sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (sort === 'date-desc') filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+  if (sort === 'title-asc') filtered.sort((a,b) => (a.title||'').localeCompare(b.title||''));
+  const grid = document.getElementById('events-grid');
   const empty = document.getElementById('events-empty');
-
-  if (!events.length) {
-    grid.style.display  = 'none';
-    empty.style.display = 'block';
-    return;
-  }
-
-  grid.style.display  = 'grid';
+  if (!filtered.length) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
-
-  grid.innerHTML = events.map(e => {
-    const sc    = sportClass(e.sport);
-    const emoji = sportEmoji(e.sport);
-    const date  = formatDate(e.date);
-    const canEdit = currentOrg && (currentOrg.role === 'super_admin' || currentOrg.id === e.organization_id);
-    return `
-    <div class="card event-card ${sc}" onclick="navigate('event-detail',{id:'${e.id}'})">
-      <div class="event-card-img">
-        ${e.image_url
-          ? `<img src="${escHtml(e.image_url)}" alt="${escHtml(e.title)}" loading="lazy" />`
-          : `<div class="event-card-img-placeholder"></div>`}
-        <div class="event-card-sport-bar"></div>
+  grid.innerHTML = filtered.map(e => eventCardHTML(e)).join('');
+}
+function eventCardHTML(e) {
+  const sc = sportClass(e.sport);
+  const canEdit = currentOrg && (currentOrg.role === 'super_admin' || currentOrg.id === e.organization_id);
+  return `
+  <div class="card event-card ${sc}" onclick="navigate('event-detail',{id:'${e.id}'})">
+    <div class="event-card-img">
+      ${e.image_url ? `<img src="${escHtml(e.image_url)}" alt="${escHtml(e.title)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=event-card-img-placeholder></div>'" />` : '<div class="event-card-img-placeholder"></div>'}
+      <div class="event-card-sport-bar"></div>
+    </div>
+    <div class="event-card-body">
+      <div class="event-card-meta">
+        <span class="event-card-sport">${escHtml(e.sport||'Sport')}</span>
+        <span class="event-card-date">${formatDate(e.date)}</span>
       </div>
-      <div class="event-card-body">
-        <div class="event-card-meta">
-          <span class="event-card-sport">${escHtml(e.sport||'Event')}</span>
-          <span class="event-card-date">${date}</span>
-        </div>
-        <div class="event-card-title">${escHtml(e.title)}</div>
-        ${e.location ? `<div class="event-card-loc">${escHtml(e.location)}</div>` : ''}
-        <div class="event-card-footer">
-          <span class="event-card-org">${escHtml(e.organization_name||'')}</span>
-          ${canEdit ? `
-          <div class="event-card-actions" onclick="event.stopPropagation()">
-            <button class="btn btn-secondary btn-sm" onclick="navigate('create-event',{id:'${e.id}'})">Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${e.id}')">Delete</button>
-          </div>` : ''}
-        </div>
+      <div class="event-card-title">${escHtml(e.title)}</div>
+      ${e.location ? `<div class="event-card-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(e.location)}</div>` : ''}
+      <div class="event-card-footer">
+        <span class="event-card-org">${escHtml(e.organization_name||'')}</span>
+        ${canEdit ? `<div class="event-card-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-sm btn-ghost" onclick="navigate('create-event',{id:'${e.id}'})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="openDeleteModal('${e.id}','${escHtml(e.title)}')">Delete</button>
+        </div>` : ''}
       </div>
-    </div>`;
-  }).join('');
+    </div>
+  </div>`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CALENDAR PAGE
+   EVENT DETAIL
 ═══════════════════════════════════════════════════════════════════ */
-async function loadCalendarPage() {
-  document.getElementById('cal-loading').style.display = 'block';
-  document.getElementById('cal-content').style.display = 'none';
-
-  const { data } = await sb.from('events').select('*').eq('is_published', true).order('date');
-  allEvents = data || [];
-
-  document.getElementById('cal-loading').style.display = 'none';
-  document.getElementById('cal-content').style.display = 'block';
-  renderCal();
+async function loadEventDetail(id) {
+  document.getElementById('detail-loading').style.display = 'flex';
+  document.getElementById('detail-content').innerHTML = '';
+  if (!id) { navigate('home'); return; }
+  const { data: e, error } = await sb.from('events').select('*').eq('id', id).single();
+  document.getElementById('detail-loading').style.display = 'none';
+  if (error || !e) { document.getElementById('detail-content').innerHTML = '<div class="empty-state"><h3>Event not found</h3></div>'; return; }
+  const sc = sportClass(e.sport);
+  const canEdit = currentOrg && (currentOrg.role === 'super_admin' || currentOrg.id === e.organization_id);
+  document.getElementById('detail-content').innerHTML = `
+    <div class="${sc}">
+      <div class="detail-hero">
+        ${e.image_url ? `<img src="${escHtml(e.image_url)}" alt="${escHtml(e.title)}" />` : '<div class="detail-hero-placeholder"></div>'}
+        <div class="detail-sport-bar"></div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-sport-badge">${escHtml(e.sport||'Sport')}</div>
+        <h1 class="detail-title">${escHtml(e.title)}</h1>
+        <div class="detail-meta-grid">
+          <div class="detail-meta-item">
+            <div class="detail-meta-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+            <div><div class="detail-meta-label">Date</div><div class="detail-meta-value">${formatDate(e.date)}</div></div>
+          </div>
+          ${e.time ? `<div class="detail-meta-item">
+            <div class="detail-meta-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div><div class="detail-meta-label">Time</div><div class="detail-meta-value">${escHtml(e.time)}</div></div>
+          </div>` : ''}
+          ${e.location ? `<div class="detail-meta-item">
+            <div class="detail-meta-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+            <div><div class="detail-meta-label">Location</div><div class="detail-meta-value">${escHtml(e.location)}</div></div>
+          </div>` : ''}
+          ${e.organization_name ? `<div class="detail-meta-item">
+            <div class="detail-meta-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div><div class="detail-meta-label">Organisation</div><div class="detail-meta-value">${escHtml(e.organization_name)}</div></div>
+          </div>` : ''}
+        </div>
+        ${e.description ? `<div class="detail-desc">${escHtml(e.description)}</div>` : ''}
+        ${canEdit ? `<div class="detail-actions">
+          <button class="btn btn-blue" onclick="navigate('create-event',{id:'${e.id}'})">Edit Event</button>
+          <button class="btn btn-danger" onclick="openDeleteModal('${e.id}','${escHtml(e.title)}')">Delete Event</button>
+        </div>` : ''}
+      </div>
+    </div>`;
 }
 
-function renderCal() {
-  const label = document.getElementById('cal-month-label');
-  label.textContent = calDate.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
-  document.getElementById('cal-btn-month').classList.toggle('active', calView==='month');
-  document.getElementById('cal-btn-list').classList.toggle('active',  calView==='list');
-  if (calView === 'month') renderCalMonth();
-  else renderCalList();
-}
-
-function renderCalMonth() {
-  const year  = calDate.getFullYear();
-  const month = calDate.getMonth();
-  const today = new Date();
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month+1, 0).getDate();
-  const daysInPrev  = new Date(year, month, 0).getDate();
-
-  // Build event map
-  const evMap = {};
-  allEvents.forEach(e => {
-    const d = e.date.substring(0,7);
-    if (d === `${year}-${String(month+1).padStart(2,'0')}`) {
-      const day = parseInt(e.date.substring(8,10));
-      if (!evMap[day]) evMap[day] = [];
-      evMap[day].push(e);
+/* ═══════════════════════════════════════════════════════════════════
+   CREATE / EDIT EVENT FORM
+═══════════════════════════════════════════════════════════════════ */
+async function initEventForm(id) {
+  document.getElementById('ev-id').value = '';
+  document.getElementById('ev-title').value = '';
+  document.getElementById('ev-sport').value = '';
+  document.getElementById('ev-date').value = '';
+  document.getElementById('ev-time').value = '';
+  document.getElementById('ev-location').value = '';
+  document.getElementById('ev-desc').value = '';
+  document.getElementById('ev-image').value = '';
+  document.getElementById('form-alert').innerHTML = '';
+  document.getElementById('form-page-title').textContent = id ? 'Edit Event' : 'Add New Event';
+  document.querySelector('#page-create-event .btn-gradient').textContent = id ? 'Save Changes' : 'Publish Event';
+  if (id) {
+    const { data: e } = await sb.from('events').select('*').eq('id', id).single();
+    if (e) {
+      document.getElementById('ev-id').value = e.id;
+      document.getElementById('ev-title').value = e.title || '';
+      document.getElementById('ev-sport').value = e.sport || '';
+      document.getElementById('ev-date').value = e.date ? e.date.split('T')[0] : '';
+      document.getElementById('ev-time').value = e.time || '';
+      document.getElementById('ev-location').value = e.location || '';
+      document.getElementById('ev-desc').value = e.description || '';
+      document.getElementById('ev-image').value = e.image_url || '';
     }
-  });
-
-  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  let html = `<div class="cal-grid-wrap">
-    <div class="cal-dow-row">${DAYS.map(d=>`<div class="cal-dow">${d}</div>`).join('')}</div>
-    <div class="cal-days">`;
-
-  // Prev month filler
-  for (let i = firstDay - 1; i >= 0; i--) {
-    html += `<div class="cal-cell other-month"><div class="cal-day-num">${daysInPrev - i}</div></div>`;
   }
+}
+async function submitEvent() {
+  const id       = document.getElementById('ev-id').value;
+  const title    = document.getElementById('ev-title').value.trim();
+  const sport    = document.getElementById('ev-sport').value;
+  const date     = document.getElementById('ev-date').value;
+  const time     = document.getElementById('ev-time').value;
+  const location = document.getElementById('ev-location').value.trim();
+  const desc     = document.getElementById('ev-desc').value.trim();
+  const imageUrl = document.getElementById('ev-image').value.trim();
+  if (!title || !sport || !date) { showAlert('form-alert','Please fill in Title, Sport, and Date.','error'); return; }
+  const payload = {
+    title, sport, date, time: time||null, location: location||null,
+    description: desc||null, image_url: imageUrl||null,
+    organization_id: currentOrg?.id || null,
+    organization_name: currentOrg?.name || null
+  };
+  let error;
+  if (id) {
+    ({ error } = await sb.from('events').update(payload).eq('id', id));
+  } else {
+    ({ error } = await sb.from('events').insert([payload]));
+  }
+  if (error) { showAlert('form-alert', error.message, 'error'); return; }
+  showToast(id ? 'Event updated successfully.' : 'Event published successfully.', 'success');
+  navigate('dashboard');
+}
 
-  // Current month
+/* ═══════════════════════════════════════════════════════════════════
+   CALENDAR
+═══════════════════════════════════════════════════════════════════ */
+async function renderCalendar() {
+  document.getElementById('cal-loading').style.display = 'flex';
+  document.getElementById('cal-content').innerHTML = '';
+  const { data } = await sb.from('events').select('*').order('date', { ascending: true });
+  const events = data || [];
+  document.getElementById('cal-loading').style.display = 'none';
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-title').textContent = months[calDate.getMonth()] + ' ' + calDate.getFullYear();
+  document.getElementById('btn-month').classList.toggle('active', calView==='month');
+  document.getElementById('btn-list').classList.toggle('active', calView==='list');
+  if (calView === 'month') renderMonthView(events);
+  else renderListView(events);
+}
+function renderMonthView(events) {
+  const y = calDate.getFullYear(), m = calDate.getMonth();
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const today = new Date();
+  const evMap = {};
+  events.forEach(e => {
+    const d = e.date ? e.date.split('T')[0] : null;
+    if (d) { if (!evMap[d]) evMap[d] = []; evMap[d].push(e); }
+  });
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html = `<div class="cal-grid-wrap">
+    <div class="cal-weekdays">${days.map(d=>`<div class="cal-weekday">${d}</div>`).join('')}</div>
+    <div class="cal-grid">`;
+  // Leading blanks
+  for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell other-month"></div>`;
   for (let d = 1; d <= daysInMonth; d++) {
-    const isToday = today.getFullYear()===year && today.getMonth()===month && today.getDate()===d;
-    const events  = evMap[d] || [];
-    const hasEvs  = events.length > 0;
-    html += `<div class="cal-cell${isToday?' today':''}${hasEvs?' has-events':''}">
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = today.getFullYear()===y && today.getMonth()===m && today.getDate()===d;
+    const dayEvents = evMap[dateStr] || [];
+    html += `<div class="cal-cell${isToday?' today':''}">
       <div class="cal-day-num">${d}</div>
-      ${events.slice(0,3).map(e => `
-        <div class="cal-event-pill ${sportClass(e.sport)}" onclick="navigate('event-detail',{id:'${e.id}'})" title="${escHtml(e.title)}">
-          ${escHtml(e.title)}
-        </div>`).join('')}
-      ${events.length > 3 ? `<div style="font-size:0.65rem;color:var(--text-muted)">+${events.length-3} more</div>` : ''}
+      ${dayEvents.slice(0,3).map(e => `<div class="cal-event-pill ${sportClass(e.sport)}" title="${escHtml(e.title)}" onclick="navigate('event-detail',{id:'${e.id}'})">${escHtml(e.title)}</div>`).join('')}
+      ${dayEvents.length > 3 ? `<div style="font-size:.6rem;color:var(--gray-400);padding:.1rem .25rem">+${dayEvents.length-3} more</div>` : ''}
     </div>`;
   }
-
-  // Next month filler
-  const total = firstDay + daysInMonth;
-  const remaining = total % 7 === 0 ? 0 : 7 - (total % 7);
-  for (let d = 1; d <= remaining; d++) {
-    html += `<div class="cal-cell other-month"><div class="cal-day-num">${d}</div></div>`;
-  }
-
+  // Trailing blanks
+  const totalCells = firstDay + daysInMonth;
+  const trailing = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let i = 0; i < trailing; i++) html += `<div class="cal-cell other-month"></div>`;
   html += '</div></div>';
   document.getElementById('cal-content').innerHTML = html;
 }
-
-function renderCalList() {
-  const upcoming = allEvents.filter(e => new Date(e.date) >= new Date(new Date().toDateString()));
+function renderListView(events) {
+  const now = new Date();
+  const upcoming = events.filter(e => e.date && new Date(e.date) >= now);
   if (!upcoming.length) {
-    document.getElementById('cal-content').innerHTML = `<div class="empty-state"><h3>No upcoming events</h3></div>`;
+    document.getElementById('cal-content').innerHTML = '<div class="empty-state"><h3>No upcoming events</h3><p>Check back soon.</p></div>';
     return;
   }
-
-  const grouped = {};
-  upcoming.forEach(e => {
-    const key = e.date.substring(0,7);
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(e);
-  });
-
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   let html = '<div class="cal-list">';
-  Object.keys(grouped).sort().forEach(key => {
-    const [y,m] = key.split('-');
-    const label = new Date(+y, +m-1, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-    html += `<div class="cal-list-month">${label}</div>`;
-    grouped[key].forEach(e => {
-      const day = parseInt(e.date.substring(8,10));
-      const mon = new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{month:'short'});
-      html += `
-      <div class="cal-list-item ${sportClass(e.sport)}" onclick="navigate('event-detail',{id:'${e.id}'})">
-        <div class="cal-list-date">
-          <div class="day">${day}</div>
-          <div class="month">${mon}</div>
-        </div>
-        <div class="cal-list-info">
-          <div class="cal-list-title">${escHtml(e.title)}</div>
-          <div class="cal-list-meta">
-            ${e.time ? formatTime(e.time)+' · ' : ''}
-            ${e.location ? escHtml(e.location)+' · ' : ''}
-            ${escHtml(e.organization_name||'')}
-          </div>
-        </div>
-
-      </div>`;
-    });
+  let lastMonth = '';
+  upcoming.forEach(e => {
+    const d = new Date(e.date);
+    const monthKey = months[d.getMonth()] + ' ' + d.getFullYear();
+    if (monthKey !== lastMonth) {
+      html += `<div class="cal-list-month">${monthKey}</div>`;
+      lastMonth = monthKey;
+    }
+    html += `<div class="cal-list-item ${sportClass(e.sport)}" onclick="navigate('event-detail',{id:'${e.id}'})">
+      <div class="cal-list-date">
+        <div class="day">${d.getDate()}</div>
+        <div class="month">${months[d.getMonth()].slice(0,3)}</div>
+      </div>
+      <div class="cal-list-info">
+        <div class="cal-list-title">${escHtml(e.title)}</div>
+        <div class="cal-list-meta">${e.time ? escHtml(e.time)+' &middot; ' : ''}${e.location ? escHtml(e.location) : ''}${e.organization_name ? ' &middot; '+escHtml(e.organization_name) : ''}</div>
+      </div>
+      <span class="badge badge-blue" style="flex-shrink:0">${escHtml(e.sport||'')}</span>
+    </div>`;
   });
   html += '</div>';
   document.getElementById('cal-content').innerHTML = html;
 }
-
-function setCalView(v) { calView = v; renderCal(); }
-function calPrev()  { calDate = new Date(calDate.getFullYear(), calDate.getMonth()-1, 1); renderCal(); }
-function calNext()  { calDate = new Date(calDate.getFullYear(), calDate.getMonth()+1, 1); renderCal(); }
-function calToday() { calDate = new Date(); renderCal(); }
-
-/* ═══════════════════════════════════════════════════════════════════
-   EVENT DETAIL PAGE
-═══════════════════════════════════════════════════════════════════ */
-async function loadDetailPage(id) {
-  if (!id) { navigate('home'); return; }
-  document.getElementById('detail-loading').style.display = 'block';
-  document.getElementById('detail-content').style.display = 'none';
-
-  const { data: e, error } = await sb.from('events').select('*').eq('id', id).single();
-
-  document.getElementById('detail-loading').style.display = 'none';
-  if (error || !e) { navigate('home'); return; }
-
-  const sc    = sportClass(e.sport);
-  const emoji = sportEmoji(e.sport);
-  const canEdit = currentOrg && (currentOrg.role === 'super_admin' || currentOrg.id === e.organization_id);
-
-  document.getElementById('detail-content').innerHTML = `
-    <div class="detail-hero ${sc}">
-      ${e.image_url
-        ? `<img src="${escHtml(e.image_url)}" alt="${escHtml(e.title)}" />`
-        : `<div class="detail-hero-placeholder"></div>`}
-      <div class="detail-sport-bar"></div>
-    </div>
-    <div class="detail-card">
-      <div class="detail-sport-badge">${escHtml(e.sport||'Event')}</div>
-      <h1 class="detail-title">${escHtml(e.title)}</h1>
-      <div class="detail-meta-grid">
-        <div class="detail-meta-item">
-          <div class="detail-meta-icon"></div>
-          <div><div class="detail-meta-label">Date</div><div class="detail-meta-value">${formatDate(e.date)}</div></div>
-        </div>
-        ${e.time ? `<div class="detail-meta-item">
-          <div class="detail-meta-icon"></div>
-          <div><div class="detail-meta-label">Time</div><div class="detail-meta-value">${formatTime(e.time)}</div></div>
-        </div>` : ''}
-        ${e.location ? `<div class="detail-meta-item">
-          <div class="detail-meta-icon"></div>
-          <div><div class="detail-meta-label">Location</div><div class="detail-meta-value">${escHtml(e.location)}</div></div>
-        </div>` : ''}
-        <div class="detail-meta-item">
-          <div class="detail-meta-icon"></div>
-          <div><div class="detail-meta-label">Organisation</div><div class="detail-meta-value">${escHtml(e.organization_name||'')}</div></div>
-        </div>
-      </div>
-      ${e.description ? `<p class="detail-desc">${escHtml(e.description)}</p>` : ''}
-      <div class="detail-actions">
-        ${canEdit ? `
-          <button class="btn btn-secondary" onclick="navigate('create-event',{id:'${e.id}'})">Edit Event</button>
-          <button class="btn btn-danger" onclick="openDeleteModal('${e.id}')">Delete Event</button>
-        ` : ''}
-        <button class="btn btn-secondary" onclick="shareEvent('${escHtml(e.title)}')">Share</button>
-      </div>
-    </div>`;
-
-  document.getElementById('detail-content').style.display = 'block';
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   CREATE / EDIT EVENT
-═══════════════════════════════════════════════════════════════════ */
-async function loadCreatePage(id) {
-  const form  = document.getElementById('event-form');
-  const title = document.getElementById('form-page-title');
-  const btn   = document.getElementById('form-submit-btn');
-  const alert = document.getElementById('form-alert');
-
-  form.reset();
-  document.getElementById('edit-event-id').value = '';
-  document.getElementById('img-preview').classList.remove('show');
-  alert.innerHTML = '';
-
-  if (id) {
-    title.textContent = 'Edit Event';
-    btn.textContent   = 'Save Changes';
-    const { data: e } = await sb.from('events').select('*').eq('id', id).single();
-    if (e) {
-      document.getElementById('edit-event-id').value = e.id;
-      document.getElementById('f-title').value       = e.title || '';
-      document.getElementById('f-sport').value       = e.sport || '';
-      document.getElementById('f-date').value        = e.date  || '';
-      document.getElementById('f-time').value        = e.time  ? e.time.substring(0,5) : '';
-      document.getElementById('f-location').value    = e.location    || '';
-      document.getElementById('f-description').value = e.description || '';
-      if (e.image_url) {
-        const prev = document.getElementById('img-preview');
-        prev.src = e.image_url; prev.classList.add('show');
-      }
-    }
-  } else {
-    title.textContent = 'Add New Event';
-    btn.textContent   = 'Publish Event';
-  }
-}
-
-async function submitEventForm(e) {
-  e.preventDefault();
-  const alert = document.getElementById('form-alert');
-  const btn   = document.getElementById('form-submit-btn');
-  alert.innerHTML = '';
-  btn.disabled = true; btn.textContent = 'Saving…';
-
-  const editId = document.getElementById('edit-event-id').value;
-  const imageFile = document.getElementById('f-image').files[0];
-  let imageUrl = null;
-
-  // Upload image if provided
-  if (imageFile) {
-    try {
-      const ext      = imageFile.name.split('.').pop();
-      const filePath = `events/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await sb.storage.from('event-images').upload(filePath, imageFile, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: urlData } = sb.storage.from('event-images').getPublicUrl(filePath);
-      imageUrl = urlData.publicUrl;
-    } catch(err) {
-      alert.innerHTML = `<div class="alert alert-error">Image upload failed: ${escHtml(err.message)}</div>`;
-      btn.disabled = false; btn.textContent = editId ? 'Save Changes' : 'Publish Event';
-      return;
-    }
-  }
-
-  const payload = {
-    title:             document.getElementById('f-title').value.trim(),
-    sport:             document.getElementById('f-sport').value,
-    date:              document.getElementById('f-date').value,
-    time:              document.getElementById('f-time').value || null,
-    location:          document.getElementById('f-location').value.trim() || null,
-    description:       document.getElementById('f-description').value.trim() || null,
-    organization_id:   currentOrg.id,
-    organization_name: currentOrg.name,
-    is_published:      true,
-  };
-  if (imageUrl) payload.image_url = imageUrl;
-
-  let error;
-  if (editId) {
-    ({ error } = await sb.from('events').update(payload).eq('id', editId));
-  } else {
-    ({ error } = await sb.from('events').insert(payload));
-  }
-
-  btn.disabled = false; btn.textContent = editId ? 'Save Changes' : 'Publish Event';
-
-  if (error) {
-    alert.innerHTML = `<div class="alert alert-error">Error: ${escHtml(error.message)}</div>`;
-    return;
-  }
-
-  showToast(editId ? 'Event updated!' : 'Event published!', 'success');
-  navigate('home');
-}
-
-function previewImage(input) {
-  const prev = document.getElementById('img-preview');
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = ev => { prev.src = ev.target.result; prev.classList.add('show'); };
-    reader.readAsDataURL(input.files[0]);
-  }
-}
+function calPrev() { calDate.setMonth(calDate.getMonth()-1); renderCalendar(); }
+function calNext() { calDate.setMonth(calDate.getMonth()+1); renderCalendar(); }
+function calToday() { calDate = new Date(); renderCalendar(); }
+function setCalView(v) { calView = v; renderCalendar(); }
 
 /* ═══════════════════════════════════════════════════════════════════
    DASHBOARD
 ═══════════════════════════════════════════════════════════════════ */
 async function loadDashboard() {
-  document.getElementById('dash-loading').style.display = 'block';
+  document.getElementById('dash-loading').style.display = 'flex';
   document.getElementById('dash-content').style.display = 'none';
-  document.getElementById('dash-org-name').textContent  = currentOrg ? currentOrg.name : '';
-
-  const query = currentOrg.role === 'super_admin'
-    ? sb.from('events').select('*').order('date', { ascending: false })
-    : sb.from('events').select('*').eq('organization_id', currentOrg.id).order('date', { ascending: false });
-
+  document.getElementById('dash-subtitle').textContent = currentOrg ? 'Welcome back, ' + currentOrg.name : '';
+  let query = sb.from('events').select('*').order('date', { ascending: false });
+  if (currentOrg?.role !== 'super_admin' && currentOrg?.id) {
+    query = query.eq('organization_id', currentOrg.id);
+  }
   const { data: events } = await query;
   const evs = events || [];
-
+  const now = new Date();
+  const upcoming = evs.filter(e => e.date && new Date(e.date) >= now).length;
+  const past     = evs.filter(e => e.date && new Date(e.date) < now).length;
+  const sports   = [...new Set(evs.map(e=>e.sport).filter(Boolean))].length;
+  document.getElementById('stats-grid').innerHTML = [
+    { label:'Total Events',    value: evs.length,  sub:'all time' },
+    { label:'Upcoming Events', value: upcoming,     sub:'scheduled' },
+    { label:'Past Events',     value: past,         sub:'completed' },
+    { label:'Sports Covered',  value: sports,       sub:'disciplines' }
+  ].map(s => `<div class="stat-card">
+    <div class="stat-card-label">${s.label}</div>
+    <div class="stat-card-value">${s.value}</div>
+    <div class="stat-card-sub">${s.sub}</div>
+  </div>`).join('');
+  const tbody = document.getElementById('dash-events-body');
+  tbody.innerHTML = evs.length ? evs.map(e => `<tr>
+    <td style="font-weight:600;color:var(--gray-900)">${escHtml(e.title)}</td>
+    <td><span class="badge badge-blue">${escHtml(e.sport||'')}</span></td>
+    <td>${formatDate(e.date)}</td>
+    <td style="color:var(--gray-500)">${escHtml(e.location||'—')}</td>
+    <td><div class="dash-actions">
+      <button class="btn btn-sm btn-ghost" onclick="navigate('create-event',{id:'${e.id}'})">Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="openDeleteModal('${e.id}','${escHtml(e.title)}')">Delete</button>
+    </div></td>
+  </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:2rem">No events found.</td></tr>';
   document.getElementById('dash-loading').style.display = 'none';
   document.getElementById('dash-content').style.display = 'block';
-
-  // Stats
-  const upcoming = evs.filter(e => new Date(e.date) >= new Date(new Date().toDateString())).length;
-  const sports   = [...new Set(evs.map(e=>e.sport).filter(Boolean))].length;
-  document.getElementById('dash-stats').innerHTML = `
-    <div class="stat-card">
-      <div class="stat-label">Total Events</div>
-      <div class="stat-value grad-text">${evs.length}</div>
-      <div class="stat-sub">All time</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Upcoming</div>
-      <div class="stat-value" style="color:var(--success)">${upcoming}</div>
-      <div class="stat-sub">From today</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Sports</div>
-      <div class="stat-value" style="color:var(--brand-pink)">${sports}</div>
-      <div class="stat-sub">Disciplines</div>
-    </div>`;
-
-  // Table
-  const tbody = document.getElementById('dash-events-body');
-  if (!evs.length) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">No events yet. <a href="#/create-event" style="color:var(--brand-pink)">Add one →</a></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = evs.map(e => {
-    const canEdit = currentOrg.role === 'super_admin' || currentOrg.id === e.organization_id;
-    return `<tr>
-      <td><strong>${escHtml(e.title)}</strong></td>
-      <td><span class="badge ${sportClass(e.sport)}" style="background:rgba(255,255,255,0.08);color:var(--sc,var(--brand-pink))">${escHtml(e.sport||'—')}</span></td>
-      <td>${formatDate(e.date)}</td>
-      <td style="color:var(--text-muted);font-size:0.8125rem">${escHtml(e.organization_name||'—')}</td>
-      <td>
-        <div class="dash-actions">
-          ${canEdit ? `
-          <button class="btn btn-secondary btn-sm" onclick="navigate('create-event',{id:'${e.id}'})">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${e.id}')">Delete</button>` : ''}
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   DELETE
+   DELETE MODAL
 ═══════════════════════════════════════════════════════════════════ */
-function openDeleteModal(id) {
+function openDeleteModal(id, title) {
   deleteTarget = id;
+  document.getElementById('delete-event-name').textContent = title;
   document.getElementById('delete-modal').classList.add('open');
-  document.getElementById('confirm-delete-btn').onclick = confirmDelete;
 }
 function closeDeleteModal() {
   deleteTarget = null;
@@ -1691,15 +1589,12 @@ async function confirmDelete() {
   if (!deleteTarget) return;
   const { error } = await sb.from('events').delete().eq('id', deleteTarget);
   closeDeleteModal();
-  if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  if (error) { showToast('Error deleting event: ' + error.message, 'error'); return; }
   showToast('Event deleted.', 'success');
   allEvents = allEvents.filter(e => e.id !== deleteTarget);
-  deleteTarget = null;
-  // Refresh current page
-  const page = (window.location.hash||'#/').replace('#/','').split('/')[0] || 'home';
-  if (page === 'home') filterEvents();
-  else if (page === 'dashboard') loadDashboard();
-  else navigate('home');
+  const hash = window.location.hash || '#/';
+  if (hash.includes('dashboard')) loadDashboard();
+  else filterEvents();
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1707,65 +1602,41 @@ async function confirmDelete() {
 ═══════════════════════════════════════════════════════════════════ */
 function escHtml(str) {
   if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-
-function formatDate(dateStr) {
-  if (!dateStr) return 'TBD';
-  // Handle both ISO timestamps (2026-03-02T16:00:00+00:00) and plain dates (2026-03-02)
-  let d;
-  if (dateStr.includes('T')) {
-    // ISO timestamp — parse directly
-    d = new Date(dateStr);
-  } else {
-    // Plain date string — append time to avoid timezone shift
-    d = new Date(dateStr + 'T12:00:00');
-  }
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+function formatDate(raw) {
+  if (!raw) return '';
+  try {
+    const d = new Date(raw.includes('T') ? raw : raw + 'T12:00:00');
+    return d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  } catch { return raw; }
 }
-
-function formatTime(timeStr) {
-  if (!timeStr) return '';
-  const [h,m] = timeStr.split(':');
-  const hour = parseInt(h);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const h12  = hour % 12 || 12;
-  return `${h12}:${m} ${ampm}`;
+function showAlert(containerId, msg, type) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type==='error'?'error':type==='success'?'success':'info'}">${escHtml(msg)}</div>`;
 }
-
-function togglePw(id, btn) {
-  const input = document.getElementById(id);
-  if (input.type === 'password') { input.type = 'text'; btn.textContent = 'Hide'; }
-  else { input.type = 'password'; btn.textContent = 'Show'; }
+function showToast(msg, type='info') {
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.remove(), 4000);
 }
-
 function toggleMobileMenu() {
   document.getElementById('mobile-menu').classList.toggle('open');
 }
-function closeMobileMenu() {
-  document.getElementById('mobile-menu').classList.remove('open');
-}
 
-function shareEvent(title) {
-  if (navigator.share) {
-    navigator.share({ title, url: window.location.href });
-  } else {
-    navigator.clipboard.writeText(window.location.href);
-    showToast('Link copied to clipboard!', 'info');
-  }
-}
+/* ═══════════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════════ */
+(function init() {
+  const saved = localStorage.getItem('sportcal_org');
+  if (saved) { try { currentOrg = JSON.parse(saved); } catch {} }
+  updateNavAuth();
+  handleRoute();
+})();
 
-function showToast(msg, type='info') {
-  const container = document.getElementById('toast-container');
-  const toast     = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.textContent = msg;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
-}
-
-// Close modal on overlay click
 document.getElementById('delete-modal').addEventListener('click', function(e) {
   if (e.target === this) closeDeleteModal();
 });
