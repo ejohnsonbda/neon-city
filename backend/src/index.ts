@@ -31,7 +31,7 @@ app.use(helmet({
 
 // ─── CORS ───────────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -68,6 +68,10 @@ if (process.env.NODE_ENV !== 'test') {
 // ─── Static Files ───────────────────────────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Serve the HTML frontend from /public
+const publicDir = path.join(__dirname, '../../public');
+app.use(express.static(publicDir));
+
 // ─── Health Check ───────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({
@@ -102,8 +106,15 @@ app.get('/api', (_req, res) => {
   });
 });
 
+// ─── SPA Fallback — serve index.html for all non-API routes ────────────────
+app.get('*', (_req, res) => {
+  const indexPath = path.join(__dirname, '../../public/index.html');
+  res.sendFile(indexPath, err => {
+    if (err) res.status(404).json({ error: 'Not found' });
+  });
+});
+
 // ─── Error Handling ─────────────────────────────────────────────────────────
-app.use(notFound);
 app.use(errorHandler);
 
 // ─── Start Server ───────────────────────────────────────────────────────────

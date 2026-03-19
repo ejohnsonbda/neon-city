@@ -113,11 +113,13 @@ export const createEvent = async (req: Request, res: Response): Promise<void> =>
 
   // Admins can post on behalf of any org; regular users post for their own org
   const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
-  const orgId = isAdmin ? (req.body.organizationId || req.user.organizationId) : req.user.organizationId;
+  const rawOrgId = isAdmin ? (req.body.organizationId || req.user.organizationId) : req.user.organizationId;
+  // 'super_admin' is a virtual ID — store as null in DB to avoid FK violation
+  const orgId = (rawOrgId === 'super_admin') ? null : rawOrgId;
   const orgName = isAdmin ? (organizationName || req.user.organizationName) : req.user.organizationName;
 
-  // Verify organization exists (skip for super_admin virtual org)
-  if (orgId !== 'super_admin') {
+  // Verify organization exists (only when a real orgId is provided)
+  if (orgId) {
     const org = await prisma.organization.findUnique({ where: { id: orgId } });
     if (!org) {
       res.status(400).json({ error: 'Organization not found.' });

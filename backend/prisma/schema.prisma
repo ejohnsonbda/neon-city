@@ -47,7 +47,7 @@ model Event {
   date             String   // ISO date string YYYY-MM-DD
   time             String?
   location         String?
-  organizationId   String
+  organizationId   String?  // nullable — super_admin events have no FK org
   organizationName String
   imageUrl         String?
   sport            String?
@@ -55,7 +55,7 @@ model Event {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  organization     Organization @relation(fields: [organizationId], references: [id])
+  organization     Organization? @relation(fields: [organizationId], references: [id])
 
   @@map("events")
 }
