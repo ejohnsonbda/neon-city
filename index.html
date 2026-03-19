@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SportCal — Bermuda Sports Events</title>
+  <meta name="description" content="The official Bermuda sports events calendar. Find upcoming games, tournaments, and sporting events across all disciplines." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       NSGB HUB 2.0 — Design System Tokens
+    ═══════════════════════════════════════════════════════════════ */
+    :root {
+      --brand-blue:   #1e3799;
+      --brand-pink:   #e84393;
+      --brand-grad:   linear-gradient(135deg, #1e3799 0%, #e84393 100%);
+      --brand-grad-r: linear-gradient(135deg, #e84393 0%, #1e3799 100%);
+      --navy-900:     #0a0e1a;
+      --navy-800:     #0d1221;
+      --navy-700:     #111827;
+      --navy-600:     #1a2236;
+      --navy-500:     #243047;
+      --navy-400:     #2e3d5c;
+      --glass-bg:     rgba(255,255,255,0.05);
+      --glass-border: rgba(255,255,255,0.10);
+      --text-primary: #f0f4ff;
+      --text-secondary:#a8b4cc;
+      --text-muted:   #6b7a99;
+      --success:      #10b981;
+      --warning:      #f59e0b;
+      --danger:       #ef4444;
+      --radius-sm:    6px;
+      --radius-md:    12px;
+      --radius-lg:    16px;
+      --radius-xl:    24px;
+      --shadow-card:  0 4px 24px rgba(0,0,0,0.4);
+      --shadow-hover: 0 8px 40px rgba(0,0,0,0.6);
+      --transition:   all 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--navy-900);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; font-family: inherit; }
+    input, select, textarea { font-family: inherit; }
+    img { max-width: 100%; display: block; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--navy-800); }
+    ::-webkit-scrollbar-thumb { background: var(--navy-400); border-radius: 3px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════════════════════════════ */
+    #app { display: flex; flex-direction: column; min-height: 100vh; }
+    #main-content { flex: 1; }
+
+    /* ── Navbar ── */
+    .navbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 0 1.5rem;
+    }
+    .navbar-inner {
+      max-width: 1280px; margin: 0 auto;
+      display: flex; align-items: center; gap: 1rem;
+      height: 64px;
+    }
+    .navbar-brand {
+      display: flex; align-items: center; gap: 0.625rem;
+      font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em;
+      background: var(--brand-grad); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+      white-space: nowrap;
+    }
+    .navbar-brand .logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--brand-grad);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .navbar-brand .logo-icon span { -webkit-text-fill-color: white; }
+    .navbar-nav {
+      display: flex; align-items: center; gap: 0.25rem;
+      margin-left: auto;
+    }
+    .nav-link {
+      padding: 0.5rem 0.875rem; border-radius: var(--radius-sm);
+      font-size: 0.875rem; font-weight: 500; color: var(--text-secondary);
+      transition: var(--transition); cursor: pointer; border: none;
+      background: transparent;
+    }
+    .nav-link:hover, .nav-link.active {
+      color: var(--text-primary);
+      background: var(--glass-bg);
+    }
+    .nav-link.active { color: white; }
+    .nav-btn {
+      padding: 0.5rem 1rem; border-radius: var(--radius-sm);
+      font-size: 0.875rem; font-weight: 600; border: none;
+      background: var(--brand-grad); color: white;
+      transition: var(--transition);
+    }
+    .nav-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .nav-user {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.375rem 0.75rem; border-radius: var(--radius-sm);
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      font-size: 0.8125rem; color: var(--text-secondary);
+    }
+    .nav-user .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--success);
+    }
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      background: none; border: none; padding: 4px; cursor: pointer;
+    }
+    .hamburger span {
+      display: block; width: 22px; height: 2px;
+      background: var(--text-secondary); border-radius: 2px;
+      transition: var(--transition);
+    }
+    .mobile-menu {
+      display: none; flex-direction: column; gap: 0.25rem;
+      padding: 0.75rem 1.5rem 1rem;
+      border-top: 1px solid var(--glass-border);
+      background: rgba(10,14,26,0.95);
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu .nav-link { padding: 0.625rem 0.75rem; }
+
+    /* ── Footer ── */
+    .footer {
+      background: var(--navy-800);
+      border-top: 1px solid var(--glass-border);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+    }
+    .footer-brand {
+      font-weight: 700; font-size: 1rem;
+      background: var(--brand-grad); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PAGES — visibility
+    ═══════════════════════════════════════════════════════════════ */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SHARED COMPONENTS
+    ═══════════════════════════════════════════════════════════════ */
+
+    /* Container */
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* Section heading */
+    .section-title {
+      font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+    .section-sub { color: var(--text-secondary); margin-bottom: 2rem; }
+
+    /* Gradient text */
+    .grad-text {
+      background: var(--brand-grad); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.2rem 0.6rem; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* Card */
+    .card {
+      background: var(--navy-700);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-hover);
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.625rem 1.25rem; border-radius: var(--radius-sm);
+      font-size: 0.875rem; font-weight: 600; border: none;
+      transition: var(--transition); cursor: pointer;
+    }
+    .btn-primary { background: var(--brand-grad); color: white; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-secondary {
+      background: var(--glass-bg); color: var(--text-primary);
+      border: 1px solid var(--glass-border);
+    }
+    .btn-secondary:hover { background: var(--navy-500); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { opacity: 0.9; }
+    .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
+    .btn-lg { padding: 0.875rem 1.75rem; font-size: 1rem; }
+
+    /* Form elements */
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label {
+      display: block; font-size: 0.8125rem; font-weight: 600;
+      color: var(--text-secondary); margin-bottom: 0.375rem;
+      letter-spacing: 0.02em;
+    }
+    .form-control {
+      width: 100%; padding: 0.625rem 0.875rem;
+      background: var(--navy-600); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm); color: var(--text-primary);
+      font-size: 0.9375rem; transition: var(--transition);
+    }
+    .form-control:focus {
+      outline: none; border-color: var(--brand-blue);
+      box-shadow: 0 0 0 3px rgba(30,55,153,0.25);
+    }
+    .form-control::placeholder { color: var(--text-muted); }
+    select.form-control option { background: var(--navy-700); }
+    textarea.form-control { resize: vertical; min-height: 100px; }
+
+    /* Alert */
+    .alert {
+      padding: 0.875rem 1rem; border-radius: var(--radius-sm);
+      font-size: 0.875rem; margin-bottom: 1rem;
+      border: 1px solid transparent;
+    }
+    .alert-error { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-success { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #6ee7b7; }
+    .alert-info { background: rgba(30,55,153,0.15); border-color: rgba(30,55,153,0.4); color: #93c5fd; }
+
+    /* Spinner */
+    .spinner {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 3px solid var(--navy-500);
+      border-top-color: var(--brand-pink);
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-wrap { padding: 4rem 0; text-align: center; }
+    .loading-wrap p { color: var(--text-muted); margin-top: 1rem; font-size: 0.875rem; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 4rem 1rem;
+      color: var(--text-muted);
+    }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-state h3 { font-size: 1.125rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--navy-700); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl); padding: 2rem;
+      width: 100%; max-width: 520px; max-height: 90vh;
+      overflow-y: auto; position: relative;
+    }
+    .modal-title {
+      font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;
+    }
+    .modal-close {
+      position: absolute; top: 1rem; right: 1rem;
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      color: var(--text-secondary); width: 32px; height: 32px;
+      border-radius: 50%; font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: var(--transition);
+    }
+    .modal-close:hover { color: white; background: var(--navy-500); }
+
+    /* Toast */
+    #toast-container {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      z-index: 999; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .toast {
+      padding: 0.875rem 1.25rem; border-radius: var(--radius-md);
+      font-size: 0.875rem; font-weight: 500;
+      box-shadow: var(--shadow-card); min-width: 260px;
+      animation: slideIn 0.3s ease;
+    }
+    .toast-success { background: #065f46; color: #6ee7b7; border: 1px solid #10b981; }
+    .toast-error   { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+    .toast-info    { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* Sport colour map */
+    .sport-football    { --sc: #10b981; }
+    .sport-cricket     { --sc: #f59e0b; }
+    .sport-rugby       { --sc: #8b5cf6; }
+    .sport-basketball  { --sc: #f97316; }
+    .sport-netball     { --sc: #ec4899; }
+    .sport-tennis      { --sc: #06b6d4; }
+    .sport-swimming    { --sc: #3b82f6; }
+    .sport-athletics   { --sc: #ef4444; }
+    .sport-cycling     { --sc: #84cc16; }
+    .sport-triathlon   { --sc: #14b8a6; }
+    .sport-squash      { --sc: #a855f7; }
+    .sport-bowling     { --sc: #6366f1; }
+    .sport-golf        { --sc: #22c55e; }
+    .sport-hockey      { --sc: #0ea5e9; }
+    .sport-boxing      { --sc: #dc2626; }
+    .sport-sailing     { --sc: #0284c7; }
+    .sport-volleyball  { --sc: #d97706; }
+    .sport-default     { --sc: var(--brand-pink); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       HOME PAGE
+    ═══════════════════════════════════════════════════════════════ */
+    .hero {
+      background: var(--navy-800);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 4rem 1.5rem 3rem;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(30,55,153,0.35) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 40% at 80% 120%, rgba(232,67,147,0.2) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(30,55,153,0.2); border: 1px solid rgba(30,55,153,0.4);
+      border-radius: 999px; padding: 0.35rem 0.875rem;
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; color: #93c5fd; margin-bottom: 1.25rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 900; letter-spacing: -0.04em;
+      line-height: 1.1; margin-bottom: 1rem;
+    }
+    .hero p {
+      font-size: 1.0625rem; color: var(--text-secondary);
+      max-width: 520px; margin: 0 auto 2rem;
+    }
+    .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+
+    /* Search + filters */
+    .filters-bar {
+      background: var(--navy-800);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 1rem 1.5rem; position: sticky; top: 64px; z-index: 90;
+    }
+    .filters-inner {
+      max-width: 1280px; margin: 0 auto;
+      display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-wrap .search-icon {
+      position: absolute; left: 0.75rem; top: 50%;
+      transform: translateY(-50%); color: var(--text-muted);
+      pointer-events: none; font-size: 0.875rem;
+    }
+    .search-input {
+      width: 100%; padding: 0.5625rem 0.875rem 0.5625rem 2.25rem;
+      background: var(--navy-600); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm); color: var(--text-primary);
+      font-size: 0.875rem; transition: var(--transition);
+    }
+    .search-input:focus {
+      outline: none; border-color: var(--brand-blue);
+      box-shadow: 0 0 0 3px rgba(30,55,153,0.2);
+    }
+    .search-input::placeholder { color: var(--text-muted); }
+    .chips { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+    .chip {
+      padding: 0.3125rem 0.75rem; border-radius: 999px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+      border: 1px solid var(--glass-border);
+      background: var(--glass-bg); color: var(--text-secondary);
+      transition: var(--transition); white-space: nowrap;
+    }
+    .chip:hover { color: white; border-color: rgba(255,255,255,0.25); }
+    .chip.active {
+      background: var(--brand-grad); border-color: transparent; color: white;
+    }
+    .sort-select {
+      padding: 0.5rem 0.75rem; background: var(--navy-600);
+      border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
+      color: var(--text-secondary); font-size: 0.8125rem; cursor: pointer;
+    }
+    .sort-select:focus { outline: none; }
+
+    /* Events grid */
+    .events-section { padding: 2.5rem 1.5rem; }
+    .events-grid {
+      max-width: 1280px; margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+
+    /* Event card */
+    .event-card { cursor: pointer; }
+    .event-card-img {
+      height: 160px; background: var(--navy-600);
+      position: relative; overflow: hidden;
+    }
+    .event-card-img img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .event-card:hover .event-card-img img { transform: scale(1.05); }
+    .event-card-img-placeholder {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.5rem;
+      background: linear-gradient(135deg, var(--navy-600), var(--navy-500));
+    }
+    .event-card-sport-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 3px; background: var(--sc, var(--brand-pink));
+    }
+    .event-card-body { padding: 1.125rem; }
+    .event-card-meta {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 0.625rem; flex-wrap: wrap;
+    }
+    .event-card-sport {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--sc, var(--brand-pink));
+    }
+    .event-card-date {
+      font-size: 0.75rem; color: var(--text-muted);
+      margin-left: auto;
+    }
+    .event-card-title {
+      font-size: 1rem; font-weight: 700; line-height: 1.35;
+      margin-bottom: 0.5rem; color: var(--text-primary);
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .event-card-loc {
+      font-size: 0.8125rem; color: var(--text-muted);
+      display: flex; align-items: center; gap: 0.3rem;
+      margin-bottom: 0.875rem;
+    }
+    .event-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 0.75rem; border-top: 1px solid var(--glass-border);
+    }
+    .event-card-org { font-size: 0.75rem; color: var(--text-muted); }
+    .event-card-actions { display: flex; gap: 0.375rem; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       CALENDAR PAGE
+    ═══════════════════════════════════════════════════════════════ */
+    .cal-page { padding: 2rem 1.5rem; }
+    .cal-wrap { max-width: 1000px; margin: 0 auto; }
+    .cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+    }
+    .cal-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
+    .cal-nav { display: flex; gap: 0.5rem; align-items: center; }
+    .cal-nav-btn {
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      color: var(--text-secondary); font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: var(--transition);
+    }
+    .cal-nav-btn:hover { color: white; background: var(--navy-500); }
+    .cal-view-toggle {
+      display: flex; background: var(--navy-700);
+      border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .cal-view-btn {
+      padding: 0.375rem 0.875rem; font-size: 0.8125rem; font-weight: 600;
+      border: none; background: transparent; color: var(--text-muted);
+      cursor: pointer; transition: var(--transition);
+    }
+    .cal-view-btn.active { background: var(--brand-grad); color: white; }
+
+    /* Month grid */
+    .cal-grid-wrap { background: var(--navy-700); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .cal-dow-row {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .cal-dow {
+      padding: 0.625rem; text-align: center;
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .cal-cell {
+      min-height: 90px; padding: 0.5rem;
+      border-right: 1px solid var(--glass-border);
+      border-bottom: 1px solid var(--glass-border);
+      transition: background 0.15s;
+    }
+    .cal-cell:nth-child(7n) { border-right: none; }
+    .cal-cell.other-month { opacity: 0.35; }
+    .cal-cell.today { background: rgba(30,55,153,0.15); }
+    .cal-day-num {
+      font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary);
+      width: 26px; height: 26px; display: flex; align-items: center;
+      justify-content: center; border-radius: 50%; margin-bottom: 0.25rem;
+    }
+    .cal-cell.today .cal-day-num {
+      background: var(--brand-blue); color: white;
+    }
+    .cal-event-pill {
+      font-size: 0.65rem; font-weight: 600; padding: 0.15rem 0.4rem;
+      border-radius: 4px; margin-bottom: 0.2rem; cursor: pointer;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      background: rgba(255,255,255,0.08); color: var(--text-primary);
+      border-left: 3px solid var(--sc, var(--brand-pink));
+      transition: var(--transition);
+    }
+    .cal-event-pill:hover { background: rgba(255,255,255,0.14); }
+
+    /* List view */
+    .cal-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .cal-list-month {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--text-muted);
+      padding: 0.5rem 0; border-bottom: 1px solid var(--glass-border);
+      margin-top: 1rem;
+    }
+    .cal-list-item {
+      display: flex; gap: 1rem; align-items: flex-start;
+      background: var(--navy-700); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md); padding: 1rem;
+      cursor: pointer; transition: var(--transition);
+      border-left: 4px solid var(--sc, var(--brand-pink));
+    }
+    .cal-list-item:hover { background: var(--navy-600); transform: translateX(3px); }
+    .cal-list-date {
+      text-align: center; min-width: 48px;
+      background: var(--navy-600); border-radius: var(--radius-sm);
+      padding: 0.5rem; flex-shrink: 0;
+    }
+    .cal-list-date .day { font-size: 1.375rem; font-weight: 800; line-height: 1; }
+    .cal-list-date .month { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+    .cal-list-info { flex: 1; }
+    .cal-list-title { font-weight: 700; margin-bottom: 0.25rem; }
+    .cal-list-meta { font-size: 0.8125rem; color: var(--text-muted); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       EVENT DETAIL PAGE
+    ═══════════════════════════════════════════════════════════════ */
+    .detail-page { padding: 2rem 1.5rem; }
+    .detail-wrap { max-width: 800px; margin: 0 auto; }
+    .detail-back {
+      display: inline-flex; align-items: center; gap: 0.375rem;
+      color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;
+      cursor: pointer; transition: var(--transition);
+    }
+    .detail-back:hover { color: var(--text-primary); }
+    .detail-hero {
+      height: 280px; border-radius: var(--radius-lg);
+      overflow: hidden; margin-bottom: 2rem;
+      background: var(--navy-700); position: relative;
+    }
+    .detail-hero img { width: 100%; height: 100%; object-fit: cover; }
+    .detail-hero-placeholder {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5rem;
+      background: linear-gradient(135deg, var(--navy-600), var(--navy-500));
+    }
+    .detail-sport-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 4px; background: var(--sc, var(--brand-pink));
+    }
+    .detail-card {
+      background: var(--navy-700); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg); padding: 2rem;
+    }
+    .detail-sport-badge {
+      display: inline-block; margin-bottom: 1rem;
+      padding: 0.3rem 0.875rem; border-radius: 999px;
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: rgba(255,255,255,0.08);
+      color: var(--sc, var(--brand-pink));
+      border: 1px solid var(--sc, var(--brand-pink));
+    }
+    .detail-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 800; letter-spacing: -0.03em;
+      margin-bottom: 1.5rem; line-height: 1.2;
+    }
+    .detail-meta-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .detail-meta-item {
+      background: var(--navy-600); border-radius: var(--radius-sm);
+      padding: 0.875rem; display: flex; gap: 0.625rem; align-items: flex-start;
+    }
+    .detail-meta-icon { font-size: 1.125rem; margin-top: 0.1rem; }
+    .detail-meta-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.2rem; }
+    .detail-meta-value { font-size: 0.9375rem; font-weight: 600; }
+    .detail-desc { color: var(--text-secondary); line-height: 1.75; margin-bottom: 1.5rem; }
+    .detail-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       CREATE / EDIT EVENT PAGE
+    ═══════════════════════════════════════════════════════════════ */
+    .form-page { padding: 2rem 1.5rem; }
+    .form-wrap { max-width: 680px; margin: 0 auto; }
+    .form-card {
+      background: var(--navy-700); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl); padding: 2rem;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-section-title {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--text-muted);
+      margin: 1.5rem 0 1rem; padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .img-preview {
+      width: 100%; height: 160px; border-radius: var(--radius-sm);
+      object-fit: cover; margin-top: 0.5rem; display: none;
+    }
+    .img-preview.show { display: block; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       LOGIN PAGE
+    ═══════════════════════════════════════════════════════════════ */
+    .login-page {
+      min-height: calc(100vh - 64px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem 1rem;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(30,55,153,0.25) 0%, transparent 70%);
+    }
+    .login-card {
+      width: 100%; max-width: 420px;
+      background: var(--navy-700); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl); padding: 2.5rem;
+    }
+    .login-logo {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: var(--brand-grad);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.75rem; margin: 0 auto 1.5rem;
+    }
+    .login-title {
+      text-align: center; font-size: 1.5rem; font-weight: 800;
+      letter-spacing: -0.03em; margin-bottom: 0.375rem;
+    }
+    .login-sub { text-align: center; color: var(--text-muted); font-size: 0.875rem; margin-bottom: 2rem; }
+    .pw-wrap { position: relative; }
+    .pw-toggle {
+      position: absolute; right: 0.75rem; top: 50%;
+      transform: translateY(-50%); background: none; border: none;
+      color: var(--text-muted); cursor: pointer; font-size: 1rem;
+      padding: 0.25rem;
+    }
+    .pw-toggle:hover { color: var(--text-primary); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       DASHBOARD PAGE
+    ═══════════════════════════════════════════════════════════════ */
+    .dash-page { padding: 2rem 1.5rem; }
+    .dash-wrap { max-width: 1280px; margin: 0 auto; }
+    .dash-header { margin-bottom: 2rem; }
+    .dash-header h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; }
+    .dash-header p { color: var(--text-secondary); }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem; margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--navy-700); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg); padding: 1.25rem;
+    }
+    .stat-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .stat-value { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; }
+    .stat-sub { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.25rem; }
+    .dash-section-title {
+      font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
+      padding-bottom: 0.5rem; border-bottom: 1px solid var(--glass-border);
+    }
+    .dash-table-wrap {
+      background: var(--navy-700); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 2rem;
+    }
+    .dash-table { width: 100%; border-collapse: collapse; }
+    .dash-table th {
+      padding: 0.75rem 1rem; text-align: left;
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--text-muted);
+      background: var(--navy-800); border-bottom: 1px solid var(--glass-border);
+    }
+    .dash-table td {
+      padding: 0.875rem 1rem; font-size: 0.875rem;
+      border-bottom: 1px solid var(--glass-border);
+      vertical-align: middle;
+    }
+    .dash-table tr:last-child td { border-bottom: none; }
+    .dash-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .dash-actions { display: flex; gap: 0.5rem; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .navbar-nav { display: none; }
+      .hamburger { display: flex; margin-left: auto; }
+      .form-grid { grid-template-columns: 1fr; }
+      .detail-meta-grid { grid-template-columns: 1fr 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .dash-table-wrap { overflow-x: auto; }
+    }
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 1.75rem; }
+      .detail-meta-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .cal-cell { min-height: 60px; }
+      .cal-event-pill { display: none; }
+      .cal-cell.has-events::after {
+        content: '●'; font-size: 0.5rem; color: var(--brand-pink);
+        display: block; text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Navbar ── -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a class="navbar-brand" href="#/" onclick="navigate('home')">
+        <div class="logo-icon"><span>⚽</span></div>
+        SportCal
+      </a>
+      <div class="navbar-nav" id="desktop-nav">
+        <button class="nav-link" onclick="navigate('home')">Events</button>
+        <button class="nav-link" onclick="navigate('calendar')">Calendar</button>
+        <div id="nav-auth-area"></div>
+      </div>
+      <button class="hamburger" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobile-menu">
+      <button class="nav-link" onclick="navigate('home');closeMobileMenu()">Events</button>
+      <button class="nav-link" onclick="navigate('calendar');closeMobileMenu()">Calendar</button>
+      <div id="mobile-auth-area"></div>
+    </div>
+  </nav>
+
+  <!-- ── Main Content ── -->
+  <main id="main-content">
+
+    <!-- HOME PAGE -->
+    <div id="page-home" class="page">
+      <section class="hero">
+        <div class="hero-content">
+          <div class="hero-eyebrow">🇧🇲 Bermuda Sports Events</div>
+          <h1>Your <span class="grad-text">Sports Calendar</span><br/>for Bermuda</h1>
+          <p>Discover upcoming games, tournaments, and sporting events across all disciplines on the island.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg" onclick="navigate('calendar')">📅 View Calendar</button>
+            <button class="btn btn-secondary btn-lg" id="hero-add-btn" style="display:none" onclick="navigate('create-event')">＋ Add Event</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="filters-bar">
+        <div class="filters-inner">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="search-input" placeholder="Search events…" oninput="filterEvents()" />
+          </div>
+          <div class="chips" id="sport-chips"></div>
+          <select class="sort-select" id="sort-select" onchange="filterEvents()">
+            <option value="date-asc">Date ↑</option>
+            <option value="date-desc">Date ↓</option>
+            <option value="title">Title A–Z</option>
+          </select>
+        </div>
+      </div>
+
+      <section class="events-section">
+        <div id="events-loading" class="loading-wrap">
+          <div class="spinner"></div>
+          <p>Loading events…</p>
+        </div>
+        <div class="events-grid" id="events-grid" style="display:none"></div>
+        <div id="events-empty" class="empty-state" style="display:none">
+          <div class="empty-icon">📭</div>
+          <h3>No events found</h3>
+          <p>Try adjusting your search or filters.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- CALENDAR PAGE -->
+    <div id="page-calendar" class="page">
+      <div class="cal-page">
+        <div class="cal-wrap">
+          <div class="cal-header">
+            <div>
+              <h1 class="cal-title" id="cal-month-label">March 2026</h1>
+            </div>
+            <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+              <div class="cal-view-toggle">
+                <button class="cal-view-btn active" id="cal-btn-month" onclick="setCalView('month')">Month</button>
+                <button class="cal-view-btn" id="cal-btn-list" onclick="setCalView('list')">List</button>
+              </div>
+              <div class="cal-nav">
+                <button class="cal-nav-btn" onclick="calPrev()">‹</button>
+                <button class="cal-nav-btn" onclick="calToday()">Today</button>
+                <button class="cal-nav-btn" onclick="calNext()">›</button>
+              </div>
+            </div>
+          </div>
+          <div id="cal-loading" class="loading-wrap">
+            <div class="spinner"></div>
+            <p>Loading calendar…</p>
+          </div>
+          <div id="cal-content" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EVENT DETAIL PAGE -->
+    <div id="page-event-detail" class="page">
+      <div class="detail-page">
+        <div class="detail-wrap">
+          <div class="detail-back" onclick="history.back()">← Back</div>
+          <div id="detail-loading" class="loading-wrap">
+            <div class="spinner"></div>
+            <p>Loading event…</p>
+          </div>
+          <div id="detail-content" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CREATE / EDIT EVENT PAGE -->
+    <div id="page-create-event" class="page">
+      <div class="form-page">
+        <div class="form-wrap">
+          <div style="margin-bottom:1.5rem">
+            <div class="detail-back" onclick="navigate('home')">← Back to Events</div>
+            <h1 class="section-title" id="form-page-title">Add New Event</h1>
+            <p class="section-sub">Fill in the details below to publish a new sporting event.</p>
+          </div>
+          <div class="form-card">
+            <div id="form-alert"></div>
+            <form id="event-form" onsubmit="submitEventForm(event)">
+              <input type="hidden" id="edit-event-id" />
+              <div class="form-section-title">Event Details</div>
+              <div class="form-grid">
+                <div class="full form-group">
+                  <label class="form-label">Event Title *</label>
+                  <input type="text" class="form-control" id="f-title" placeholder="e.g. Football Premier Division Opening Day" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Sport / Category *</label>
+                  <select class="form-control" id="f-sport" required>
+                    <option value="">Select sport…</option>
+                    <option>Football (Soccer)</option>
+                    <option>Cricket</option>
+                    <option>Rugby</option>
+                    <option>Basketball</option>
+                    <option>Netball</option>
+                    <option>Tennis</option>
+                    <option>Swimming</option>
+                    <option>Athletics (Track &amp; Field)</option>
+                    <option>Cycling</option>
+                    <option>Triathlon</option>
+                    <option>Squash</option>
+                    <option>Bowling</option>
+                    <option>Golf</option>
+                    <option>Hockey</option>
+                    <option>Boxing</option>
+                    <option>Karate</option>
+                    <option>Equestrian</option>
+                    <option>Sailing</option>
+                    <option>Volleyball</option>
+                    <option>Boccia</option>
+                    <option>Gymnastics</option>
+                    <option>Archery</option>
+                    <option>Pickleball</option>
+                    <option>Karting</option>
+                    <option>Rowing</option>
+                    <option>Motocross</option>
+                    <option>Olympics</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Date *</label>
+                  <input type="date" class="form-control" id="f-date" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Start Time</label>
+                  <input type="time" class="form-control" id="f-time" />
+                </div>
+                <div class="full form-group">
+                  <label class="form-label">Location</label>
+                  <input type="text" class="form-control" id="f-location" placeholder="e.g. National Sports Centre, Devonshire" />
+                </div>
+                <div class="full form-group">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-control" id="f-description" rows="4" placeholder="Describe the event…"></textarea>
+                </div>
+              </div>
+              <div class="form-section-title">Image</div>
+              <div class="form-group">
+                <label class="form-label">Event Image</label>
+                <input type="file" class="form-control" id="f-image" accept="image/*" onchange="previewImage(this)" />
+                <img id="img-preview" class="img-preview" alt="Preview" />
+              </div>
+              <div style="display:flex;gap:0.75rem;margin-top:1.5rem">
+                <button type="submit" class="btn btn-primary" id="form-submit-btn">Publish Event</button>
+                <button type="button" class="btn btn-secondary" onclick="navigate('home')">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGIN PAGE -->
+    <div id="page-login" class="page">
+      <div class="login-page">
+        <div class="login-card">
+          <div class="login-logo">⚽</div>
+          <h1 class="login-title">Organisation Login</h1>
+          <p class="login-sub">Enter your organisation's access code to manage events.</p>
+          <div id="login-alert"></div>
+          <form onsubmit="submitLogin(event)">
+            <div class="form-group">
+              <label class="form-label">Access Code</label>
+              <div class="pw-wrap">
+                <input type="password" class="form-control" id="login-code" placeholder="Enter your access code" required autocomplete="current-password" />
+                <button type="button" class="pw-toggle" onclick="togglePw('login-code',this)">👁</button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%" id="login-btn">Sign In</button>
+          </form>
+          <p style="text-align:center;margin-top:1.5rem;font-size:0.8125rem;color:var(--text-muted)">
+            Contact the Department of Sports &amp; Recreation for access.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD PAGE -->
+    <div id="page-dashboard" class="page">
+      <div class="dash-page">
+        <div class="dash-wrap">
+          <div class="dash-header">
+            <h1>Admin Dashboard</h1>
+            <p id="dash-org-name" class="section-sub"></p>
+          </div>
+          <div id="dash-loading" class="loading-wrap">
+            <div class="spinner"></div>
+            <p>Loading dashboard…</p>
+          </div>
+          <div id="dash-content" style="display:none">
+            <div class="stats-grid" id="dash-stats"></div>
+            <div class="dash-section-title">All Events</div>
+            <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="navigate('create-event')">＋ Add Event</button>
+            </div>
+            <div class="dash-table-wrap">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Sport</th>
+                    <th>Date</th>
+                    <th>Organisation</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-events-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="footer-brand">SportCal</div>
+    <p>The official Bermuda sports events calendar · Powered by the Department of Sports &amp; Recreation</p>
+  </footer>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Confirm delete modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal" style="max-width:400px">
+    <h2 class="modal-title">Delete Event?</h2>
+    <p style="color:var(--text-secondary);margin-bottom:1.5rem">This action cannot be undone.</p>
+    <div style="display:flex;gap:0.75rem">
+      <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   SUPABASE CLIENT
+═══════════════════════════════════════════════════════════════════ */
+const SUPABASE_URL     = 'https://kufokhkvgqgomicnsmpz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1Zm9raGt2Z3Fnb21pY25zbXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MzUzODUsImV4cCI6MjA2NjMxMTM4NX0.hN86JSRhxPqSYolXJN5gn1cQ-Ibu21l1cHpLIaRY-hY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ═══════════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════════ */
+let currentOrg   = null;   // { id, name, sport, role:'super_admin'|'admin' }
+let allEvents    = [];
+let calDate      = new Date();
+let calView      = 'month';
+let deleteTarget = null;
+
+/* ═══════════════════════════════════════════════════════════════════
+   SPORT HELPERS
+═══════════════════════════════════════════════════════════════════ */
+const SPORT_CLASSES = {
+  'Football (Soccer)':'sport-football','Cricket':'sport-cricket',
+  'Rugby':'sport-rugby','Basketball':'sport-basketball',
+  'Netball':'sport-netball','Tennis':'sport-tennis',
+  'Swimming':'sport-swimming','Athletics (Track & Field)':'sport-athletics',
+  'Cycling':'sport-cycling','Triathlon':'sport-triathlon',
+  'Squash':'sport-squash','Bowling':'sport-bowling',
+  'Golf':'sport-golf','Hockey':'sport-hockey','Boxing':'sport-boxing',
+  'Sailing':'sport-sailing','Volleyball':'sport-volleyball',
+};
+const SPORT_EMOJI = {
+  'Football (Soccer)':'⚽','Cricket':'🏏','Rugby':'🏉',
+  'Basketball':'🏀','Netball':'🏐','Tennis':'🎾',
+  'Swimming':'🏊','Athletics (Track & Field)':'🏃',
+  'Cycling':'🚴','Triathlon':'🏊','Squash':'🎾',
+  'Bowling':'🎳','Golf':'⛳','Hockey':'🏑','Boxing':'🥊',
+  'Sailing':'⛵','Volleyball':'🏐','Boccia':'🎯',
+  'Gymnastics':'🤸','Archery':'🏹','Pickleball':'🏓',
+  'Karting':'🏎','Rowing':'🚣','Motocross':'🏍','Olympics':'🏅',
+};
+function sportClass(sport) { return SPORT_CLASSES[sport] || 'sport-default'; }
+function sportEmoji(sport) { return SPORT_EMOJI[sport] || '🏆'; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ROUTER
+═══════════════════════════════════════════════════════════════════ */
+const PAGES = ['home','calendar','event-detail','create-event','login','dashboard'];
+
+function navigate(page, params={}) {
+  let hash = '#/' + page;
+  if (params.id) hash += '/' + params.id;
+  window.location.hash = hash;
+}
+
+function handleRoute() {
+  const hash = window.location.hash || '#/';
+  const parts = hash.replace('#/','').split('/');
+  const page  = parts[0] || 'home';
+  const id    = parts[1] || null;
+
+  // Auth guard
+  if ((page === 'dashboard' || page === 'create-event') && !currentOrg) {
+    navigate('login'); return;
+  }
+
+  PAGES.forEach(p => {
+    const el = document.getElementById('page-' + p);
+    if (el) el.classList.toggle('active', p === page);
+  });
+
+  // Update nav active state
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+
+  if (page === 'home')         loadHomePage();
+  if (page === 'calendar')     loadCalendarPage();
+  if (page === 'event-detail') loadDetailPage(id);
+  if (page === 'create-event') loadCreatePage(id);
+  if (page === 'dashboard')    loadDashboard();
+}
+
+window.addEventListener('hashchange', handleRoute);
+window.addEventListener('load', () => { initAuth(); });
+
+/* ═══════════════════════════════════════════════════════════════════
+   AUTH
+═══════════════════════════════════════════════════════════════════ */
+function initAuth() {
+  const saved = localStorage.getItem('sportcal_org');
+  if (saved) {
+    try { currentOrg = JSON.parse(saved); } catch(e) { currentOrg = null; }
+  }
+  renderNavAuth();
+  handleRoute();
+}
+
+async function submitLogin(e) {
+  e.preventDefault();
+  const code = document.getElementById('login-code').value.trim();
+  const btn  = document.getElementById('login-btn');
+  const alert = document.getElementById('login-alert');
+  alert.innerHTML = '';
+  btn.disabled = true; btn.textContent = 'Signing in…';
+
+  const { data, error } = await sb
+    .from('organizations')
+    .select('id,name,sport,access_code')
+    .eq('access_code', code)
+    .eq('is_active', true)
+    .single();
+
+  btn.disabled = false; btn.textContent = 'Sign In';
+
+  if (error || !data) {
+    alert.innerHTML = '<div class="alert alert-error">Invalid access code. Please try again.</div>';
+    return;
+  }
+
+  const role = (data.name === 'Department of Sports & Recreation' || data.name === 'UMIN Design')
+    ? 'super_admin' : 'admin';
+
+  currentOrg = { id: data.id, name: data.name, sport: data.sport, role };
+  localStorage.setItem('sportcal_org', JSON.stringify(currentOrg));
+  renderNavAuth();
+  showToast('Welcome, ' + data.name + '!', 'success');
+  navigate('dashboard');
+}
+
+function logout() {
+  currentOrg = null;
+  localStorage.removeItem('sportcal_org');
+  renderNavAuth();
+  navigate('home');
+  showToast('Signed out successfully.', 'info');
+}
+
+function renderNavAuth() {
+  const desktopArea = document.getElementById('nav-auth-area');
+  const mobileArea  = document.getElementById('mobile-auth-area');
+  const heroBtn     = document.getElementById('hero-add-btn');
+
+  if (currentOrg) {
+    const html = `
+      <button class="nav-link" onclick="navigate('dashboard')">Dashboard</button>
+      <div class="nav-user"><span class="dot"></span>${escHtml(currentOrg.name.split(' ')[0])}</div>
+      <button class="nav-link" onclick="logout()">Sign Out</button>`;
+    desktopArea.innerHTML = html;
+    mobileArea.innerHTML  = html;
+    if (heroBtn) heroBtn.style.display = 'inline-flex';
+  } else {
+    const html = `<button class="nav-btn" onclick="navigate('login')">Organisation Login</button>`;
+    desktopArea.innerHTML = html;
+    mobileArea.innerHTML  = html;
+    if (heroBtn) heroBtn.style.display = 'none';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HOME PAGE
+═══════════════════════════════════════════════════════════════════ */
+async function loadHomePage() {
+  const grid    = document.getElementById('events-grid');
+  const loading = document.getElementById('events-loading');
+  const empty   = document.getElementById('events-empty');
+
+  loading.style.display = 'block';
+  grid.style.display    = 'none';
+  empty.style.display   = 'none';
+
+  const { data, error } = await sb
+    .from('events')
+    .select('*')
+    .eq('is_published', true)
+    .order('date', { ascending: true });
+
+  loading.style.display = 'none';
+
+  if (error) {
+    empty.style.display = 'block';
+    empty.querySelector('h3').textContent = 'Error loading events';
+    return;
+  }
+
+  allEvents = data || [];
+  buildSportChips();
+  filterEvents();
+}
+
+function buildSportChips() {
+  const sports = [...new Set(allEvents.map(e => e.sport).filter(Boolean))].sort();
+  const chips  = document.getElementById('sport-chips');
+  chips.innerHTML = `<button class="chip active" data-sport="" onclick="selectChip(this,'')">All</button>` +
+    sports.map(s => `<button class="chip ${sportClass(s)}" data-sport="${escHtml(s)}" onclick="selectChip(this,'${escHtml(s)}')">${sportEmoji(s)} ${escHtml(s)}</button>`).join('');
+}
+
+function selectChip(el, sport) {
+  document.querySelectorAll('#sport-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  filterEvents();
+}
+
+function filterEvents() {
+  const q     = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const sport = document.querySelector('#sport-chips .chip.active')?.dataset.sport || '';
+  const sort  = document.getElementById('sort-select')?.value || 'date-asc';
+
+  let filtered = allEvents.filter(e => {
+    const matchQ = !q || e.title.toLowerCase().includes(q) ||
+      (e.location||'').toLowerCase().includes(q) ||
+      (e.organization_name||'').toLowerCase().includes(q);
+    const matchS = !sport || e.sport === sport;
+    return matchQ && matchS;
+  });
+
+  if (sort === 'date-asc')  filtered.sort((a,b) => a.date.localeCompare(b.date));
+  if (sort === 'date-desc') filtered.sort((a,b) => b.date.localeCompare(a.date));
+  if (sort === 'title')     filtered.sort((a,b) => a.title.localeCompare(b.title));
+
+  renderEventsGrid(filtered);
+}
+
+function renderEventsGrid(events) {
+  const grid  = document.getElementById('events-grid');
+  const empty = document.getElementById('events-empty');
+
+  if (!events.length) {
+    grid.style.display  = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+
+  grid.style.display  = 'grid';
+  empty.style.display = 'none';
+
+  grid.innerHTML = events.map(e => {
+    const sc    = sportClass(e.sport);
+    const emoji = sportEmoji(e.sport);
+    const date  = formatDate(e.date);
+    const canEdit = currentOrg && (currentOrg.role === 'super_admin' || currentOrg.id === e.organization_id);
+    return `
+    <div class="card event-card ${sc}" onclick="navigate('event-detail',{id:'${e.id}'})">
+      <div class="event-card-img">
+        ${e.image_url
+          ? `<img src="${escHtml(e.image_url)}" alt="${escHtml(e.title)}" loading="lazy" />`
+          : `<div class="event-card-img-placeholder">${emoji}</div>`}
+        <div class="event-card-sport-bar"></div>
+      </div>
+      <div class="event-card-body">
+        <div class="event-card-meta">
+          <span class="event-card-sport">${escHtml(e.sport||'Event')}</span>
+          <span class="event-card-date">${date}</span>
+        </div>
+        <div class="event-card-title">${escHtml(e.title)}</div>
+        ${e.location ? `<div class="event-card-loc">📍 ${escHtml(e.location)}</div>` : ''}
+        <div class="event-card-footer">
+          <span class="event-card-org">${escHtml(e.organization_name||'')}</span>
+          ${canEdit ? `
+          <div class="event-card-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-secondary btn-sm" onclick="navigate('create-event',{id:'${e.id}'})">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${e.id}')">🗑</button>
+          </div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CALENDAR PAGE
+═══════════════════════════════════════════════════════════════════ */
+async function loadCalendarPage() {
+  document.getElementById('cal-loading').style.display = 'block';
+  document.getElementById('cal-content').style.display = 'none';
+
+  const { data } = await sb.from('events').select('*').eq('is_published', true).order('date');
+  allEvents = data || [];
+
+  document.getElementById('cal-loading').style.display = 'none';
+  document.getElementById('cal-content').style.display = 'block';
+  renderCal();
+}
+
+function renderCal() {
+  const label = document.getElementById('cal-month-label');
+  label.textContent = calDate.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+  document.getElementById('cal-btn-month').classList.toggle('active', calView==='month');
+  document.getElementById('cal-btn-list').classList.toggle('active',  calView==='list');
+  if (calView === 'month') renderCalMonth();
+  else renderCalList();
+}
+
+function renderCalMonth() {
+  const year  = calDate.getFullYear();
+  const month = calDate.getMonth();
+  const today = new Date();
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const daysInPrev  = new Date(year, month, 0).getDate();
+
+  // Build event map
+  const evMap = {};
+  allEvents.forEach(e => {
+    const d = e.date.substring(0,7);
+    if (d === `${year}-${String(month+1).padStart(2,'0')}`) {
+      const day = parseInt(e.date.substring(8,10));
+      if (!evMap[day]) evMap[day] = [];
+      evMap[day].push(e);
+    }
+  });
+
+  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html = `<div class="cal-grid-wrap">
+    <div class="cal-dow-row">${DAYS.map(d=>`<div class="cal-dow">${d}</div>`).join('')}</div>
+    <div class="cal-days">`;
+
+  // Prev month filler
+  for (let i = firstDay - 1; i >= 0; i--) {
+    html += `<div class="cal-cell other-month"><div class="cal-day-num">${daysInPrev - i}</div></div>`;
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = today.getFullYear()===year && today.getMonth()===month && today.getDate()===d;
+    const events  = evMap[d] || [];
+    const hasEvs  = events.length > 0;
+    html += `<div class="cal-cell${isToday?' today':''}${hasEvs?' has-events':''}">
+      <div class="cal-day-num">${d}</div>
+      ${events.slice(0,3).map(e => `
+        <div class="cal-event-pill ${sportClass(e.sport)}" onclick="navigate('event-detail',{id:'${e.id}'})" title="${escHtml(e.title)}">
+          ${sportEmoji(e.sport)} ${escHtml(e.title)}
+        </div>`).join('')}
+      ${events.length > 3 ? `<div style="font-size:0.65rem;color:var(--text-muted)">+${events.length-3} more</div>` : ''}
+    </div>`;
+  }
+
+  // Next month filler
+  const total = firstDay + daysInMonth;
+  const remaining = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let d = 1; d <= remaining; d++) {
+    html += `<div class="cal-cell other-month"><div class="cal-day-num">${d}</div></div>`;
+  }
+
+  html += '</div></div>';
+  document.getElementById('cal-content').innerHTML = html;
+}
+
+function renderCalList() {
+  const upcoming = allEvents.filter(e => new Date(e.date) >= new Date(new Date().toDateString()));
+  if (!upcoming.length) {
+    document.getElementById('cal-content').innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>No upcoming events</h3></div>`;
+    return;
+  }
+
+  const grouped = {};
+  upcoming.forEach(e => {
+    const key = e.date.substring(0,7);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(e);
+  });
+
+  let html = '<div class="cal-list">';
+  Object.keys(grouped).sort().forEach(key => {
+    const [y,m] = key.split('-');
+    const label = new Date(+y, +m-1, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    html += `<div class="cal-list-month">${label}</div>`;
+    grouped[key].forEach(e => {
+      const day = parseInt(e.date.substring(8,10));
+      const mon = new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{month:'short'});
+      html += `
+      <div class="cal-list-item ${sportClass(e.sport)}" onclick="navigate('event-detail',{id:'${e.id}'})">
+        <div class="cal-list-date">
+          <div class="day">${day}</div>
+          <div class="month">${mon}</div>
+        </div>
+        <div class="cal-list-info">
+          <div class="cal-list-title">${escHtml(e.title)}</div>
+          <div class="cal-list-meta">
+            ${e.time ? '🕐 '+formatTime(e.time)+' · ' : ''}
+            ${e.location ? '📍 '+escHtml(e.location)+' · ' : ''}
+            ${escHtml(e.organization_name||'')}
+          </div>
+        </div>
+        <div style="font-size:1.5rem">${sportEmoji(e.sport)}</div>
+      </div>`;
+    });
+  });
+  html += '</div>';
+  document.getElementById('cal-content').innerHTML = html;
+}
+
+function setCalView(v) { calView = v; renderCal(); }
+function calPrev()  { calDate = new Date(calDate.getFullYear(), calDate.getMonth()-1, 1); renderCal(); }
+function calNext()  { calDate = new Date(calDate.getFullYear(), calDate.getMonth()+1, 1); renderCal(); }
+function calToday() { calDate = new Date(); renderCal(); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   EVENT DETAIL PAGE
+═══════════════════════════════════════════════════════════════════ */
+async function loadDetailPage(id) {
+  if (!id) { navigate('home'); return; }
+  document.getElementById('detail-loading').style.display = 'block';
+  document.getElementById('detail-content').style.display = 'none';
+
+  const { data: e, error } = await sb.from('events').select('*').eq('id', id).single();
+
+  document.getElementById('detail-loading').style.display = 'none';
+  if (error || !e) { navigate('home'); return; }
+
+  const sc    = sportClass(e.sport);
+  const emoji = sportEmoji(e.sport);
+  const canEdit = currentOrg && (currentOrg.role === 'super_admin' || currentOrg.id === e.organization_id);
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-hero ${sc}">
+      ${e.image_url
+        ? `<img src="${escHtml(e.image_url)}" alt="${escHtml(e.title)}" />`
+        : `<div class="detail-hero-placeholder">${emoji}</div>`}
+      <div class="detail-sport-bar"></div>
+    </div>
+    <div class="detail-card">
+      <div class="detail-sport-badge">${sportEmoji(e.sport)} ${escHtml(e.sport||'Event')}</div>
+      <h1 class="detail-title">${escHtml(e.title)}</h1>
+      <div class="detail-meta-grid">
+        <div class="detail-meta-item">
+          <div class="detail-meta-icon">📅</div>
+          <div><div class="detail-meta-label">Date</div><div class="detail-meta-value">${formatDate(e.date)}</div></div>
+        </div>
+        ${e.time ? `<div class="detail-meta-item">
+          <div class="detail-meta-icon">🕐</div>
+          <div><div class="detail-meta-label">Time</div><div class="detail-meta-value">${formatTime(e.time)}</div></div>
+        </div>` : ''}
+        ${e.location ? `<div class="detail-meta-item">
+          <div class="detail-meta-icon">📍</div>
+          <div><div class="detail-meta-label">Location</div><div class="detail-meta-value">${escHtml(e.location)}</div></div>
+        </div>` : ''}
+        <div class="detail-meta-item">
+          <div class="detail-meta-icon">🏢</div>
+          <div><div class="detail-meta-label">Organisation</div><div class="detail-meta-value">${escHtml(e.organization_name||'')}</div></div>
+        </div>
+      </div>
+      ${e.description ? `<p class="detail-desc">${escHtml(e.description)}</p>` : ''}
+      <div class="detail-actions">
+        ${canEdit ? `
+          <button class="btn btn-secondary" onclick="navigate('create-event',{id:'${e.id}'})">✏️ Edit Event</button>
+          <button class="btn btn-danger" onclick="openDeleteModal('${e.id}')">🗑 Delete</button>
+        ` : ''}
+        <button class="btn btn-secondary" onclick="shareEvent('${escHtml(e.title)}')">🔗 Share</button>
+      </div>
+    </div>`;
+
+  document.getElementById('detail-content').style.display = 'block';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CREATE / EDIT EVENT
+═══════════════════════════════════════════════════════════════════ */
+async function loadCreatePage(id) {
+  const form  = document.getElementById('event-form');
+  const title = document.getElementById('form-page-title');
+  const btn   = document.getElementById('form-submit-btn');
+  const alert = document.getElementById('form-alert');
+
+  form.reset();
+  document.getElementById('edit-event-id').value = '';
+  document.getElementById('img-preview').classList.remove('show');
+  alert.innerHTML = '';
+
+  if (id) {
+    title.textContent = 'Edit Event';
+    btn.textContent   = 'Save Changes';
+    const { data: e } = await sb.from('events').select('*').eq('id', id).single();
+    if (e) {
+      document.getElementById('edit-event-id').value = e.id;
+      document.getElementById('f-title').value       = e.title || '';
+      document.getElementById('f-sport').value       = e.sport || '';
+      document.getElementById('f-date').value        = e.date  || '';
+      document.getElementById('f-time').value        = e.time  ? e.time.substring(0,5) : '';
+      document.getElementById('f-location').value    = e.location    || '';
+      document.getElementById('f-description').value = e.description || '';
+      if (e.image_url) {
+        const prev = document.getElementById('img-preview');
+        prev.src = e.image_url; prev.classList.add('show');
+      }
+    }
+  } else {
+    title.textContent = 'Add New Event';
+    btn.textContent   = 'Publish Event';
+  }
+}
+
+async function submitEventForm(e) {
+  e.preventDefault();
+  const alert = document.getElementById('form-alert');
+  const btn   = document.getElementById('form-submit-btn');
+  alert.innerHTML = '';
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const editId = document.getElementById('edit-event-id').value;
+  const imageFile = document.getElementById('f-image').files[0];
+  let imageUrl = null;
+
+  // Upload image if provided
+  if (imageFile) {
+    try {
+      const ext      = imageFile.name.split('.').pop();
+      const filePath = `events/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await sb.storage.from('event-images').upload(filePath, imageFile, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = sb.storage.from('event-images').getPublicUrl(filePath);
+      imageUrl = urlData.publicUrl;
+    } catch(err) {
+      alert.innerHTML = `<div class="alert alert-error">Image upload failed: ${escHtml(err.message)}</div>`;
+      btn.disabled = false; btn.textContent = editId ? 'Save Changes' : 'Publish Event';
+      return;
+    }
+  }
+
+  const payload = {
+    title:             document.getElementById('f-title').value.trim(),
+    sport:             document.getElementById('f-sport').value,
+    date:              document.getElementById('f-date').value,
+    time:              document.getElementById('f-time').value || null,
+    location:          document.getElementById('f-location').value.trim() || null,
+    description:       document.getElementById('f-description').value.trim() || null,
+    organization_id:   currentOrg.id,
+    organization_name: currentOrg.name,
+    is_published:      true,
+  };
+  if (imageUrl) payload.image_url = imageUrl;
+
+  let error;
+  if (editId) {
+    ({ error } = await sb.from('events').update(payload).eq('id', editId));
+  } else {
+    ({ error } = await sb.from('events').insert(payload));
+  }
+
+  btn.disabled = false; btn.textContent = editId ? 'Save Changes' : 'Publish Event';
+
+  if (error) {
+    alert.innerHTML = `<div class="alert alert-error">Error: ${escHtml(error.message)}</div>`;
+    return;
+  }
+
+  showToast(editId ? 'Event updated!' : 'Event published!', 'success');
+  navigate('home');
+}
+
+function previewImage(input) {
+  const prev = document.getElementById('img-preview');
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = ev => { prev.src = ev.target.result; prev.classList.add('show'); };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════════════════════════ */
+async function loadDashboard() {
+  document.getElementById('dash-loading').style.display = 'block';
+  document.getElementById('dash-content').style.display = 'none';
+  document.getElementById('dash-org-name').textContent  = currentOrg ? currentOrg.name : '';
+
+  const query = currentOrg.role === 'super_admin'
+    ? sb.from('events').select('*').order('date', { ascending: false })
+    : sb.from('events').select('*').eq('organization_id', currentOrg.id).order('date', { ascending: false });
+
+  const { data: events } = await query;
+  const evs = events || [];
+
+  document.getElementById('dash-loading').style.display = 'none';
+  document.getElementById('dash-content').style.display = 'block';
+
+  // Stats
+  const upcoming = evs.filter(e => new Date(e.date) >= new Date(new Date().toDateString())).length;
+  const sports   = [...new Set(evs.map(e=>e.sport).filter(Boolean))].length;
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Events</div>
+      <div class="stat-value grad-text">${evs.length}</div>
+      <div class="stat-sub">All time</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Upcoming</div>
+      <div class="stat-value" style="color:var(--success)">${upcoming}</div>
+      <div class="stat-sub">From today</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Sports</div>
+      <div class="stat-value" style="color:var(--brand-pink)">${sports}</div>
+      <div class="stat-sub">Disciplines</div>
+    </div>`;
+
+  // Table
+  const tbody = document.getElementById('dash-events-body');
+  if (!evs.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">No events yet. <a href="#/create-event" style="color:var(--brand-pink)">Add one →</a></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = evs.map(e => {
+    const canEdit = currentOrg.role === 'super_admin' || currentOrg.id === e.organization_id;
+    return `<tr>
+      <td><strong>${escHtml(e.title)}</strong></td>
+      <td><span class="badge ${sportClass(e.sport)}" style="background:rgba(255,255,255,0.08);color:var(--sc,var(--brand-pink))">${escHtml(e.sport||'—')}</span></td>
+      <td>${formatDate(e.date)}</td>
+      <td style="color:var(--text-muted);font-size:0.8125rem">${escHtml(e.organization_name||'—')}</td>
+      <td>
+        <div class="dash-actions">
+          ${canEdit ? `
+          <button class="btn btn-secondary btn-sm" onclick="navigate('create-event',{id:'${e.id}'})">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${e.id}')">🗑</button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DELETE
+═══════════════════════════════════════════════════════════════════ */
+function openDeleteModal(id) {
+  deleteTarget = id;
+  document.getElementById('delete-modal').classList.add('open');
+  document.getElementById('confirm-delete-btn').onclick = confirmDelete;
+}
+function closeDeleteModal() {
+  deleteTarget = null;
+  document.getElementById('delete-modal').classList.remove('open');
+}
+async function confirmDelete() {
+  if (!deleteTarget) return;
+  const { error } = await sb.from('events').delete().eq('id', deleteTarget);
+  closeDeleteModal();
+  if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  showToast('Event deleted.', 'success');
+  allEvents = allEvents.filter(e => e.id !== deleteTarget);
+  deleteTarget = null;
+  // Refresh current page
+  const page = (window.location.hash||'#/').replace('#/','').split('/')[0] || 'home';
+  if (page === 'home') filterEvents();
+  else if (page === 'dashboard') loadDashboard();
+  else navigate('home');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════════════════════ */
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+}
+
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [h,m] = timeStr.split(':');
+  const hour = parseInt(h);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const h12  = hour % 12 || 12;
+  return `${h12}:${m} ${ampm}`;
+}
+
+function togglePw(id, btn) {
+  const input = document.getElementById(id);
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+  else { input.type = 'password'; btn.textContent = '👁'; }
+}
+
+function toggleMobileMenu() {
+  document.getElementById('mobile-menu').classList.toggle('open');
+}
+function closeMobileMenu() {
+  document.getElementById('mobile-menu').classList.remove('open');
+}
+
+function shareEvent(title) {
+  if (navigator.share) {
+    navigator.share({ title, url: window.location.href });
+  } else {
+    navigator.clipboard.writeText(window.location.href);
+    showToast('Link copied to clipboard!', 'info');
+  }
+}
+
+function showToast(msg, type='info') {
+  const container = document.getElementById('toast-container');
+  const toast     = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+// Close modal on overlay click
+document.getElementById('delete-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeDeleteModal();
+});
+</script>
+</body>
+</html>
