@@ -705,6 +705,7 @@
     .badge-blue { background: rgba(30,55,153,.1); color: var(--blue); }
     .badge-pink { background: rgba(232,67,147,.1); color: var(--pink); }
     .badge-green { background: rgba(16,185,129,.1); color: var(--success); }
+    .badge-orange { background: rgba(245,158,11,.12); color: #b45309; }
 
     /* ═══════════════════════════════════════════════════════════════
        SHARED UTILITIES
@@ -1089,7 +1090,7 @@
               <table class="dash-table" id="dash-events-table">
                 <thead>
                   <tr>
-                    <th>Event</th><th>Sport</th><th>Date</th><th>Location</th><th>Actions</th>
+                    <th>Event</th><th>Sport</th><th>Date</th><th>Location</th><th>Status</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="dash-events-body"></tbody>
@@ -1286,9 +1287,14 @@ async function loadEvents() {
   document.getElementById('events-loading').style.display = 'flex';
   document.getElementById('events-grid').innerHTML = '';
   document.getElementById('events-empty').style.display = 'none';
-  const { data, error } = await sb.from('events').select('*').order('date', { ascending: true });
-  if (error) { showToast('Error loading events: ' + error.message, 'error'); document.getElementById('events-loading').style.display='none'; return; }
-  allEvents = data || [];
+  const { data, error } = await sb.from('events').select('*').eq('archived', false).order('date', { ascending: true });
+  if (error) {
+    // Fallback: archived column may not exist yet, load all and filter client-side
+    const { data: fallback } = await sb.from('events').select('*').order('date', { ascending: true });
+    allEvents = (fallback || []).filter(e => !e.archived);
+  } else {
+    allEvents = data || [];
+  }
   buildSportChips();
   filterEvents();
   document.getElementById('events-loading').style.display = 'none';
@@ -1494,7 +1500,7 @@ async function renderCalendar() {
   document.getElementById('cal-loading').style.display = 'flex';
   document.getElementById('cal-content').innerHTML = '';
   const { data } = await sb.from('events').select('*').order('date', { ascending: true });
-  const events = data || [];
+  const events = (data || []).filter(e => !e.archived);
   document.getElementById('cal-loading').style.display = 'none';
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('cal-title').textContent = months[calDate.getMonth()] + ' ' + calDate.getFullYear();
@@ -1587,30 +1593,36 @@ async function loadDashboard() {
   const { data: events } = await query;
   const evs = events || [];
   const now = new Date();
-  const upcoming = evs.filter(e => e.date && new Date(e.date) >= now).length;
-  const past     = evs.filter(e => e.date && new Date(e.date) < now).length;
-  const sports   = [...new Set(evs.map(e=>e.sport).filter(Boolean))].length;
+  const active   = evs.filter(e => !e.archived);
+  const archived = evs.filter(e => e.archived);
+  const upcoming = active.filter(e => e.date && new Date(e.date) >= now).length;
+  const past     = active.filter(e => e.date && new Date(e.date) < now).length;
+  const sports   = [...new Set(active.map(e=>e.sport).filter(Boolean))].length;
   document.getElementById('stats-grid').innerHTML = [
-    { label:'Total Events',    value: evs.length,  sub:'all time' },
-    { label:'Upcoming Events', value: upcoming,     sub:'scheduled' },
-    { label:'Past Events',     value: past,         sub:'completed' },
-    { label:'Sports Covered',  value: sports,       sub:'disciplines' }
+    { label:'Active Events',   value: active.length,    sub:'published' },
+    { label:'Upcoming Events', value: upcoming,         sub:'scheduled' },
+    { label:'Archived Events', value: archived.length,  sub:'2025 & prior' },
+    { label:'Sports Covered',  value: sports,           sub:'disciplines' }
   ].map(s => `<div class="stat-card">
     <div class="stat-card-label">${s.label}</div>
     <div class="stat-card-value">${s.value}</div>
     <div class="stat-card-sub">${s.sub}</div>
   </div>`).join('');
   const tbody = document.getElementById('dash-events-body');
-  tbody.innerHTML = evs.length ? evs.map(e => `<tr>
+  tbody.innerHTML = evs.length ? evs.map(e => `<tr style="${e.archived ? 'opacity:0.65' : ''}">
     <td style="font-weight:600;color:var(--gray-900)">${escHtml(e.title)}</td>
     <td><span class="badge badge-blue">${escHtml(e.sport||'')}</span></td>
     <td>${formatDate(e.date)}</td>
     <td style="color:var(--gray-500)">${escHtml(e.location||'—')}</td>
+    <td>${e.archived ? '<span class="badge badge-orange">Archived</span>' : '<span class="badge badge-green">Active</span>'}</td>
     <td><div class="dash-actions">
-      <button class="btn btn-sm btn-ghost" onclick="navigate('create-event',{id:'${e.id}'})">Edit</button>
+      ${e.archived
+        ? `<button class="btn btn-sm btn-ghost" onclick="unarchiveEvent('${e.id}')">Unarchive</button>`
+        : `<button class="btn btn-sm btn-ghost" onclick="navigate('create-event',{id:'${e.id}'})">Edit</button>`
+      }
       <button class="btn btn-sm btn-danger" onclick="openDeleteModal('${e.id}','${escHtml(e.title)}')">Delete</button>
     </div></td>
-  </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:2rem">No events found.</td></tr>';
+  </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:2rem">No events found.</td></tr>';
   document.getElementById('dash-loading').style.display = 'none';
   document.getElementById('dash-content').style.display = 'block';
 }
@@ -1637,6 +1649,12 @@ async function confirmDelete() {
   const hash = window.location.hash || '#/';
   if (hash.includes('dashboard')) loadDashboard();
   else filterEvents();
+}
+async function unarchiveEvent(id) {
+  const { error } = await sb.from('events').update({ archived: false }).eq('id', id);
+  if (error) { showToast('Error unarchiving event: ' + error.message, 'error'); return; }
+  showToast('Event unarchived and made active.', 'success');
+  loadDashboard();
 }
 
 /* ═══════════════════════════════════════════════════════════════════
