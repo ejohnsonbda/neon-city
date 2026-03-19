@@ -812,11 +812,11 @@
           <source src="https://video.wixstatic.com/video/e14749_122835b6f8854ee9a6911ac79b270989/1080p/mp4/file.mp4" type="video/mp4">
         </video>
         <div class="hero-content">
-          <div class="hero-eyebrow">🇧🇲 Bermuda Sports Events</div>
+          <div class="hero-eyebrow">Bermuda Sports Events</div>
           <h1>Your <span class="grad-text">Sports Calendar</span><br/>for Bermuda</h1>
           <p>Discover upcoming games, tournaments, and sporting events across all disciplines on the island.</p>
           <div class="hero-actions">
-            <button class="btn btn-primary btn-lg" onclick="navigate('calendar')">📅 View Calendar</button>
+            <button class="btn btn-primary btn-lg" onclick="navigate('calendar')">View Calendar</button>
             <button class="btn btn-secondary btn-lg" id="hero-add-btn" style="display:none" onclick="navigate('create-event')">＋ Add Event</button>
           </div>
         </div>
@@ -825,7 +825,7 @@
       <div class="filters-bar">
         <div class="filters-inner">
           <div class="search-wrap">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
             <input type="text" class="search-input" id="search-input" placeholder="Search events…" oninput="filterEvents()" />
           </div>
           <div class="chips" id="sport-chips"></div>
@@ -844,7 +844,6 @@
         </div>
         <div class="events-grid" id="events-grid" style="display:none"></div>
         <div id="events-empty" class="empty-state" style="display:none">
-          <div class="empty-icon">📭</div>
           <h3>No events found</h3>
           <p>Try adjusting your search or filters.</p>
         </div>
@@ -984,7 +983,7 @@
     <div id="page-login" class="page">
       <div class="login-page">
         <div class="login-card">
-          <div class="login-logo">⚽</div>
+          <div class="login-logo"></div>
           <h1 class="login-title">Organisation Login</h1>
           <p class="login-sub">Enter your organisation's access code to manage events.</p>
           <div id="login-alert"></div>
@@ -993,7 +992,7 @@
               <label class="form-label">Access Code</label>
               <div class="pw-wrap">
                 <input type="password" class="form-control" id="login-code" placeholder="Enter your access code" required autocomplete="current-password" />
-                <button type="button" class="pw-toggle" onclick="togglePw('login-code',this)">👁</button>
+                <button type="button" class="pw-toggle" onclick="togglePw('login-code',this)">Show</button>
               </div>
             </div>
             <button type="submit" class="btn btn-primary" style="width:100%" id="login-btn">Sign In</button>
@@ -1095,19 +1094,14 @@ const SPORT_CLASSES = {
   'Squash':'sport-squash','Bowling':'sport-bowling',
   'Golf':'sport-golf','Hockey':'sport-hockey','Boxing':'sport-boxing',
   'Sailing':'sport-sailing','Volleyball':'sport-volleyball',
+  'default':'sport-default'
 };
-const SPORT_EMOJI = {
-  'Football (Soccer)':'⚽','Cricket':'🏏','Rugby':'🏉',
-  'Basketball':'🏀','Netball':'🏐','Tennis':'🎾',
-  'Swimming':'🏊','Athletics (Track & Field)':'🏃',
-  'Cycling':'🚴','Triathlon':'🏊','Squash':'🎾',
-  'Bowling':'🎳','Golf':'⛳','Hockey':'🏑','Boxing':'🥊',
-  'Sailing':'⛵','Volleyball':'🏐','Boccia':'🎯',
-  'Gymnastics':'🤸','Archery':'🏹','Pickleball':'🏓',
-  'Karting':'🏎','Rowing':'🚣','Motocross':'🏍','Olympics':'🏅',
-};
-function sportClass(sport) { return SPORT_CLASSES[sport] || 'sport-default'; }
-function sportEmoji(sport) { return SPORT_EMOJI[sport] || '🏆'; }
+function sportClass(sport) {
+  if (!sport) return 'sport-default';
+  const key = sport.toLowerCase().replace(/[^a-z]/g,'');
+  return SPORT_CLASS[key] || 'sport-default';
+}
+function sportEmoji(sport) { return ''; }
 
 /* ═══════════════════════════════════════════════════════════════════
    ROUTER
@@ -1257,7 +1251,7 @@ function buildSportChips() {
   const sports = [...new Set(allEvents.map(e => e.sport).filter(Boolean))].sort();
   const chips  = document.getElementById('sport-chips');
   chips.innerHTML = `<button class="chip active" data-sport="" onclick="selectChip(this,'')">All</button>` +
-    sports.map(s => `<button class="chip ${sportClass(s)}" data-sport="${escHtml(s)}" onclick="selectChip(this,'${escHtml(s)}')">${sportEmoji(s)} ${escHtml(s)}</button>`).join('');
+    sports.map(s => `<button class="chip ${sportClass(s)}" data-sport="${escHtml(s)}" onclick="selectChip(this,'${escHtml(s)}')">${escHtml(s)}</button>`).join('');
 }
 
 function selectChip(el, sport) {
@@ -1309,7 +1303,7 @@ function renderEventsGrid(events) {
       <div class="event-card-img">
         ${e.image_url
           ? `<img src="${escHtml(e.image_url)}" alt="${escHtml(e.title)}" loading="lazy" />`
-          : `<div class="event-card-img-placeholder">${emoji}</div>`}
+          : `<div class="event-card-img-placeholder"></div>`}
         <div class="event-card-sport-bar"></div>
       </div>
       <div class="event-card-body">
@@ -1318,13 +1312,13 @@ function renderEventsGrid(events) {
           <span class="event-card-date">${date}</span>
         </div>
         <div class="event-card-title">${escHtml(e.title)}</div>
-        ${e.location ? `<div class="event-card-loc">📍 ${escHtml(e.location)}</div>` : ''}
+        ${e.location ? `<div class="event-card-loc">${escHtml(e.location)}</div>` : ''}
         <div class="event-card-footer">
           <span class="event-card-org">${escHtml(e.organization_name||'')}</span>
           ${canEdit ? `
           <div class="event-card-actions" onclick="event.stopPropagation()">
-            <button class="btn btn-secondary btn-sm" onclick="navigate('create-event',{id:'${e.id}'})">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${e.id}')">🗑</button>
+            <button class="btn btn-secondary btn-sm" onclick="navigate('create-event',{id:'${e.id}'})">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${e.id}')">Delete</button>
           </div>` : ''}
         </div>
       </div>
@@ -1395,7 +1389,7 @@ function renderCalMonth() {
       <div class="cal-day-num">${d}</div>
       ${events.slice(0,3).map(e => `
         <div class="cal-event-pill ${sportClass(e.sport)}" onclick="navigate('event-detail',{id:'${e.id}'})" title="${escHtml(e.title)}">
-          ${sportEmoji(e.sport)} ${escHtml(e.title)}
+          ${escHtml(e.title)}
         </div>`).join('')}
       ${events.length > 3 ? `<div style="font-size:0.65rem;color:var(--text-muted)">+${events.length-3} more</div>` : ''}
     </div>`;
@@ -1415,7 +1409,7 @@ function renderCalMonth() {
 function renderCalList() {
   const upcoming = allEvents.filter(e => new Date(e.date) >= new Date(new Date().toDateString()));
   if (!upcoming.length) {
-    document.getElementById('cal-content').innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>No upcoming events</h3></div>`;
+    document.getElementById('cal-content').innerHTML = `<div class="empty-state"><h3>No upcoming events</h3></div>`;
     return;
   }
 
@@ -1443,12 +1437,12 @@ function renderCalList() {
         <div class="cal-list-info">
           <div class="cal-list-title">${escHtml(e.title)}</div>
           <div class="cal-list-meta">
-            ${e.time ? '🕐 '+formatTime(e.time)+' · ' : ''}
-            ${e.location ? '📍 '+escHtml(e.location)+' · ' : ''}
+            ${e.time ? formatTime(e.time)+' · ' : ''}
+            ${e.location ? escHtml(e.location)+' · ' : ''}
             ${escHtml(e.organization_name||'')}
           </div>
         </div>
-        <div style="font-size:1.5rem">${sportEmoji(e.sport)}</div>
+
       </div>`;
     });
   });
@@ -1482,37 +1476,37 @@ async function loadDetailPage(id) {
     <div class="detail-hero ${sc}">
       ${e.image_url
         ? `<img src="${escHtml(e.image_url)}" alt="${escHtml(e.title)}" />`
-        : `<div class="detail-hero-placeholder">${emoji}</div>`}
+        : `<div class="detail-hero-placeholder"></div>`}
       <div class="detail-sport-bar"></div>
     </div>
     <div class="detail-card">
-      <div class="detail-sport-badge">${sportEmoji(e.sport)} ${escHtml(e.sport||'Event')}</div>
+      <div class="detail-sport-badge">${escHtml(e.sport||'Event')}</div>
       <h1 class="detail-title">${escHtml(e.title)}</h1>
       <div class="detail-meta-grid">
         <div class="detail-meta-item">
-          <div class="detail-meta-icon">📅</div>
+          <div class="detail-meta-icon"></div>
           <div><div class="detail-meta-label">Date</div><div class="detail-meta-value">${formatDate(e.date)}</div></div>
         </div>
         ${e.time ? `<div class="detail-meta-item">
-          <div class="detail-meta-icon">🕐</div>
+          <div class="detail-meta-icon"></div>
           <div><div class="detail-meta-label">Time</div><div class="detail-meta-value">${formatTime(e.time)}</div></div>
         </div>` : ''}
         ${e.location ? `<div class="detail-meta-item">
-          <div class="detail-meta-icon">📍</div>
+          <div class="detail-meta-icon"></div>
           <div><div class="detail-meta-label">Location</div><div class="detail-meta-value">${escHtml(e.location)}</div></div>
         </div>` : ''}
         <div class="detail-meta-item">
-          <div class="detail-meta-icon">🏢</div>
+          <div class="detail-meta-icon"></div>
           <div><div class="detail-meta-label">Organisation</div><div class="detail-meta-value">${escHtml(e.organization_name||'')}</div></div>
         </div>
       </div>
       ${e.description ? `<p class="detail-desc">${escHtml(e.description)}</p>` : ''}
       <div class="detail-actions">
         ${canEdit ? `
-          <button class="btn btn-secondary" onclick="navigate('create-event',{id:'${e.id}'})">✏️ Edit Event</button>
-          <button class="btn btn-danger" onclick="openDeleteModal('${e.id}')">🗑 Delete</button>
+          <button class="btn btn-secondary" onclick="navigate('create-event',{id:'${e.id}'})">Edit Event</button>
+          <button class="btn btn-danger" onclick="openDeleteModal('${e.id}')">Delete Event</button>
         ` : ''}
-        <button class="btn btn-secondary" onclick="shareEvent('${escHtml(e.title)}')">🔗 Share</button>
+        <button class="btn btn-secondary" onclick="shareEvent('${escHtml(e.title)}')">Share</button>
       </div>
     </div>`;
 
@@ -1677,8 +1671,8 @@ async function loadDashboard() {
       <td>
         <div class="dash-actions">
           ${canEdit ? `
-          <button class="btn btn-secondary btn-sm" onclick="navigate('create-event',{id:'${e.id}'})">✏️ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${e.id}')">🗑</button>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="navigate('create-event',{id:'${e.id}'})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${e.id}')">Delete</button>` : ''}
         </div>
       </td>
     </tr>`;
@@ -1746,8 +1740,8 @@ function formatTime(timeStr) {
 
 function togglePw(id, btn) {
   const input = document.getElementById(id);
-  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
-  else { input.type = 'password'; btn.textContent = '👁'; }
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = 'Hide'; }
+  else { input.type = 'password'; btn.textContent = 'Show'; }
 }
 
 function toggleMobileMenu() {
