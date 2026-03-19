@@ -1,0 +1,75 @@
+// SportCal Prisma Schema
+// Database: SQLite (development) / PostgreSQL (production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  accessCode  String   @unique
+  email       String
+  sport       String?
+  logoUrl     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  events      Event[]
+  users       User[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  organizationId String
+  role           String   @default("user") // user | admin | super_admin
+  lastLogin      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("users")
+}
+
+model Event {
+  id               String   @id @default(uuid())
+  title            String
+  description      String?
+  date             String   // ISO date string YYYY-MM-DD
+  time             String?
+  location         String?
+  organizationId   String
+  organizationName String
+  imageUrl         String?
+  sport            String?
+  isPublished      Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization     Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("events")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String   // CREATE | UPDATE | DELETE | LOGIN
+  entityType String   // event | organization | user
+  entityId   String?
+  actorId    String?
+  actorOrg   String?
+  details    String?  // JSON string
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
+}
