@@ -1320,28 +1320,36 @@ async function doLogin() {
   const code = document.getElementById('login-code').value.trim();
   if (!code) { showAlert('login-alert','Please enter an access code.','error'); return; }
   showAlert('login-alert','Verifying…','info');
-  // Check super_admin codes first
-  const superCodes = { 'safehands':'Department of Sports & Recreation', 'juren':'UMIN Design' };
-  if (superCodes[code]) {
-    // Look up the real org ID from the database
-    const orgName = superCodes[code];
-    const { data: orgData } = await sb.from('organizations').select('id,name').eq('name', orgName).maybeSingle();
-    const orgId = orgData ? orgData.id : null;
-    currentOrg = { id: orgId, name: orgName, sport: null, role: 'super_admin' };
+  try {
+    // Call the secure Edge Function — access codes are never sent to the DB directly
+    const resp = await fetch(
+      SUPABASE_URL + '/functions/v1/verify-access-code',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ access_code: code })
+      }
+    );
+    if (!resp.ok) {
+      showAlert('login-alert','Invalid access code. Please try again.','error');
+      return;
+    }
+    const data = await resp.json();
+    if (!data || !data.id) {
+      showAlert('login-alert','Invalid access code. Please try again.','error');
+      return;
+    }
+    // Determine role: super_admin orgs get elevated access
+    const superAdminOrgs = ['Department of Sports & Recreation', 'UMIN Design'];
+    const role = superAdminOrgs.includes(data.name) ? 'super_admin' : 'admin';
+    currentOrg = { id: data.id, name: data.name, sport: data.sport, role: role };
     localStorage.setItem('sportcal_org', JSON.stringify(currentOrg));
     updateNavAuth();
     showToast('Welcome, ' + currentOrg.name, 'success');
     navigate('dashboard');
-    return;
+  } catch (err) {
+    showAlert('login-alert','Login failed. Please try again.','error');
   }
-  // Check org codes in Supabase
-  const { data, error } = await sb.from('organizations').select('*').eq('access_code', code).single();
-  if (error || !data) { showAlert('login-alert','Invalid access code. Please try again.','error'); return; }
-  currentOrg = { id: data.id, name: data.name, sport: data.sport, role: 'admin' };
-  localStorage.setItem('sportcal_org', JSON.stringify(currentOrg));
-  updateNavAuth();
-  showToast('Welcome, ' + currentOrg.name, 'success');
-  navigate('dashboard');
 }
 function logout() {
   currentOrg = null;
