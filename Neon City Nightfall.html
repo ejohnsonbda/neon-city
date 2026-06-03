@@ -180,6 +180,30 @@
   .controls-hint{margin-top:30px;font:600 12px 'Rajdhani';letter-spacing:.1em;color:rgba(255,255,255,.4);text-align:center;line-height:1.9;}
   .controls-hint b{color:var(--cyan);font-weight:700;}
 
+  /* ---------- Menu tabs ---------- */
+  .menu-tabs{display:flex;gap:0;margin:16px 0 4px;border-bottom:1px solid rgba(255,255,255,.12);align-self:stretch;}
+  .menu-tab{font:700 13px 'Orbitron';letter-spacing:.2em;padding:11px 32px;cursor:pointer;pointer-events:auto;
+    color:rgba(255,255,255,.35);border-bottom:2px solid transparent;transition:.15s;}
+  .menu-tab.active{color:var(--cyan);border-bottom-color:var(--cyan);}
+  .tab-panel{display:none;flex-direction:column;align-items:center;width:100%;}
+  .tab-panel.active{display:flex;}
+
+  /* ---------- Armory weapon cards ---------- */
+  #armory-grid,#armory-japan{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;}
+  .wep-card{width:196px;padding:16px 14px;background:rgba(10,14,26,.85);border:1px solid rgba(255,255,255,.12);
+    clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
+    font-family:'Rajdhani';cursor:pointer;pointer-events:auto;transition:.18s;}
+  .wep-card:hover{transform:translateY(-2px);}
+  .wep-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .wep-name{font:900 15px 'Orbitron';}
+  .wep-type{font:700 9px 'Rajdhani';letter-spacing:.25em;padding:3px 6px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.45);margin-top:2px;}
+  .wep-bar-row{display:flex;justify-content:space-between;font:700 10px 'Rajdhani';letter-spacing:.1em;color:rgba(255,255,255,.4);margin-top:6px;}
+  .wep-bar-track{height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:3px;}
+  .wep-bar-fill{height:100%;border-radius:2px;}
+  .wep-ammo{font:700 11px 'Rajdhani';letter-spacing:.1em;color:rgba(255,255,255,.45);margin-top:9px;}
+  .wep-badge{font:700 9px 'Rajdhani';letter-spacing:.18em;padding:3px 7px;margin-top:8px;display:inline-block;}
+  .japan-note{font:700 10px 'Rajdhani';letter-spacing:.25em;color:rgba(255,255,255,.25);margin-bottom:20px;text-align:center;}
+
   /* Pause / settings */
   .panel{width:380px;background:rgba(10,14,26,.95);border:1px solid rgba(25,240,255,.25);padding:26px;
     clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);margin-bottom:24px;}
@@ -277,10 +301,27 @@
   <div class="title-kicker">Urban Survival · Nightfall Protocol</div>
   <h1 class="title-main">NEON CITY</h1>
   <div class="title-sub">NIGHTFALL</div>
-  <div class="pick-label">SELECT THEATRE</div>
-  <div id="level-select"></div>
-  <div class="pick-label">SELECT OPERATIVE</div>
-  <div id="char-select"></div>
+
+  <div class="menu-tabs">
+    <div class="menu-tab active" id="tab-btn-theatre" onclick="switchMenuTab('theatre')">◉ THEATRE</div>
+    <div class="menu-tab" id="tab-btn-armory" onclick="switchMenuTab('armory')">⬡ ARMORY</div>
+  </div>
+
+  <div id="tab-theatre" class="tab-panel active">
+    <div class="pick-label">SELECT THEATRE</div>
+    <div id="level-select"></div>
+    <div class="pick-label">SELECT OPERATIVE</div>
+    <div id="char-select"></div>
+  </div>
+
+  <div id="tab-armory" class="tab-panel">
+    <div class="pick-label" style="margin-top:12px">SELECT STARTING WEAPON</div>
+    <div id="armory-grid"></div>
+    <div class="pick-label" style="opacity:.4">FEUDAL JAPAN EXCLUSIVE</div>
+    <div id="armory-japan" style="opacity:.38;pointer-events:none;"></div>
+    <div class="japan-note">UNLOCKED AUTOMATICALLY ON FEUDAL JAPAN</div>
+  </div>
+
   <div class="menu-actions">
     <button class="btn-deploy" onclick="game.start()">DEPLOY</button>
     <a class="btn-ghost" href="Golem Bestiary.html">▦ BESTIARY</a>
@@ -338,6 +379,14 @@
     .hp-block{min-width:180px;}}
 </style>
 
+<script>
+function switchMenuTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  document.getElementById('tab-btn-' + id).classList.add('active');
+}
+</script>
 <script src="js/textures.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/enemies.js"></script>

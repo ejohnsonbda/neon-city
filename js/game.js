@@ -1521,6 +1521,50 @@ class Game {
     });
     document.querySelector('#char-select .char-card[data-id="soldier"]').classList.add('sel');
     this.selectChar('soldier');
+
+    // ---- Armory ----
+    this.startWeaponIdx = 0;
+    const wepDefs = [
+      { name:'PISTOL',  type:'SEMI', dmg:38,  rateMs:230,  ammo:'∞',   trait:'RELIABLE',       col:'#19f0ff', idx:0 },
+      { name:'SMG',     type:'AUTO', dmg:13,  rateMs:62,   ammo:'480', trait:'RAPID FIRE',     col:'#ffd166', idx:1 },
+      { name:'SHOTGUN', type:'SEMI', dmg:99,  rateMs:700,  ammo:'96',  trait:'×9 PELLETS',     col:'#ff2d95', idx:2 },
+      { name:'RAILGUN', type:'SEMI', dmg:135, rateMs:1050, ammo:'48',  trait:'PIERCE · SCOPE', col:'#39ff14', idx:3 },
+      { name:'PLASMA',  type:'SEMI', dmg:95,  rateMs:760,  ammo:'60',  trait:'SPLASH DAMAGE',  col:'#9b5cff', idx:4 },
+      { name:'PULSE',   type:'AUTO', dmg:8,   rateMs:40,   ammo:'700', trait:'HIGH CAPACITY',  col:'#ff7a18', idx:5 },
+    ];
+    const japanDefs = [
+      { name:'KATANA',   type:'MELEE',  dmg:90,  rateMs:360, ammo:'∞',   trait:'SILENT KILL',  col:'#cfe8ff' },
+      { name:'SHURIKEN', type:'THROWN', dmg:34,  rateMs:240, ammo:'180', trait:'FAST THROW',   col:'#c8d2dc' },
+      { name:'BOW',      type:'RANGED', dmg:120, rateMs:720, ammo:'80',  trait:'HIGH DAMAGE',  col:'#9a6b3a' },
+    ];
+    const buildWepCard = (w, container, selectable) => {
+      const rateBar = Math.round((1 - w.rateMs / 1050) * 100);
+      const dmgBar  = Math.round((w.dmg / 135) * 100);
+      const card = document.createElement('div');
+      card.className = 'wep-card' + (selectable && w.idx === 0 ? ' sel' : '');
+      if (selectable && w.idx === 0) card.style.borderColor = w.col;
+      card.innerHTML =
+        `<div class="wep-top"><div class="wep-name" style="color:${w.col}">${w.name}</div><div class="wep-type">${w.type}</div></div>` +
+        `<div class="wep-bar-row"><span>DMG</span><span>${w.dmg}</span></div>` +
+        `<div class="wep-bar-track"><div class="wep-bar-fill" style="width:${dmgBar}%;background:${w.col}"></div></div>` +
+        `<div class="wep-bar-row"><span>RATE</span><span>${rateBar}%</span></div>` +
+        `<div class="wep-bar-track"><div class="wep-bar-fill" style="width:${rateBar}%;background:${w.col}88"></div></div>` +
+        `<div class="wep-ammo">POOL <b style="color:${w.col}">${w.ammo}</b></div>` +
+        `<div class="wep-badge" style="background:${w.col}1a;color:${w.col};border:1px solid ${w.col}44">${w.trait}</div>`;
+      if (selectable) {
+        card.onclick = () => {
+          document.querySelectorAll('#armory-grid .wep-card').forEach(c => { c.classList.remove('sel'); c.style.borderColor = ''; });
+          card.classList.add('sel');
+          card.style.borderColor = w.col;
+          this.startWeaponIdx = w.idx;
+        };
+      }
+      container.appendChild(card);
+    };
+    const armoryGrid  = document.getElementById('armory-grid');
+    const armoryJapan = document.getElementById('armory-japan');
+    wepDefs.forEach(w  => buildWepCard(w, armoryGrid,  true));
+    japanDefs.forEach(w => buildWepCard(w, armoryJapan, false));
   }
 
   selectChar(t) {
@@ -1628,7 +1672,7 @@ class Game {
     this.buildWorld(this.level || 'city');
     // pick arsenal for the level (Japan = katana / shuriken / bow)
     this.player.weapons = this.level === 'japan' ? this.japanWeapons : this.defaultWeapons;
-    this.player.weaponIdx = 0;
+    this.player.weaponIdx = this.level === 'japan' ? 0 : (this.startWeaponIdx || 0);
     this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
     this.player.weapons.forEach(w => w.ammo = w.ammo === Infinity ? Infinity : Math.floor(w.maxAmmo * 0.6));
     this.camera.position.set(0, this.player.height, 0);
