@@ -12,27 +12,18 @@ class Game {
     this.camera = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, 0.1, 1200);
     this.camera.rotation.order = 'YXZ';
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: false });
     this.renderer.setClearColor(0x05060c, 1);
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.outputEncoding = THREE.sRGBEncoding;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.92;
     this.container.appendChild(this.renderer.domElement);
 
-    // ---- Post-processing: UnrealBloom energy glow (all emissive elements) ----
-    this.composer = null;
-    if (THREE.EffectComposer && THREE.UnrealBloomPass && THREE.RenderPass) {
-      try {
-        this.composer = new THREE.EffectComposer(this.renderer);
-        this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
-        this.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.72, 0.55, 0.82);
-        this.composer.addPass(this.bloom);
-      } catch (e) { this.composer = null; }
-    }
+    this.composer = null; // bloom disabled for performance
 
     this.clock = new THREE.Clock();
     this.sound = new SoundManager();
@@ -312,7 +303,7 @@ class Game {
     const sun = new THREE.DirectionalLight(0xffe0a0, 0.82);
     sun.position.set(60, 120, -50); sun.castShadow = true; sun.shadow.bias = -0.0002;
     sun.shadow.camera.left = -220; sun.shadow.camera.right = 220; sun.shadow.camera.top = 220; sun.shadow.camera.bottom = -220;
-    sun.shadow.camera.far = 600; sun.shadow.mapSize.set(2048, 2048); W.add(sun);
+    sun.shadow.camera.far = 600; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
 
     this.desertProps = { fireLights, birds, ankhs, sandP, fireflies, span: 50 * S, S };
     this._desertSpawn = new THREE.Vector3(0, this.player.height, 22 * S);
@@ -510,7 +501,7 @@ class Game {
     const sun = new THREE.DirectionalLight(0xffcc88, 0.95);
     sun.position.set(120, 140, 90); sun.castShadow = true; sun.shadow.bias = -0.0002;
     sun.shadow.camera.left = -120; sun.shadow.camera.right = 120; sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
-    sun.shadow.camera.far = 480; sun.shadow.mapSize.set(2048, 2048); W.add(sun);
+    sun.shadow.camera.far = 480; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
 
     this.japanProps = { petals, lanternLights };
     this._japanSpawn = new THREE.Vector3(0, this.player.height, 56);
@@ -826,7 +817,7 @@ class Game {
     const sun = new THREE.DirectionalLight(0xfff3d6, 1.5);
     sun.position.set(80, 150, -60); sun.castShadow = true; sun.shadow.bias = -0.0002;
     sun.shadow.camera.left = -220; sun.shadow.camera.right = 220; sun.shadow.camera.top = 220; sun.shadow.camera.bottom = -220;
-    sun.shadow.camera.far = 600; sun.shadow.mapSize.set(2048, 2048); W.add(sun);
+    sun.shadow.camera.far = 600; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
     // sun/moon disc
     const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(10 * S * 0.5, 16, 16), new THREE.MeshBasicMaterial({ color: 0xfff4c8, fog: false }));
     W.add(sunDisc);
@@ -1133,12 +1124,12 @@ class Game {
       bulb.position.copy(pl.position); W.add(bulb);
     }
     // lights
-    W.add(new THREE.AmbientLight(0x2a2f3e, 0.32));
-    W.add(new THREE.HemisphereLight(0x18203c, 0x080810, 0.24));
-    const moon = new THREE.DirectionalLight(0x7e8ac8, 0.42);
+    W.add(new THREE.AmbientLight(0x3a4a60, 0.7));
+    W.add(new THREE.HemisphereLight(0x2040a0, 0x101018, 0.55));
+    const moon = new THREE.DirectionalLight(0x8899cc, 0.75);
     moon.position.set(120, 180, -80); moon.castShadow = true; moon.shadow.bias = -0.0002;
     moon.shadow.camera.left = -180; moon.shadow.camera.right = 180; moon.shadow.camera.top = 180; moon.shadow.camera.bottom = -180;
-    moon.shadow.camera.far = 500; moon.shadow.mapSize.set(2048, 2048); W.add(moon);
+    moon.shadow.camera.far = 500; moon.shadow.mapSize.set(1024, 1024); W.add(moon);
   }
 
   // ================= DAY COUNTRYSIDE =================
@@ -1251,7 +1242,7 @@ class Game {
     const sun = new THREE.DirectionalLight(0xfff3d0, 1.5);
     sun.position.set(-120, 150, -150); sun.castShadow = true; sun.shadow.bias = -0.0002;
     sun.shadow.camera.left = -120; sun.shadow.camera.right = 120; sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
-    sun.shadow.camera.far = 500; sun.shadow.mapSize.set(2048, 2048); W.add(sun);
+    sun.shadow.camera.far = 500; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
   }
 
   // ---------------- WEAPON MODEL ----------------
