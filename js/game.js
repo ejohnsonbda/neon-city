@@ -1060,6 +1060,57 @@ class Game {
       new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.48, metalness: 0.55, color: 0x48505e }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
 
+    // NEON CITY street detail: sidewalks, grass strips, and readable street signs
+    const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x8a8f9b, roughness: 0.72, metalness: 0.12 });
+    const curbMat = new THREE.MeshStandardMaterial({ color: 0xd7dbe4, roughness: 0.5, metalness: 0.18 });
+    const grassTex = TextureGen.createGrass(true); grassTex.repeat.set(18, 18);
+    const cityGrassMat = new THREE.MeshStandardMaterial({ map: grassTex, color: 0x1f6f35, roughness: 0.95, metalness: 0.02 });
+    const signPostMat = new THREE.MeshStandardMaterial({ color: 0xb9c9d8, roughness: 0.35, metalness: 0.75 });
+    const signFaceMat = new THREE.MeshBasicMaterial({ color: 0x10263c });
+    const signGlowMat = new THREE.MeshBasicMaterial({ color: 0x19f0ff, transparent: true, opacity: 0.18 });
+    const addCitySlab = (w, d, x, z, mat, y = 0.045, h = 0.09) => {
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      slab.position.set(x, y, z); slab.receiveShadow = true; slab.castShadow = true; W.add(slab);
+      return slab;
+    };
+    // Raised sidewalks around the main neon avenue cross.
+    [[-11.5, 0, 4.6, 310], [11.5, 0, 4.6, 310], [0, -11.5, 310, 4.6], [0, 11.5, 310, 4.6]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, sidewalkMat, 0.075, 0.15));
+    // Thin bright curbs make the sidewalks easy to read while moving at speed.
+    [[-6.7, 0, 0.42, 310], [6.7, 0, 0.42, 310], [-16.3, 0, 0.34, 310], [16.3, 0, 0.34, 310],
+     [0, -6.7, 310, 0.42], [0, 6.7, 310, 0.42], [0, -16.3, 310, 0.34], [0, 16.3, 310, 0.34]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, curbMat, 0.16, 0.06));
+    // Grass pockets and median strips break up the asphalt without blocking gameplay.
+    [[-23, 0, 5.0, 300], [23, 0, 5.0, 300], [0, -23, 300, 5.0], [0, 23, 300, 5.0],
+     [-23, -23, 20, 20], [23, -23, 20, 20], [-23, 23, 20, 20], [23, 23, 20, 20]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, cityGrassMat, 0.035, 0.045));
+
+    const makeStreetSignTexture = (label) => {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#061321'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.strokeStyle = '#19f0ff'; ctx.lineWidth = 6; ctx.strokeRect(6, 6, c.width - 12, c.height - 12);
+      ctx.fillStyle = '#19f0ff'; ctx.font = 'bold 30px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = '#19f0ff'; ctx.shadowBlur = 12; ctx.fillText(label, c.width / 2, c.height / 2);
+      const tex = new THREE.CanvasTexture(c); tex.needsUpdate = true;
+      if ('encoding' in tex && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+      if ('colorSpace' in tex && THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+    const addStreetSign = (x, z, label, rot = 0) => {
+      const g = new THREE.Group();
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.2, 8), signPostMat);
+      post.position.y = 1.6; post.castShadow = true; g.add(post);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.78, 0.09), signFaceMat);
+      panel.position.set(0, 3.1, 0); panel.castShadow = true; g.add(panel);
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.52, 0.58), new THREE.MeshBasicMaterial({ map: makeStreetSignTexture(label), transparent: true }));
+      face.position.set(0, 3.1, 0.055); g.add(face);
+      const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 0.92), signGlowMat);
+      glow.position.set(0, 3.1, 0.062); g.add(glow);
+      g.position.set(x, 0, z); g.rotation.y = rot; W.add(g);
+      const light = new THREE.PointLight(0x19f0ff, 0.55, 8, 2.4);
+      light.position.set(x, 3.05, z); W.add(light);
+    };
+    [[-17, -17, 'NEON AVE', Math.PI / 4], [17, -17, 'NIGHTFALL', -Math.PI / 4], [-17, 17, 'CYBER ST', Math.PI * 0.75], [17, 17, 'DOWNTOWN', -Math.PI * 0.75],
+     [0, -31, 'MAIN ST', 0], [0, 31, 'PLAZA', Math.PI], [-31, 0, 'MARKET', Math.PI / 2], [31, 0, 'SKYWAY', -Math.PI / 2]].forEach(s => addStreetSign(s[0], s[1], s[2], s[3]));
+
     const variants = [];
     for (let i = 0; i < 5; i++) {
       const t = TextureGen.createBuilding();
