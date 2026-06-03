@@ -46,7 +46,6 @@ class Game {
     this.settings = { sensitivity: 0.0022, invertY: false };
     this.baseFOV = 78;
     this.aiming = false;
-    this.weaponSmooth = { recoilZ: 0, recoilPitch: 0, recoilRoll: 0 };
 
     // home-screen music (starts on first user gesture, stops on deploy)
     this.music = document.getElementById('menu-music');
@@ -61,7 +60,6 @@ class Game {
     this.curGameMusic = null;
 
     this.objects = [];      // world colliders
-    this.climbables = [];   // non-blocking ramps, steps, stairs, and upper floors
     this.enemies = [];
     this.bullets = [];      // player tracers
     this.eBullets = [];     // enemy projectiles
@@ -103,15 +101,6 @@ class Game {
       { name: 'BOW',      type: 'semi', rate: 720,  dmg: 120, color: 0x9a6b3a, ammo: 30, maxAmmo: 80, spread: 0.004, model: 'bow', kick: 0.02, arrow: true, speed: 92 }
     ];
 
-    this.cityWeapons = this.defaultWeapons.concat([
-      // Uploaded city arsenal: KATANA is first extra weapon, so Digit7 selects it directly.
-      { name: 'KATANA', type: 'semi', rate: 340, dmg: 102, color: 0xcfe8ff, ammo: Infinity, maxAmmo: Infinity, spread: 0, model: 'katana', kick: 0, melee: true, reach: 4.4, arc: 0.58 },
-      { name: 'SAIGA', type: 'semi', rate: 460, dmg: 15, pellets: 8, color: 0xffc16a, ammo: 42, maxAmmo: 132, spread: 0.095, model: 'saiga', kick: 0.043 },
-      { name: 'AETHERIS EDGE', type: 'semi', rate: 310, dmg: 118, color: 0x66e6ff, ammo: Infinity, maxAmmo: Infinity, spread: 0, model: 'aetheris_edge', kick: 0, melee: true, reach: 4.8, arc: 0.52 },
-      { name: 'EMBER AXE', type: 'semi', rate: 520, dmg: 155, color: 0xff7a18, ammo: Infinity, maxAmmo: Infinity, spread: 0, model: 'ember_axe', kick: 0, melee: true, reach: 3.9, arc: 0.48 },
-      { name: 'TITAN RAILGUN', type: 'semi', rate: 1250, dmg: 190, color: 0x73f7ff, ammo: 10, maxAmmo: 30, spread: 0, pierce: true, model: 'titan_railgun', kick: 0.075 }
-    ]);
-
     this.input = { w: 0, a: 0, s: 0, d: 0, jump: 0, shoot: 0, sprint: 0 };
     this.touchState = { moveX: 0, moveY: 0 };
     this.raycaster = new THREE.Raycaster();
@@ -138,8 +127,6 @@ class Game {
   buildWorld(level) {
     if (this.worldGroup) this.scene.remove(this.worldGroup);
     this.objects = [];
-    this.climbables = [];
-    this.railRamp = null;
     this.worldGroup = new THREE.Group();
     this.scene.add(this.worldGroup);
     this.level = level;
@@ -147,7 +134,6 @@ class Game {
     this.railProps = null;
     this.desertProps = null;
     this.japanProps = null;
-    this.homeDefense = null;
     // tune bloom per level: punchy at night, subtle in daylight (avoids white-out)
     if (this.bloom) {
       const day = (level === 'fields' || level === 'desert' || level === 'japan');
@@ -159,8 +145,6 @@ class Game {
     else if (level === 'rail') this.buildRailCity(this.worldGroup);
     else if (level === 'desert') this.buildDesert(this.worldGroup);
     else if (level === 'japan') this.buildJapan(this.worldGroup);
-    else if (level === 'home') this.buildHomeDefender(this.worldGroup);
-    else if (level === 'bayard') this.buildBayardStation(this.worldGroup);
     else this.buildCity(this.worldGroup);
   }
 
@@ -281,7 +265,6 @@ class Game {
     const oasis = new THREE.Mesh(new THREE.CylinderGeometry(2.6 * S, 2.6 * S, 0.08 * S, 18), waterMat);
     oasis.position.set(-5 * S, 0.04 * S, -14 * S); W.add(oasis);
     this.railProps = null;
-    this.addDesertEnterableStructures(W, S, stoneTex);
 
     // ===== ACACIA TREES (desert side) =====
     const acTrunk = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 1 });
@@ -345,27 +328,27 @@ class Game {
   // ================= FEUDAL JAPAN =================
   buildJapan(W) {
     this.scene.background = null;
-    this.scene.fog = new THREE.Fog(0x071024, 90, 520);
+    this.scene.fog = new THREE.Fog(0xc4d8ea, 120, 560);
 
-    // Kyoto night-festival sky: deep indigo overhead with a warm lantern glow near the horizon.
+    // soft day sky dome
     const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 24),
-      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#050816', '#321638'), side: THREE.BackSide, fog: false }));
+      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#4f8fcf', '#f0dcc4'), side: THREE.BackSide, fog: false }));
     W.add(sky);
 
-    // ground: richer night grass with a damp stone courtyard and lantern-lit approach path.
-    const grassTex = TextureGen.createGrass(false); grassTex.repeat.set(70, 70);
+    // ground: lush grass with stone courtyard
+    const grassTex = TextureGen.createGrass(false); grassTex.repeat.set(60, 60);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ map: grassTex, color: 0x314a38, roughness: 0.98 }));
+      new THREE.MeshStandardMaterial({ map: grassTex, color: 0x88b56a, roughness: 0.95 }));
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; W.add(ground);
 
-    const stoneTex = TextureGen.createStonePath(); stoneTex.repeat.set(10, 10);
+    const stoneTex = TextureGen.createStonePath(); stoneTex.repeat.set(8, 8);
     const court = new THREE.Mesh(new THREE.CircleGeometry(26, 40),
-      new THREE.MeshStandardMaterial({ map: stoneTex, color: 0x6c665f, roughness: 0.96, metalness: 0.02 }));
+      new THREE.MeshStandardMaterial({ map: stoneTex, color: 0x9a958a, roughness: 0.9 }));
     court.rotation.x = -Math.PI / 2; court.position.y = 0.02; court.receiveShadow = true; W.add(court);
     // gravel approach path
-    const pathT = TextureGen.createStonePath(); pathT.repeat.set(2, 12);
+    const pathT = TextureGen.createStonePath(); pathT.repeat.set(2, 10);
     const path = new THREE.Mesh(new THREE.PlaneGeometry(7, 70),
-      new THREE.MeshStandardMaterial({ map: pathT, color: 0x827768, roughness: 1 }));
+      new THREE.MeshStandardMaterial({ map: pathT, color: 0xb8b2a4, roughness: 1 }));
     path.rotation.x = -Math.PI / 2; path.position.set(0, 0.015, 44); path.receiveShadow = true; W.add(path);
 
     // shared materials
@@ -375,7 +358,7 @@ class Game {
     const redWood = new THREE.MeshStandardMaterial({ color: 0xb5341f, roughness: 0.55 });
     const darkWood = new THREE.MeshStandardMaterial({ color: 0x3a241a, roughness: 0.7 });
     const tileMat = () => { const t = tileTex.clone(); t.needsUpdate = true; t.repeat.set(4, 2); return new THREE.MeshStandardMaterial({ map: t, color: 0x4a5560, roughness: 0.7 }); };
-    const shojiMat = new THREE.MeshStandardMaterial({ map: TextureGen.createShoji(), color: 0xffead0, emissive: 0xffa84a, emissiveIntensity: 0.72, roughness: 0.72 });
+    const shojiMat = new THREE.MeshStandardMaterial({ map: TextureGen.createShoji(), emissive: 0x4a3a1a, emissiveIntensity: 0.3, roughness: 0.8 });
 
     // curved Japanese roof (stacked tapering tiers)
     const addRoof = (parent, x, y, z, w, d, tiers) => {
@@ -513,7 +496,7 @@ class Game {
 
     // ===== KOI POND with arched bridge =====
     const water = new THREE.Mesh(new THREE.CircleGeometry(7, 36),
-      new THREE.MeshStandardMaterial({ color: 0x183b54, metalness: 0.45, roughness: 0.18, transparent: true, opacity: 0.82, emissive: 0x0b4668, emissiveIntensity: 0.42 }));
+      new THREE.MeshStandardMaterial({ color: 0x2f6f86, metalness: 0.5, roughness: 0.2, transparent: true, opacity: 0.86, emissive: 0x0a2a3a, emissiveIntensity: 0.3 }));
     water.rotation.x = -Math.PI / 2; water.position.set(-20, 0.05, -2); W.add(water);
     // rim
     const rim = new THREE.Mesh(new THREE.TorusGeometry(7, 0.4, 8, 36), lanternMats);
@@ -526,48 +509,17 @@ class Game {
     }
     bridge.position.set(-20, 0.6, -2); W.add(bridge);
 
-    // ===== moon, stars, floating lanterns, and night-festival lighting =====
-    const moonDisc = new THREE.Mesh(new THREE.SphereGeometry(10, 24, 18),
-      new THREE.MeshBasicMaterial({ color: 0xfff4cf, fog: false }));
-    moonDisc.position.set(145, 110, -130); W.add(moonDisc);
-    const moonGlow = new THREE.PointLight(0xffe0aa, 1.15, 360, 1.8);
-    moonGlow.position.copy(moonDisc.position); W.add(moonGlow);
+    // ===== sun + lighting =====
+    const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(12, 16, 16), new THREE.MeshBasicMaterial({ color: 0xfff4d6, fog: false }));
+    sunDisc.position.set(180, 150, 120); W.add(sunDisc);
+    W.add(new THREE.AmbientLight(0xbccfe0, 0.55));
+    W.add(new THREE.HemisphereLight(0xaad0f5, 0x4a6238, 0.45));
+    const sun = new THREE.DirectionalLight(0xfff2d6, 1.5);
+    sun.position.set(120, 140, 90); sun.castShadow = true; sun.shadow.bias = -0.0002;
+    sun.shadow.camera.left = -120; sun.shadow.camera.right = 120; sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
+    sun.shadow.camera.far = 480; sun.shadow.mapSize.set(2048, 2048); W.add(sun);
 
-    const starCount = 1200;
-    const starGeo = new THREE.BufferGeometry();
-    const starPos = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount; i++) {
-      const a = Math.random() * Math.PI * 2, r = 150 + Math.random() * 420;
-      starPos[i * 3] = Math.cos(a) * r;
-      starPos[i * 3 + 1] = 50 + Math.random() * 210;
-      starPos[i * 3 + 2] = Math.sin(a) * r;
-    }
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.72, depthWrite: false }));
-    W.add(stars);
-
-    const floatingLanterns = [];
-    for (let i = 0; i < 18; i++) {
-      const lg = new THREE.Group();
-      const col = i % 3 === 0 ? 0xffcf79 : (i % 3 === 1 ? 0xff6a4a : 0xffe3b1);
-      const paper = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.42, 0.82, 12),
-        new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.78, roughness: 0.6, transparent: true, opacity: 0.88 }));
-      lg.add(paper);
-      const flame = new THREE.PointLight(0xff9a42, 0.62, 9); flame.position.y = -0.05; lg.add(flame);
-      lg.position.set(-42 + Math.random() * 84, 4.4 + Math.random() * 9, -62 + Math.random() * 118);
-      W.add(lg);
-      floatingLanterns.push({ group: lg, light: flame, baseY: lg.position.y, ph: Math.random() * Math.PI * 2, drift: 0.06 + Math.random() * 0.08 });
-    }
-
-    W.add(new THREE.AmbientLight(0x263251, 0.46));
-    W.add(new THREE.HemisphereLight(0x5778bd, 0x241322, 0.36));
-    const moon = new THREE.DirectionalLight(0xcad9ff, 0.78);
-    moon.position.set(120, 160, -100); moon.castShadow = true; moon.shadow.bias = -0.00025;
-    moon.shadow.camera.left = -120; moon.shadow.camera.right = 120; moon.shadow.camera.top = 120; moon.shadow.camera.bottom = -120;
-    moon.shadow.camera.far = 500; moon.shadow.mapSize.set(2048, 2048); W.add(moon);
-    const marketGlow = new THREE.PointLight(0xff8540, 2.15, 86, 1.25); marketGlow.position.set(0, 9, -12); W.add(marketGlow);
-
-    this.japanProps = { petals, lanternLights, stars, floatingLanterns, fireworks: [], nextFirework: 0, moonGlow, marketGlow };
+    this.japanProps = { petals, lanternLights };
     this._japanSpawn = new THREE.Vector3(0, this.player.height, 56);
 
     // ===================================================================
@@ -660,27 +612,6 @@ class Game {
     this.japanProps.hangLanterns = hangLanterns;
   }
 
-  spawnJapanFirework(jp) {
-    if (!jp || !this.worldGroup) return;
-    const colors = [0xff4d6d, 0xffc44d, 0x66d9ff, 0xa675ff, 0x83ff73, 0xffffff];
-    const center = new THREE.Vector3(-58 + Math.random() * 116, 44 + Math.random() * 34, -112 + Math.random() * 62);
-    const color = colors[(Math.random() * colors.length) | 0];
-    const burst = { parts: [], life: 1.35 };
-    const flash = new THREE.PointLight(color, 3.2, 46, 2);
-    flash.position.copy(center); this.worldGroup.add(flash);
-    burst.light = flash;
-    for (let i = 0; i < 28; i++) {
-      const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.15, Math.random() - 0.5).normalize();
-      const p = new THREE.Mesh(new THREE.SphereGeometry(0.22 + Math.random() * 0.08, 6, 5),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false }));
-      p.position.copy(center);
-      p.userData.vel = dir.multiplyScalar(8 + Math.random() * 13);
-      p.userData.life = 1.0 + Math.random() * 0.45;
-      this.worldGroup.add(p); burst.parts.push(p);
-    }
-    jp.fireworks.push(burst);
-  }
-
   // small helper to clone a tileable ground texture
   createGroundTex(kind, rep) {
     const t = kind === 'sand' ? TextureGen.createSand() : TextureGen.createAsphalt();
@@ -703,7 +634,6 @@ class Game {
     // road grid + markings
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x33343f, roughness: 0.7, metalness: 0.2 });
     const lineMat = new THREE.MeshStandardMaterial({ color: 0xffe7a0, emissive: 0x4a3a10, emissiveIntensity: 0.5 });
-    this.addRoadGLBGrid(W, { tiles: [[0, 0, 0, 95], [0, -90, 0, 95], [0, 90, 0, 95], [-90, 0, Math.PI / 2, 95], [90, 0, Math.PI / 2, 95]], opacity: 0.70 });
     for (let i = -36; i <= 36; i += 6) {
       if (Math.abs(i) < 3) continue;
       const rh = new THREE.Mesh(new THREE.BoxGeometry(1.0 * S, 0.06, 80 * S), roadMat); rh.position.set(i * S, 0, 0); rh.receiveShadow = true; W.add(rh);
@@ -722,15 +652,18 @@ class Game {
     this._railWinMats = winMats;
     const self = this;
     function makeBuilding(x, z, w, d, h, ni) {
+      const grp = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+        new THREE.MeshStandardMaterial({ map: baseTex(), color: tints[(Math.random() * tints.length) | 0], roughness: 0.78, metalness: 0.15 }));
+      body.position.y = h / 2; body.castShadow = true; body.receiveShadow = true; grp.add(body);
       const wm = winMats[ni % winMats.length];
-      const bodyMat = new THREE.MeshStandardMaterial({ map: baseTex(), color: tints[(Math.random() * tints.length) | 0], roughness: 0.78, metalness: 0.15 });
-      const grp = self.buildAccessibleTower(W, x, z, w, d, h, bodyMat, { win: wm, lamp: 0x88ccff, glow: 0x88ccff });
       const bands = Math.min(6, Math.max(2, Math.floor(h / 9)));
       for (let r = 0; r < bands; r++) {
         const by = (r + 1) * (h / (bands + 1));
         const band = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.7, d + 0.1), wm);
-        band.position.set(x, by, z); W.add(band);
+        band.position.y = by; grp.add(band);
       }
+      grp.position.set(x, 0, z); W.add(grp); self.objects.push(body);
       return grp;
     }
     const R = 34;
@@ -886,7 +819,6 @@ class Game {
         W.add(car); vehicles.push({ mesh: car, lane, dir, pos, speed: 9 + Math.random() * 8 });
       }
     });
-    this.applyVehiclePackToTraffic(vehicles, { fit: 4.0, shellOpacity: 0.018 });
 
     // central monument
     const base = new THREE.Mesh(new THREE.CylinderGeometry(1.9 * S, 2.1 * S, 0.5 * S, 8), new THREE.MeshStandardMaterial({ color: 0x6688aa, metalness: 0.5 }));
@@ -930,7 +862,6 @@ class Game {
     // road grid + glowing lane markings
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x222233, metalness: 0.3 });
     const markMat = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0x553300, emissiveIntensity: 0.8 });
-    this.addRoadGLBGrid(W, { tiles: [[0, 0, 0, 92], [0, -76, 0, 92], [0, 76, 0, 92], [-76, 0, Math.PI / 2, 92], [76, 0, Math.PI / 2, 92]], opacity: 0.72 });
     for (let i = -35; i <= 35; i += 5) {
       if (Math.abs(i) < 3) continue;
       const rh = new THREE.Mesh(new THREE.BoxGeometry(1.2 * S, 0.08, 75 * S), roadMat);
@@ -1101,32 +1032,6 @@ class Game {
     // interior floor
     const fl = new THREE.Mesh(new THREE.BoxGeometry(w - 0.1, 0.1, d - 0.1), style.floor);
     fl.position.set(x, 0.06, z); fl.receiveShadow = true; W.add(fl);
-
-    // Door threshold and interior stair system. These are intentionally not blocking colliders;
-    // the movement loop reads them as climbable support so players can enter and climb smoothly.
-    const stairMat = style.floor || style.wall;
-    const threshold = new THREE.Mesh(new THREE.BoxGeometry(Math.min(w - 1, dg + 0.55), 0.22, 0.92), stairMat);
-    threshold.position.set(x, 0.11, z + d / 2 + 0.42); threshold.castShadow = true; threshold.receiveShadow = true; W.add(threshold);
-    this.climbables.push({ kind: 'platform', x, z: z + d / 2 + 0.42, w: Math.min(w - 1, dg + 0.75), d: 1.05, y: 0.22, snap: 0.95 });
-
-    const loftY = 1.38;
-    const loft = new THREE.Mesh(new THREE.BoxGeometry(Math.max(2.8, w - 1.25), 0.14, Math.max(2.2, d * 0.42)), stairMat);
-    loft.position.set(x, loftY, z - d * 0.20); loft.castShadow = true; loft.receiveShadow = true; W.add(loft);
-    this.climbables.push({ kind: 'platform', x, z: z - d * 0.20, w: Math.max(2.8, w - 1.25), d: Math.max(2.2, d * 0.42), y: loftY + 0.08, snap: 1.35 });
-
-    const rampLen = Math.max(3.4, d * 0.56);
-    const zLow = z + d * 0.30, zHigh = z - d * 0.18;
-    const stair = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.18, rampLen), stairMat);
-    stair.position.set(x - w * 0.28, loftY / 2, (zLow + zHigh) / 2);
-    stair.rotation.x = Math.atan2(loftY, rampLen); stair.castShadow = true; stair.receiveShadow = true; W.add(stair);
-    this.climbables.push({ kind: 'ramp', x: x - w * 0.28, z: (zLow + zHigh) / 2, w: 1.65, d: Math.abs(zLow - zHigh) + 0.85, y0: 0.18, y1: loftY + 0.08, z0: zLow, z1: zHigh, snap: 1.45 });
-
-    const railMat = style.win || new THREE.MeshStandardMaterial({ color: 0xffd087, emissive: 0x6a2a10, emissiveIntensity: 0.45, roughness: 0.5 });
-    [-1, 1].forEach(s => {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, Math.max(1.8, d * 0.36)), railMat);
-      rail.position.set(x + s * (w / 2 - 0.75), loftY + 0.38, z - d * 0.20); rail.castShadow = true; W.add(rail);
-    });
-    const doorGlow = new THREE.PointLight(style.lamp || 0xffd9a0, 0.58, 8); doorGlow.position.set(x, 1.45, z + d / 2 + 0.35); W.add(doorGlow);
     // roof (collider so you can't see in from above / shaded interior)
     const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, t, d + 0.4), style.roof || style.wall);
     roof.position.set(x, H + t / 2, z); roof.castShadow = true; W.add(roof); this.objects.push(roof);
@@ -1150,335 +1055,6 @@ class Game {
     const il = new THREE.PointLight(style.lamp || 0xffd9a0, 1.1, w + d); il.position.set(x, H - 0.6, z); W.add(il);
   }
 
-
-
-  buildAccessibleTower(W, x, z, w, d, h, material, opts = {}) {
-    // Tall blocks now have a real ground-floor lobby instead of being solid cubes.
-    // The upper tower remains a collider, while the base uses buildEnterable so the
-    // player can walk through the doorway, climb the lobby stairs, and fight inside.
-    const baseMat = material && material.clone ? material.clone() : material;
-    const floorMat = opts.floor || new THREE.MeshStandardMaterial({ color: 0x1b1d24, roughness: 0.75, metalness: 0.25 });
-    const roofMat = opts.roof || (baseMat && baseMat.clone ? baseMat.clone() : baseMat);
-    const style = {
-      wall: baseMat || new THREE.MeshStandardMaterial({ color: 0x39465a, roughness: 0.6, metalness: 0.25 }),
-      floor: floorMat,
-      roof: roofMat || new THREE.MeshStandardMaterial({ color: 0x252936, roughness: 0.7 }),
-      win: opts.win || new THREE.MeshBasicMaterial({ color: opts.glow || 0x33ddff, side: THREE.DoubleSide }),
-      lamp: opts.lamp || opts.glow || 0x33ddff
-    };
-    this.buildEnterable(W, x, z, Math.max(4.2, w), Math.max(4.2, d), style);
-
-    const H = 3.72;
-    const upperH = Math.max(0.6, h - H);
-    const upper = new THREE.Mesh(new THREE.BoxGeometry(Math.max(4.2, w), upperH, Math.max(4.2, d)), material || style.wall);
-    upper.position.set(x, H + upperH / 2, z);
-    upper.castShadow = true; upper.receiveShadow = true;
-    upper.userData.accessibleTower = true;
-    upper.userData.width = Math.max(4.2, w); upper.userData.depth = Math.max(4.2, d); upper.userData.height = h;
-    W.add(upper); this.objects.push(upper);
-
-    const trimMat = opts.win || new THREE.MeshBasicMaterial({ color: opts.glow || 0x33ddff });
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(Math.max(4.6, w + 0.38), 0.16, Math.max(4.6, d + 0.38)), trimMat);
-    trim.position.set(x, H + 0.18, z); W.add(trim);
-
-    const anchor = new THREE.Group();
-    anchor.position.set(x, 0, z);
-    anchor.userData = { width: Math.max(4.2, w), depth: Math.max(4.2, d), height: h, accessibleTower: true };
-    W.add(anchor);
-    return anchor;
-  }
-
-  addDesertEnterableStructures(W, S, stoneTex) {
-    const matFromStone = (color = 0xcaa97a) => {
-      const t = stoneTex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 2);
-      return new THREE.MeshStandardMaterial({ map: t, color, roughness: 0.88, metalness: 0.04 });
-    };
-    const style = (lamp = 0xffb45c) => ({
-      wall: matFromStone(0xd2b27a),
-      floor: matFromStone(0xad8954),
-      roof: matFromStone(0x8f6c3e),
-      win: new THREE.MeshBasicMaterial({ color: lamp, side: THREE.DoubleSide }),
-      lamp
-    });
-    [[-13, 15], [13, 15], [-18, -3], [18, -3], [0, -18]].forEach(([gx, gz], i) => {
-      this.buildEnterable(W, gx * S, gz * S, 8.5 + (i % 2) * 1.4, 8.0 + ((i + 1) % 2) * 1.2, style(i % 2 ? 0xffd37a : 0xff9b4a));
-    });
-  }
-
-
-  // ================= BAYARD STATION VALVE HOUSE =================
-  buildBayardStation(W) {
-    this.scene.background = new THREE.Color(0x070a10);
-    this.scene.fog = new THREE.FogExp2(0x070a10, 0.010);
-
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 24),
-      new THREE.MeshBasicMaterial({ color: 0x080b12, side: THREE.BackSide, fog: false }));
-    W.add(sky);
-
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(360, 360),
-      new THREE.MeshStandardMaterial({ color: 0x20242a, roughness: 0.68, metalness: 0.28 }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    W.add(floor);
-
-    this.addRoadGLBGrid(W, {
-      tiles: [
-        [0, 36, 0, 78],
-        [0, -42, 0, 78],
-        [-46, 0, Math.PI / 2, 70],
-        [46, 0, Math.PI / 2, 70]
-      ],
-      opacity: 0.92
-    });
-
-    const stationMat = new THREE.MeshStandardMaterial({ color: 0x2c343d, roughness: 0.62, metalness: 0.32 });
-    const trimMat = new THREE.MeshStandardMaterial({ color: 0x6f879a, roughness: 0.42, metalness: 0.72 });
-    const glowMat = new THREE.MeshStandardMaterial({ color: 0x32d6ff, emissive: 0x19f0ff, emissiveIntensity: 1.1, roughness: 0.35, metalness: 0.2 });
-    const hazardMat = new THREE.MeshStandardMaterial({ color: 0xffb347, emissive: 0x442000, emissiveIntensity: 0.35, roughness: 0.55, metalness: 0.2 });
-
-    this.loadEnvironmentStationFallback(W, stationMat, trimMat, glowMat, hazardMat);
-    this.placeSharedGLB(W, 'assets/models/environment/bayard_station.glb', {
-      name: 'bayard_station_valve_house_glb',
-      position: new THREE.Vector3(0, 0.08, -8),
-      fit: 82,
-      rotY: Math.PI,
-      opacity: 0.98
-    });
-
-    const pipeMat = new THREE.MeshStandardMaterial({ color: 0x7a8794, roughness: 0.35, metalness: 0.78 });
-    [-18, -9, 9, 18].forEach((x, i) => {
-      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 62, 18), pipeMat);
-      p.rotation.z = Math.PI / 2;
-      p.position.set(x, 2.2 + (i % 2) * 1.2, -6 + i * 2.4);
-      p.castShadow = true; p.receiveShadow = true; W.add(p);
-    });
-
-    const lampColors = [0x19f0ff, 0xffb347, 0xff2d95, 0x39ff14];
-    [[-28, -30], [28, -30], [-30, 22], [30, 22], [0, 46], [0, -54]].forEach(([x, z], i) => {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 5.2, 8), trimMat);
-      pole.position.set(x, 2.6, z); pole.castShadow = true; W.add(pole); this.objects.push(pole);
-      const c = lampColors[i % lampColors.length];
-      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 1.6 }));
-      bulb.position.set(x, 5.4, z); W.add(bulb);
-      const light = new THREE.PointLight(c, 2.0, 30, 1.7); light.position.copy(bulb.position); W.add(light);
-    });
-
-    this.addParkedVehicleGLBs(W, [
-      [-22, 38, Math.PI * 0.02], [22, 39, Math.PI * 0.98],
-      [-44, -3, Math.PI / 2], [43, 4, -Math.PI / 2]
-    ], { fit: 5.2, w: 3.4, h: 1.35, d: 5.5, y: 0.72 });
-
-    W.add(new THREE.AmbientLight(0x788ba0, 0.55));
-    W.add(new THREE.HemisphereLight(0x657f9c, 0x121920, 0.52));
-    const moon = new THREE.DirectionalLight(0xc4ddff, 0.95);
-    moon.position.set(-90, 140, 70); moon.castShadow = true; moon.shadow.bias = -0.0002;
-    moon.shadow.camera.left = -120; moon.shadow.camera.right = 120; moon.shadow.camera.top = 120; moon.shadow.camera.bottom = -120;
-    moon.shadow.camera.far = 360; moon.shadow.mapSize.set(1024, 1024); W.add(moon);
-
-    this._bayardSpawn = new THREE.Vector3(0, this.player.height, 48);
-  }
-
-  loadEnvironmentStationFallback(W, stationMat, trimMat, glowMat, hazardMat) {
-    const base = new THREE.Mesh(new THREE.BoxGeometry(44, 0.62, 34), stationMat);
-    base.position.set(0, 0.31, -10); base.castShadow = true; base.receiveShadow = true; W.add(base);
-    this.climbables.push({ kind: 'platform', x: 0, z: -10, w: 44, d: 34, y: 0.64, snap: 1.2 });
-
-    this.buildEnterable(W, 0, -14, 18, 13, {
-      wall: stationMat,
-      floor: new THREE.MeshStandardMaterial({ color: 0x1a1d22, roughness: 0.72, metalness: 0.24 }),
-      roof: trimMat,
-      win: new THREE.MeshBasicMaterial({ color: 0x19f0ff, side: THREE.DoubleSide }),
-      lamp: 0x19f0ff
-    });
-
-    const tankMat = new THREE.MeshStandardMaterial({ color: 0x394652, roughness: 0.48, metalness: 0.56 });
-    [[-15, -2], [15, -2], [-13, -25], [13, -25]].forEach(([x, z], i) => {
-      const tank = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.6, 7.0, 18), tankMat);
-      tank.position.set(x, 4.15, z); tank.castShadow = true; tank.receiveShadow = true; W.add(tank); this.objects.push(tank);
-      const band = new THREE.Mesh(new THREE.TorusGeometry(2.42, 0.08, 8, 18), hazardMat);
-      band.rotation.x = Math.PI / 2; band.position.set(x, 5.8, z); W.add(band);
-    });
-
-    const valve = new THREE.Mesh(new THREE.TorusGeometry(1.65, 0.12, 10, 28), glowMat);
-    valve.position.set(0, 3.2, -3.4); valve.rotation.y = Math.PI / 2; W.add(valve);
-    const valveLight = new THREE.PointLight(0x19f0ff, 2.4, 24, 1.4); valveLight.position.set(0, 3.2, -3.4); W.add(valveLight);
-
-    const ramp = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.42, 22), trimMat);
-    ramp.position.set(0, 0.78, 18); ramp.rotation.x = -0.105; ramp.castShadow = true; ramp.receiveShadow = true; W.add(ramp);
-    this.climbables.push({ kind: 'ramp', x: 0, z: 18, w: 8.5, d: 22, z0: 29, z1: 7, y0: 0.05, y1: 0.78, snap: 1.0 });
-
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(22, 2.2, 0.42), glowMat);
-    sign.position.set(0, 5.6, 3.5); sign.castShadow = true; W.add(sign);
-  }
-
-  buildHomeDefender(W) {
-    this.scene.background = null;
-    this.scene.fog = new THREE.Fog(0x8db8e8, 80, 360);
-
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 24),
-      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#3f84c5', '#ffd49a'), side: THREE.BackSide, fog: false }));
-    W.add(sky);
-
-    const grassTex = TextureGen.createGrass(false); grassTex.repeat.set(52, 52);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(520, 520),
-      new THREE.MeshStandardMaterial({ map: grassTex, color: 0x4f883d, roughness: 0.98 }));
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; W.add(ground);
-
-    const yardMat = new THREE.MeshStandardMaterial({ color: 0x6aa84f, roughness: 1 });
-    const yard = new THREE.Mesh(new THREE.CircleGeometry(38, 48), yardMat);
-    yard.rotation.x = -Math.PI / 2; yard.position.y = 0.012; yard.receiveShadow = true; W.add(yard);
-
-    const pathTex = TextureGen.createStonePath(); pathTex.repeat.set(2, 10);
-    const path = new THREE.Mesh(new THREE.PlaneGeometry(5.5, 44), new THREE.MeshStandardMaterial({ map: pathTex, color: 0xb8a06a, roughness: 0.95 }));
-    path.rotation.x = -Math.PI / 2; path.position.set(0, 0.03, 27); W.add(path);
-    this.addRoadGLBGrid(W, { tiles: [[0, 56, 0, 54], [0, 110, 0, 54]], opacity: 0.86 });
-    this.addParkedVehicleGLBs(W, [[-13, 52, -0.1], [13, 58, Math.PI + 0.08]], { fit: 4.6, y: 0.70 });
-
-    const houseStyle = {
-      wall: new THREE.MeshStandardMaterial({ color: 0xf2c14e, roughness: 0.56, metalness: 0.02 }),
-      floor: new THREE.MeshStandardMaterial({ color: 0x9c6b3f, roughness: 0.75 }),
-      roof: new THREE.MeshStandardMaterial({ color: 0x2b4f7f, roughness: 0.55, metalness: 0.08 }),
-      cone: new THREE.MeshStandardMaterial({ color: 0x2c5f9f, roughness: 0.6, flatShading: true }),
-      win: new THREE.MeshBasicMaterial({ color: 0xffe08a, side: THREE.DoubleSide }),
-      lamp: 0xffc86a
-    };
-    this.buildEnterable(W, 0, 0, 13.5, 11.5, houseStyle);
-
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.1, 1.1), new THREE.MeshStandardMaterial({ color: 0x9b3d2e, roughness: 0.75 }));
-    chimney.position.set(3.5, 5.1, -2.2); chimney.castShadow = true; W.add(chimney);
-    const smokeMat = new THREE.MeshBasicMaterial({ color: 0xdce6f2, transparent: true, opacity: 0.28, depthWrite: false });
-    const smoke = [];
-    for (let i = 0; i < 6; i++) {
-      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.35 + i * 0.08, 10, 8), smokeMat.clone());
-      puff.position.set(3.5 + Math.sin(i) * 0.35, 6.2 + i * 0.55, -2.2 + Math.cos(i) * 0.28); W.add(puff); smoke.push(puff);
-    }
-
-    const heartMat = new THREE.MeshStandardMaterial({ color: 0xff5d5d, emissive: 0xff2222, emissiveIntensity: 0.75, roughness: 0.35 });
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.58, 18, 14), heartMat);
-    core.position.set(0, 2.2, 0); W.add(core);
-    const coreLight = new THREE.PointLight(0xff7744, 1.8, 16); coreLight.position.copy(core.position); W.add(coreLight);
-
-    const fenceMat = new THREE.MeshStandardMaterial({ color: 0xb98755, roughness: 0.82 });
-    const R = 42, posts = 72;
-    for (let i = 0; i < posts; i++) {
-      const a = (i / posts) * Math.PI * 2;
-      if (Math.abs(Math.sin(a)) < 0.20 && Math.cos(a) > 0.86) continue; // front gate opening
-      const x = Math.cos(a) * R, z = Math.sin(a) * R;
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.35, 0.35), fenceMat);
-      post.position.set(x, 0.68, z); post.rotation.y = -a; post.castShadow = true; W.add(post); this.objects.push(post);
-      if (i % 2 === 0) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.18, 0.22), fenceMat);
-        rail.position.set(Math.cos(a + Math.PI / posts) * R, 0.85, Math.sin(a + Math.PI / posts) * R);
-        rail.rotation.y = -a; rail.castShadow = true; W.add(rail);
-      }
-    }
-    const gateGlow = new THREE.PointLight(0xffcc77, 1.5, 18); gateGlow.position.set(R - 5, 2.4, 0); W.add(gateGlow);
-
-    const flowerCols = [0xff69b4, 0xffdd55, 0xff8a4c, 0xcd88ff, 0x66ccff, 0xff5d5d];
-    for (let i = 0; i < 140; i++) {
-      const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * 30;
-      const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      if (Math.abs(x) < 8 && Math.abs(z) < 8) continue;
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 7, 6), new THREE.MeshStandardMaterial({ color: flowerCols[(Math.random() * flowerCols.length) | 0], emissive: 0x221100, emissiveIntensity: 0.12 }));
-      head.position.set(x, 0.34, z); W.add(head);
-    }
-
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 1 });
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0x3f8c43, roughness: 1, flatShading: true });
-    for (let i = 0; i < 32; i++) {
-      const a = Math.random() * Math.PI * 2, r = 55 + Math.random() * 90;
-      const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, 2.2, 6), trunkMat);
-      trunk.position.set(x, 1.1, z); trunk.castShadow = true; W.add(trunk); this.objects.push(trunk);
-      const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.6, 8), leafMat);
-      leaf.position.set(x, 3.0, z); leaf.castShadow = true; W.add(leaf);
-    }
-
-    [[-9, 10], [9, 10], [-11, -8], [11, -8], [0, 15]].forEach(([x, z]) => {
-      const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 2.1, 6), new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.8 }));
-      lamp.position.set(x, 1.05, z); W.add(lamp);
-      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.25, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffd28a, emissive: 0xffa742, emissiveIntensity: 0.9 }));
-      bulb.position.set(x, 2.2, z); W.add(bulb);
-      const lt = new THREE.PointLight(0xffc071, 1.0, 12); lt.position.set(x, 2.2, z); W.add(lt);
-    });
-
-    W.add(new THREE.AmbientLight(0xb7c9dc, 0.74));
-    W.add(new THREE.HemisphereLight(0xb8d7ff, 0x6a8c58, 0.7));
-    const sun = new THREE.DirectionalLight(0xffe0b0, 1.35);
-    sun.position.set(-95, 135, 70); sun.castShadow = true; sun.shadow.bias = -0.0002;
-    sun.shadow.camera.left = -120; sun.shadow.camera.right = 120; sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
-    sun.shadow.camera.far = 420; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
-
-    this._homeSpawn = new THREE.Vector3(0, this.player.height, 20);
-    this.homeDefense = { hp: 520, maxHp: 520, target: new THREE.Vector3(0, 0, 0), radius: 7.5, core, coreLight, smoke, lastHit: 0 };
-  }
-
-  ensureHomeDefenseHUD() {
-    let el = document.getElementById('home-defense-hud');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'home-defense-hud';
-      el.style.cssText = 'position:fixed;left:50%;top:78px;transform:translateX(-50%);z-index:7;min-width:260px;padding:10px 14px;border:1px solid rgba(255,196,111,.55);background:rgba(18,12,8,.72);box-shadow:0 0 22px rgba(255,155,65,.28);border-radius:12px;color:#ffe3b8;font-family:Orbitron,monospace;text-align:center;pointer-events:none;display:none';
-      el.innerHTML = '<div style="font-size:12px;letter-spacing:1.5px;color:#ffcf8a">HOME INTEGRITY</div><div style="height:8px;margin-top:7px;background:rgba(255,255,255,.13);border-radius:8px;overflow:hidden"><div id="home-defense-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#39ff14,#ffd166,#ff5d5d)"></div></div><div id="home-defense-num" style="margin-top:5px;font-size:12px">520 / 520</div>';
-      document.body.appendChild(el);
-    }
-    return el;
-  }
-
-  updateHomeDefenseHUD() {
-    const el = this.ensureHomeDefenseHUD();
-    const active = this.gameStarted && this.level === 'home' && this.homeDefense;
-    el.style.display = active ? 'block' : 'none';
-    if (!active) return;
-    const hp = Math.max(0, Math.ceil(this.homeDefense.hp));
-    const pct = Math.max(0, this.homeDefense.hp / this.homeDefense.maxHp * 100);
-    const bar = document.getElementById('home-defense-bar');
-    const num = document.getElementById('home-defense-num');
-    if (bar) bar.style.width = pct + '%';
-    if (num) num.innerText = hp + ' / ' + this.homeDefense.maxHp;
-  }
-
-  damageHomeDefense(amount) {
-    if (!this.homeDefense || this.homeDefense.hp <= 0) return;
-    this.homeDefense.hp = Math.max(0, this.homeDefense.hp - amount);
-    this.homeDefense.lastHit = performance.now();
-    if (this.homeDefense.core) this.homeDefense.core.scale.setScalar(1.35);
-    if (this.homeDefense.coreLight) this.homeDefense.coreLight.intensity = 4.2;
-    this.updateHomeDefenseHUD();
-    if (this.homeDefense.hp <= 0) {
-      this.showMessage('HOME OVERRUN', '#ff3355');
-      this.player.hp = 0;
-      this.endGame();
-    }
-  }
-
-  supportFromClimbables(pos, currentSupportY) {
-    let supportY = currentSupportY;
-    if (!this.climbables) return supportY;
-    for (const c of this.climbables) {
-      if (Math.abs(pos.x - c.x) > c.w / 2 || Math.abs(pos.z - c.z) > c.d / 2) continue;
-      let surfaceY = c.y || 0;
-      if (c.kind === 'ramp') {
-        const denom = (c.z1 - c.z0) || 1;
-        const frac = THREE.MathUtils.clamp((pos.z - c.z0) / denom, 0, 1);
-        surfaceY = c.y0 + (c.y1 - c.y0) * frac;
-      }
-      const top = surfaceY + this.player.height;
-      const snap = c.snap || 0.65;
-      if (pos.y <= top + snap && top > supportY - 0.02) supportY = top;
-    }
-    return supportY;
-  }
-
-  applyWeaponRecoil(w, scale = 1) {
-    const kick = (w.kick || 0.012) * scale;
-    const smooth = this.weaponSmooth || (this.weaponSmooth = { recoilZ: 0, recoilPitch: 0, recoilRoll: 0 });
-    smooth.recoilZ = Math.min(0.22, smooth.recoilZ + kick * 1.9);
-    smooth.recoilPitch = Math.min(0.18, smooth.recoilPitch + kick * 1.35);
-    smooth.recoilRoll += (Math.random() - 0.5) * kick * 0.8;
-    this.camera.rotation.x += kick * 0.32;
-  }
-
   // ================= NIGHT CITY =================
   buildCity(W) {
     this.scene.background = null;
@@ -1491,8 +1067,6 @@ class Game {
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
       new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.7, metalness: 0.28, color: 0x6b7280 }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
-    this.addRoadGLBGrid(W, { tiles: [[0, 0, 0, 72], [0, -80, 0, 72], [0, 80, 0, 72], [-80, 0, Math.PI / 2, 72], [80, 0, Math.PI / 2, 72]], opacity: 0.78 });
-    this.addParkedVehicleGLBs(W, [[-14, 34, 0.15], [17, 34, Math.PI], [-38, -10, Math.PI / 2], [38, 12, -Math.PI / 2], [0, -44, Math.PI]], { fit: 5.2, y: 0.72 });
 
     const variants = [];
     for (let i = 0; i < 5; i++) {
@@ -1503,15 +1077,16 @@ class Game {
       variants.push(new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.emissive, emissive: 0xffffff,
         emissiveIntensity: 1.25, roughness: 0.35, metalness: 0.55 }));
     }
+    const bldgGeo = new THREE.BoxGeometry(10, 1, 10);
     const billboards = []; const blockSize = 26;
     for (let x = -9; x <= 9; x++) for (let z = -9; z <= 9; z++) {
       if (Math.abs(x) < 3 && Math.abs(z) < 3) continue; // play plaza for enterable bldgs
       if (Math.random() > 0.24) {
         const h = 22 + Math.random() * 55;
-        const sx = 0.8 + Math.random() * 0.7, sz = 0.8 + Math.random() * 0.7;
-        const px = x * blockSize + (Math.random() - 0.5) * 6, pz = z * blockSize + (Math.random() - 0.5) * 6;
-        const mat = variants[(Math.random() * variants.length) | 0];
-        const m = this.buildAccessibleTower(W, px, pz, 10 * sx, 10 * sz, h, mat, { glow: Math.random() > 0.5 ? 0x19f0ff : 0xff2d95, lamp: 0x19f0ff });
+        const m = new THREE.Mesh(bldgGeo, variants[(Math.random() * variants.length) | 0]);
+        m.position.set(x * blockSize + (Math.random() - 0.5) * 6, h / 2, z * blockSize + (Math.random() - 0.5) * 6);
+        m.scale.set(0.8 + Math.random() * 0.7, h, 0.8 + Math.random() * 0.7);
+        m.castShadow = true; m.receiveShadow = true; W.add(m); this.objects.push(m);
         if (Math.random() > 0.7) billboards.push(m);
       }
     }
@@ -1519,16 +1094,12 @@ class Game {
       const bw = 6 + Math.random() * 5, bh = bw * 0.55;
       const bm = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh),
         new THREE.MeshBasicMaterial({ map: TextureGen.createBillboard(), transparent: true, fog: true }));
-      const face = (Math.random() * 4) | 0;
-      const bwid = (b.userData && b.userData.width) || (b.scale.x * 10);
-      const bdep = (b.userData && b.userData.depth) || (b.scale.z * 10);
-      const bhgt = (b.userData && b.userData.height) || b.scale.y;
-      const halfW = bwid / 2 + 0.3, halfD = bdep / 2 + 0.3;
-      const y = 6 + Math.random() * Math.max(4, bhgt - 14);
-      if (face === 0) bm.position.set(b.position.x, y, b.position.z + halfD);
-      else if (face === 1) { bm.position.set(b.position.x, y, b.position.z - halfD); bm.rotation.y = Math.PI; }
-      else if (face === 2) { bm.position.set(b.position.x + halfW, y, b.position.z); bm.rotation.y = -Math.PI / 2; }
-      else { bm.position.set(b.position.x - halfW, y, b.position.z); bm.rotation.y = Math.PI / 2; }
+      const face = (Math.random() * 4) | 0; const half = (b.scale.x * 10) / 2 + 0.3;
+      const y = 6 + Math.random() * (b.scale.y - 14);
+      if (face === 0) bm.position.set(b.position.x, y, b.position.z + half);
+      else if (face === 1) { bm.position.set(b.position.x, y, b.position.z - half); bm.rotation.y = Math.PI; }
+      else if (face === 2) { bm.position.set(b.position.x + half, y, b.position.z); bm.rotation.y = -Math.PI / 2; }
+      else { bm.position.set(b.position.x - half, y, b.position.z); bm.rotation.y = Math.PI / 2; }
       W.add(bm);
     });
 
@@ -1687,224 +1258,6 @@ class Game {
     sun.shadow.camera.far = 500; sun.shadow.mapSize.set(2048, 2048); W.add(sun);
   }
 
-  addCityWeaponShowcase(W) {
-    // City-only armory plaza that advertises the uploaded GLB weapon set without
-    // blocking spawn or normal movement. The actual weapon models load as first-person
-    // viewmodels; this scene prop gives the city level a visible place for them.
-    const baseMat = new THREE.MeshStandardMaterial({ color: 0x111722, roughness: 0.48, metalness: 0.65 });
-    const trimMat = new THREE.MeshBasicMaterial({ color: 0x19f0ff });
-    const glowPink = new THREE.MeshBasicMaterial({ color: 0xff2d95 });
-    const x0 = 0, z0 = -16;
-
-    const pad = new THREE.Mesh(new THREE.CylinderGeometry(5.2, 5.8, 0.32, 8), baseMat);
-    pad.position.set(x0, 0.16, z0); pad.rotation.y = Math.PI / 8; pad.receiveShadow = true; pad.castShadow = true; W.add(pad);
-    this.climbables.push({ kind: 'platform', x: x0, z: z0, w: 11.5, d: 11.5, y: 0.34, snap: 1.2 });
-
-    const signBack = new THREE.Mesh(new THREE.BoxGeometry(8.6, 2.4, 0.24), new THREE.MeshStandardMaterial({ color: 0x171a24, roughness: 0.5, metalness: 0.45 }));
-    signBack.position.set(x0, 3.2, z0 - 4.2); signBack.castShadow = true; W.add(signBack);
-    const signGlow = new THREE.Mesh(new THREE.PlaneGeometry(7.8, 1.55), new THREE.MeshBasicMaterial({ color: 0x19f0ff, transparent: true, opacity: 0.72, side: THREE.DoubleSide }));
-    signGlow.position.set(x0, 3.22, z0 - 4.34); W.add(signGlow);
-    const signCore = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.13, 0.08), glowPink);
-    signCore.position.set(x0, 3.2, z0 - 4.5); W.add(signCore);
-    const signLight = new THREE.PointLight(0x19f0ff, 2.4, 16, 1.5); signLight.position.set(x0, 3.1, z0 - 3.5); W.add(signLight);
-
-    const rackMat = new THREE.MeshStandardMaterial({ color: 0x2c3344, roughness: 0.35, metalness: 0.82 });
-    const labels = [0xffc16a, 0x66e6ff, 0xff7a18, 0x73f7ff];
-    [-2.9, -1.0, 1.0, 2.9].forEach((dx, i) => {
-      const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.7, 1.3), rackMat);
-      plinth.position.set(x0 + dx, 0.68, z0 + 1.6); plinth.castShadow = true; plinth.receiveShadow = true; W.add(plinth);
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.08, 1.08), new THREE.MeshBasicMaterial({ color: labels[i] }));
-      strip.position.set(x0 + dx, 1.08, z0 + 1.6); W.add(strip);
-      const holo = new THREE.Mesh(new THREE.BoxGeometry(0.18 + i * 0.05, 0.18, 1.8 - i * 0.12), new THREE.MeshStandardMaterial({ color: labels[i], emissive: labels[i], emissiveIntensity: 1.4, roughness: 0.32, metalness: 0.4 }));
-      holo.position.set(x0 + dx, 1.55, z0 + 1.6); holo.rotation.y = -0.32 + i * 0.22; holo.castShadow = true; W.add(holo);
-    });
-
-    const crate = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.2, 1.4), new THREE.MeshStandardMaterial({ color: 0x242021, roughness: 0.75, metalness: 0.22 }));
-    crate.position.set(x0 + 4.4, 0.76, z0 - 1.8); crate.castShadow = true; crate.receiveShadow = true; W.add(crate); this.objects.push(crate);
-    const crateGlow = new THREE.Mesh(new THREE.BoxGeometry(2.24, 0.08, 1.44), trimMat);
-    crateGlow.position.set(x0 + 4.4, 1.38, z0 - 1.8); W.add(crateGlow);
-
-    this.loadCityDisplayGLB(W, 'assets/models/weapons/night_vision_soldier.glb', {
-      position: new THREE.Vector3(x0 - 4.0, 0.35, z0 - 1.0),
-      fit: 3.0,
-      rotY: Math.PI * 0.16,
-      name: 'city_night_vision_soldier'
-    });
-  }
-
-  loadCityDisplayGLB(parent, path, cfg = {}) {
-    if (!window.THREE || !THREE.GLTFLoader || !parent) return;
-    this.gltfLoader = this.gltfLoader || new THREE.GLTFLoader();
-    this.gltfLoader.load(path, gltf => {
-      try {
-        const model = gltf.scene || (gltf.scenes && gltf.scenes[0]);
-        if (!model) return;
-        model.name = cfg.name || 'city_display_glb';
-        model.traverse(o => {
-          if (o.isMesh) {
-            o.castShadow = true; o.receiveShadow = true;
-            if (o.material) {
-              const mats = Array.isArray(o.material) ? o.material : [o.material];
-              mats.forEach(m => { if (m.map) m.map.encoding = THREE.sRGBEncoding; m.needsUpdate = true; });
-            }
-          }
-        });
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-        model.scale.setScalar((cfg.fit || 2.5) / maxDim);
-        const box2 = new THREE.Box3().setFromObject(model);
-        const center = box2.getCenter(new THREE.Vector3());
-        model.position.sub(center);
-        model.rotation.set(cfg.rotX || 0, cfg.rotY || 0, cfg.rotZ || 0);
-        model.position.add(cfg.position || new THREE.Vector3());
-        parent.add(model);
-      } catch (err) {
-        console.warn('City display GLB setup failed:', path, err);
-      }
-    }, undefined, err => console.warn('City display GLB failed to load:', path, err));
-  }
-
-
-  prepareSharedGLB(path, source) {
-    if (!source) return null;
-    source.name = source.name || path.split('/').pop().replace(/\.glb$/i, '');
-    source.traverse(o => {
-      if (o.isMesh) {
-        o.castShadow = true;
-        o.receiveShadow = true;
-        if (o.material) {
-          const mats = Array.isArray(o.material) ? o.material : [o.material];
-          mats.forEach(m => {
-            if (m.map) m.map.encoding = THREE.sRGBEncoding;
-            if (m.emissiveMap) m.emissiveMap.encoding = THREE.sRGBEncoding;
-            m.needsUpdate = true;
-          });
-        }
-      }
-    });
-    return source;
-  }
-
-  requestSharedGLB(path, onReady) {
-    if (!window.THREE || !THREE.GLTFLoader || !path) return;
-    this.gltfLoader = this.gltfLoader || new THREE.GLTFLoader();
-    this._sharedGLBCache = this._sharedGLBCache || {};
-    this._sharedGLBWaiters = this._sharedGLBWaiters || {};
-    if (this._sharedGLBCache[path]) { onReady(this._sharedGLBCache[path]); return; }
-    if (this._sharedGLBWaiters[path]) { this._sharedGLBWaiters[path].push(onReady); return; }
-    this._sharedGLBWaiters[path] = [onReady];
-    this.gltfLoader.load(path, gltf => {
-      try {
-        const source = this.prepareSharedGLB(path, gltf.scene || (gltf.scenes && gltf.scenes[0]));
-        if (!source) throw new Error('empty GLB scene');
-        this._sharedGLBCache[path] = source;
-        const waiters = this._sharedGLBWaiters[path] || [];
-        delete this._sharedGLBWaiters[path];
-        waiters.forEach(cb => { try { cb(source); } catch (err) { console.warn('Shared GLB callback failed:', path, err); } });
-      } catch (err) {
-        console.warn('Shared GLB setup failed:', path, err);
-        delete this._sharedGLBWaiters[path];
-      }
-    }, undefined, err => {
-      console.warn('Shared GLB failed to load:', path, err);
-      delete this._sharedGLBWaiters[path];
-    });
-  }
-
-  placeSharedGLB(parent, path, cfg = {}) {
-    if (!parent) return;
-    this.requestSharedGLB(path, source => {
-      try {
-        const model = source.clone(true);
-        model.name = cfg.name || source.name || 'shared_glb';
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-        model.scale.setScalar((cfg.fit || maxDim) / maxDim);
-        const box2 = new THREE.Box3().setFromObject(model);
-        const center = box2.getCenter(new THREE.Vector3());
-        model.position.sub(center);
-        model.rotation.set(cfg.rotX || 0, cfg.rotY || 0, cfg.rotZ || 0);
-        model.position.add(cfg.position || new THREE.Vector3());
-        if (cfg.opacity !== undefined) {
-          model.traverse(o => {
-            if (o.isMesh && o.material) {
-              const mats = Array.isArray(o.material) ? o.material : [o.material];
-              mats.forEach(m => { m.transparent = cfg.opacity < 1; m.opacity = cfg.opacity; m.needsUpdate = true; });
-            }
-          });
-        }
-        parent.add(model);
-        if (cfg.onPlaced) cfg.onPlaced(model);
-      } catch (err) {
-        console.warn('Shared GLB placement failed:', path, err);
-      }
-    });
-  }
-
-  addRoadGLBGrid(W, cfg = {}) {
-    const path = 'assets/models/environment/roads.glb';
-    const tiles = cfg.tiles || [[0, 0, 0, cfg.fit || 92]];
-    tiles.forEach(([x, z, rotY, fit], i) => {
-      this.placeSharedGLB(W, path, {
-        name: 'road_glb_tile_' + i,
-        position: new THREE.Vector3(x, cfg.y === undefined ? 0.055 : cfg.y, z),
-        fit: fit || cfg.fit || 92,
-        rotY: rotY || 0,
-        opacity: cfg.opacity
-      });
-    });
-  }
-
-  applyVehiclePackToTraffic(vehicles, cfg = {}) {
-    if (!vehicles || !vehicles.length) return;
-    const path = 'assets/models/environment/cars_pack.glb';
-    const maxCount = cfg.maxCount || vehicles.length;
-    this.requestSharedGLB(path, source => {
-      vehicles.slice(0, maxCount).forEach((v, i) => {
-        try {
-          const target = v.mesh || v;
-          if (!target || target.userData.vehicleGLBAttached) return;
-          const model = source.clone(true);
-          model.name = 'traffic_car_glb_' + i;
-          const box = new THREE.Box3().setFromObject(model);
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-          model.scale.setScalar((cfg.fit || 3.0) / maxDim);
-          const box2 = new THREE.Box3().setFromObject(model);
-          const center = box2.getCenter(new THREE.Vector3());
-          model.position.sub(center);
-          model.position.add(cfg.offset || new THREE.Vector3(0, 0.02, 0));
-          model.rotation.set(cfg.rotX || 0, cfg.rotY || 0, cfg.rotZ || 0);
-          target.add(model);
-          target.userData.vehicleGLBAttached = true;
-          if (target.material) {
-            const mats = Array.isArray(target.material) ? target.material : [target.material];
-            mats.forEach(m => { m.transparent = true; m.opacity = cfg.shellOpacity === undefined ? 0.025 : cfg.shellOpacity; m.needsUpdate = true; });
-          }
-        } catch (err) {
-          console.warn('Vehicle GLB attachment failed:', err);
-        }
-      });
-    });
-  }
-
-  addParkedVehicleGLBs(W, spots, cfg = {}) {
-    const vehicles = [];
-    const shellMat = new THREE.MeshStandardMaterial({ color: 0x1f2836, roughness: 0.5, metalness: 0.35, transparent: true, opacity: 0.03 });
-    spots.forEach(([x, z, rotY], i) => {
-      const shell = new THREE.Mesh(new THREE.BoxGeometry(cfg.w || 3.0, cfg.h || 1.25, cfg.d || 5.2), shellMat.clone());
-      shell.position.set(x, cfg.y === undefined ? 0.72 : cfg.y, z);
-      shell.rotation.y = rotY || 0;
-      shell.castShadow = true;
-      W.add(shell);
-      vehicles.push({ mesh: shell });
-    });
-    this.applyVehiclePackToTraffic(vehicles, { fit: cfg.fit || 4.8, shellOpacity: 0.02, offset: new THREE.Vector3(0, cfg.visualYOffset || 0.04, 0) });
-  }
-
-
   // ---------------- WEAPON MODEL ----------------
   createWeaponModel() {
     this.gunGroup = new THREE.Group();
@@ -1912,7 +1265,6 @@ class Game {
     this._matDark = new THREE.MeshStandardMaterial({ color: 0x16181d, roughness: 0.45, metalness: 0.6 });
     this._matMetal = new THREE.MeshStandardMaterial({ color: 0x4a505c, metalness: 0.9, roughness: 0.25 });
     this._matPoly = new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.6, metalness: 0.4 });
-    this.gltfLoader = null;
 
     this.gunModels = {
       pistol:  this._buildPistol(0x19f0ff),
@@ -1921,16 +1273,11 @@ class Game {
       railgun: this._buildRailgun(0x39ff14),
       plasma:  this._buildPlasma(0x9b5cff),
       pulse:   this._buildPulse(0xff7a18),
-      saiga:   this._buildShotgun(0xffc16a),
-      aetheris_edge: this._buildKatana(),
-      ember_axe: this._buildAxeFallback(0xff7a18),
-      titan_railgun: this._buildRailgun(0x73f7ff),
       katana:  this._buildKatana(),
       shuriken: this._buildShuriken(),
       bow:     this._buildBow()
     };
     Object.values(this.gunModels).forEach(m => { m.visible = false; this.gunGroup.add(m); });
-    this.loadCityWeaponModels();
 
     // shared muzzle flash + light
     this.muzzleFlash = new THREE.Mesh(
@@ -1944,92 +1291,6 @@ class Game {
     this.gunGroup.position.set(0.32, -0.3, -0.6);
     this.camera.add(this.gunGroup);
     this.scene.add(this.camera);
-  }
-
-
-  loadWeaponGLB(key, path, cfg = {}) {
-    if (!this.gltfLoader || !this.gunModels || !this.gunModels[key]) return;
-    const fallback = this.gunModels[key];
-    fallback.userData.loadingGLB = true;
-    this.gltfLoader.load(path, gltf => {
-      try {
-        const holder = new THREE.Group();
-        const model = gltf.scene || (gltf.scenes && gltf.scenes[0]);
-        if (!model) return;
-        model.traverse(o => {
-          if (o.isMesh) {
-            o.castShadow = true;
-            o.receiveShadow = true;
-            if (o.material) {
-              const mats = Array.isArray(o.material) ? o.material : [o.material];
-              mats.forEach(m => { if (m.map) m.map.encoding = THREE.sRGBEncoding; m.needsUpdate = true; });
-            }
-          }
-        });
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-        const fit = cfg.fit || 0.82;
-        model.scale.setScalar(fit / maxDim);
-        const box2 = new THREE.Box3().setFromObject(model);
-        const center = box2.getCenter(new THREE.Vector3());
-        model.position.sub(center);
-        model.rotation.set(cfg.rotX || 0, cfg.rotY || 0, cfg.rotZ || 0);
-        model.position.add(cfg.offset || new THREE.Vector3(0, 0, -0.16));
-        holder.add(model);
-        holder.userData.muzzle = (cfg.muzzle || fallback.userData.muzzle || new THREE.Vector3(0, 0.03, -0.6)).clone();
-        holder.userData.loadedGLB = true;
-        holder.visible = fallback.visible;
-        this.gunGroup.remove(fallback);
-        this.gunModels[key] = holder;
-        this.gunGroup.add(holder);
-        if (this.player && this.player.weapons && this.player.weapons[this.player.weaponIdx]) this.updateWeaponModel(this.player.weapons[this.player.weaponIdx].name);
-      } catch (err) {
-        console.warn('GLB weapon setup failed for', key, err);
-      }
-    }, undefined, err => console.warn('GLB weapon failed to load:', path, err));
-  }
-
-  loadCityWeaponModels() {
-    if (!window.THREE || !THREE.GLTFLoader) return;
-    this.gltfLoader = this.gltfLoader || new THREE.GLTFLoader();
-    const base = 'assets/models/weapons/';
-    this.loadWeaponGLB('pistol', base + 'fps_pistol_animated.glb', {
-      fit: 0.92,
-      rotX: -0.10, rotY: Math.PI, rotZ: 0.02,
-      offset: new THREE.Vector3(0.02, -0.02, -0.18),
-      muzzle: new THREE.Vector3(0, 0.03, -0.58)
-    });
-    this.loadWeaponGLB('katana', base + 'katana.glb', {
-      fit: 1.28,
-      rotX: -0.18, rotY: Math.PI, rotZ: -0.36,
-      offset: new THREE.Vector3(0.09, -0.04, -0.36),
-      muzzle: new THREE.Vector3(0.08, 0, -1.18)
-    });
-    this.loadWeaponGLB('saiga', base + 'saiga.glb', {
-      fit: 0.78,
-      rotX: -0.08, rotY: Math.PI, rotZ: 0.02,
-      offset: new THREE.Vector3(0.02, -0.02, -0.18),
-      muzzle: new THREE.Vector3(0, 0.02, -0.72)
-    });
-    this.loadWeaponGLB('aetheris_edge', base + 'aetheris_edge.glb', {
-      fit: 1.42,
-      rotX: -0.22, rotY: Math.PI, rotZ: -0.32,
-      offset: new THREE.Vector3(0.08, -0.03, -0.38),
-      muzzle: new THREE.Vector3(0.09, 0, -1.36)
-    });
-    this.loadWeaponGLB('ember_axe', base + 'ember_axe.glb', {
-      fit: 1.18,
-      rotX: -0.18, rotY: Math.PI, rotZ: 0.38,
-      offset: new THREE.Vector3(0.10, -0.02, -0.34),
-      muzzle: new THREE.Vector3(0.12, 0.02, -1.10)
-    });
-    this.loadWeaponGLB('titan_railgun', base + 'titanfall_railgun.glb', {
-      fit: 0.95,
-      rotX: -0.05, rotY: Math.PI, rotZ: 0,
-      offset: new THREE.Vector3(0.01, -0.01, -0.24),
-      muzzle: new THREE.Vector3(0, 0.05, -0.92)
-    });
   }
 
   _accent(hex) { return new THREE.MeshBasicMaterial({ color: hex }); }
@@ -2163,74 +1424,6 @@ class Game {
     return g;
   }
 
-  // ---- EMBER AXE FALLBACK: heavy stylized axe used until the uploaded GLB finishes loading ----
-  _buildAxeFallback(color = 0xff7a18) {
-    const g = new THREE.Group();
-    const haftMat = new THREE.MeshStandardMaterial({ color: 0x3a2416, roughness: 0.68, metalness: 0.08 });
-    const gripMat = new THREE.MeshStandardMaterial({ color: 0x171310, roughness: 0.85, metalness: 0.12 });
-    const metalMat = new THREE.MeshStandardMaterial({ color: 0x8f969e, roughness: 0.25, metalness: 0.92 });
-    const edgeMat = new THREE.MeshBasicMaterial({ color });
-    const emberMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75 });
-
-    const haft = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.22, 8), haftMat);
-    haft.rotation.x = Math.PI / 2;
-    haft.position.set(0.04, -0.01, -0.48);
-    g.add(haft);
-
-    for (let i = 0; i < 5; i++) {
-      const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.006, 6, 12), gripMat);
-      wrap.rotation.x = Math.PI / 2;
-      wrap.position.set(0.04, -0.01, 0.03 - i * 0.09);
-      g.add(wrap);
-    }
-
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.085, 0.12, 8), metalMat);
-    collar.rotation.x = Math.PI / 2;
-    collar.position.set(0.04, -0.01, -0.98);
-    g.add(collar);
-
-    const bladeLeft = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.035, 0.26), metalMat);
-    bladeLeft.position.set(-0.13, 0.0, -1.08);
-    bladeLeft.rotation.y = -0.28;
-    g.add(bladeLeft);
-
-    const bladeRight = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.035, 0.22), metalMat);
-    bladeRight.position.set(0.22, 0.0, -1.05);
-    bladeRight.rotation.y = 0.34;
-    g.add(bladeRight);
-
-    const edgeLeft = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.045, 0.28), edgeMat);
-    edgeLeft.position.set(-0.33, 0.004, -1.08);
-    edgeLeft.rotation.y = -0.28;
-    g.add(edgeLeft);
-
-    const edgeRight = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.045, 0.22), edgeMat);
-    edgeRight.position.set(0.38, 0.004, -1.05);
-    edgeRight.rotation.y = 0.34;
-    g.add(edgeRight);
-
-    const rune = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.006, 8, 18), emberMat);
-    rune.rotation.x = Math.PI / 2;
-    rune.position.set(0.04, 0.027, -1.06);
-    g.add(rune);
-
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.22, 8), metalMat);
-    spike.rotation.x = -Math.PI / 2;
-    spike.position.set(0.04, 0.0, -1.28);
-    g.add(spike);
-
-    const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), edgeMat);
-    pommel.position.set(0.04, -0.01, 0.15);
-    g.add(pommel);
-
-    g.position.set(0, 0, 0);
-    g.scale.setScalar(1.0);
-    g.userData.muzzle = new THREE.Vector3(0.10, 0.02, -1.18);
-    g.userData.blade = bladeLeft;
-    return g;
-  }
-
-
   // ---- SHURIKEN: throwing star held in fingers ----
   _buildShuriken() {
     const g = new THREE.Group();
@@ -2283,16 +1476,13 @@ class Game {
   }
 
   updateWeaponModel(name) {
-    const weapon = (this.player && this.player.weapons) ? this.player.weapons[this.player.weaponIdx] : null;
-    const rawKey = (weapon && weapon.model) || name || 'PISTOL';
-    const key = String(rawKey).toLowerCase().replace(/\s+/g, '_');
+    const key = (name || 'PISTOL').toLowerCase();
     Object.entries(this.gunModels).forEach(([k, m]) => m.visible = (k === key));
     const model = this.gunModels[key] || this.gunModels.pistol;
-    if (model) model.visible = true;
-    const mz = (model && model.userData.muzzle) || new THREE.Vector3(0, 0.03, -0.6);
+    const mz = model.userData.muzzle || new THREE.Vector3(0, 0.03, -0.6);
     this.muzzleFlash.position.copy(mz).add(new THREE.Vector3(0, 0, -0.04));
     this.muzzleLight.position.copy(mz).add(new THREE.Vector3(0, 0, -0.06));
-    const c = (weapon && weapon.color) || 0x19f0ff;
+    const c = this.player.weapons[this.player.weaponIdx].color;
     this.muzzleFlash.material.color.setHex(c);
     this.muzzleLight.color.setHex(c);
   }
@@ -2306,9 +1496,7 @@ class Game {
       { id: 'megacity', name: 'MEGAWATT CITY 1', desc: 'Dense grid, live traffic & neon.', art: 'mega' },
       { id: 'rail', name: 'RAIL CITY', desc: 'Ride the monorail · day to night.', art: 'rail' },
       { id: 'desert', name: 'EGYPT DESERT', desc: 'Pyramids, jungle & pharaoh golems.', art: 'desert' },
-      { id: 'japan', name: 'FEUDAL JAPAN', desc: 'Katana, shuriken & bow only.', art: 'japan' },
-      { id: 'home', name: 'HOME DEFENDER', desc: 'Protect your home from golem waves.', art: 'home' },
-      { id: 'bayard', name: 'BAYARD STATION', desc: 'Valve house breach under neon fog.', art: 'bayard' }
+      { id: 'japan', name: 'FEUDAL JAPAN', desc: 'Katana, shuriken & bow only.', art: 'japan' }
     ];
     levels.forEach(l => {
       const c = document.createElement('div');
@@ -2379,11 +1567,12 @@ class Game {
       if (code === 'Space') { this.input.jump = down; if (down) this.jump(); }
       if (code === 'ShiftLeft') this.input.sprint = down;
       if (code === 'Escape' && down) this.togglePause();
-      const digit = code.match(/^Digit([0-9])$/);
-      if (down && digit) {
-        const n = digit[1] === '0' ? 10 : Number(digit[1]);
-        this.switchWeapon(n - 1);
-      }
+      if (code === 'Digit1' && down) this.switchWeapon(0);
+      if (code === 'Digit2' && down) this.switchWeapon(1);
+      if (code === 'Digit3' && down) this.switchWeapon(2);
+      if (code === 'Digit4' && down) this.switchWeapon(3);
+      if (code === 'Digit5' && down) this.switchWeapon(4);
+      if (code === 'Digit6' && down) this.switchWeapon(5);
       if (code === 'KeyR' && down) this.reload();
     };
     addEventListener('keydown', e => onKey(e.code, true));
@@ -2452,7 +1641,7 @@ class Game {
     if (this.curGameMusic) this.curGameMusic.play().catch(() => {});
     this.buildWorld(this.level || 'city');
     // pick arsenal for the level (Japan = katana / shuriken / bow)
-    this.player.weapons = this.level === 'japan' ? this.japanWeapons : (this.level === 'city' ? this.cityWeapons : this.defaultWeapons);
+    this.player.weapons = this.level === 'japan' ? this.japanWeapons : this.defaultWeapons;
     this.player.weaponIdx = 0;
     this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
     this.waveCountdown = null;
@@ -2461,8 +1650,6 @@ class Game {
     if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
     if (this._desertSpawn && this.level === 'desert') this.camera.position.copy(this._desertSpawn);
     if (this._japanSpawn && this.level === 'japan') this.camera.position.copy(this._japanSpawn);
-    if (this._homeSpawn && this.level === 'home') this.camera.position.copy(this._homeSpawn);
-    if (this._bayardSpawn && this.level === 'bayard') this.camera.position.copy(this._bayardSpawn);
     this.player.ridingCar = null; this.player.floorY = this.player.height;
     this.camera.rotation.set(0, 0, 0);
     // time-of-day chip only on rail level
@@ -2482,7 +1669,6 @@ class Game {
     if (this.rings) { this.rings.forEach(r => this.scene.remove(r.mesh)); this.rings = []; }
     this.swing = null;
     document.getElementById('boss-bar-wrap').classList.add('hidden');
-    this.updateHomeDefenseHUD();
     this.updateHUD();
     this.updateWeaponModel(this.player.weapons[0].name);
     this.startWaveCountdown(1);
@@ -2506,7 +1692,7 @@ class Game {
 
   switchWeapon(idx) {
     if (idx === undefined) idx = (this.player.weaponIdx + 1) % this.player.weapons.length;
-    if (idx < 0 || idx >= this.player.weapons.length) return;
+    if (idx >= this.player.weapons.length) return;
     if (this.aiming) this.setAim(false);
     this.player.weaponIdx = idx;
     this.gunGroup.rotation.x = Math.PI * 2;
@@ -2524,14 +1710,6 @@ class Game {
   // ---------------- WAVES ----------------
   buildWave(n) {
     const list = [];
-    if (this.level === 'home') {
-      for (let i = 0; i < 4 + Math.floor(n * 0.85); i++) list.push('grunt');
-      for (let i = 0; i < Math.floor(n * 0.7); i++) list.push('runner');
-      if (n >= 2) for (let i = 0; i < Math.floor(n * 0.45); i++) list.push('tank');
-      if (n >= 3) for (let i = 0; i < 1 + Math.floor(n / 4); i++) list.push('shooter');
-      if (n % 5 === 0) list.push('boss');
-      return list.slice(0, 28);
-    }
     if (n % 5 === 0) {
       list.push('boss');
       for (let i = 0; i < 3 + Math.floor(n / 5); i++) list.push('runner');
@@ -2586,8 +1764,7 @@ class Game {
 
     let pos = new THREE.Vector3(), ok = false, tries = 0;
     while (!ok && tries++ < 40) {
-      const a = Math.random() * Math.PI * 2;
-      const d = this.level === 'home' ? ((cfg.boss ? 92 : 68) + Math.random() * 42) : ((cfg.boss ? 55 : 38) + Math.random() * 55);
+      const a = Math.random() * Math.PI * 2, d = (cfg.boss ? 55 : 38) + Math.random() * 55;
       pos.set(Math.cos(a) * d, 0, Math.sin(a) * d);
       ok = true;
       for (const o of this.objects) if (pos.distanceTo(o.position) < 9) { ok = false; break; }
@@ -2635,11 +1812,11 @@ class Game {
     this.scene.add(spr); this.items.push(spr);
   }
 
-  showMessage(text, color, duration = 1800) {
+  showMessage(text, color) {
     const el = document.getElementById('game-message');
     el.innerText = text; el.style.color = color || '#fff'; el.style.opacity = 1;
     clearTimeout(this._msgT);
-    this._msgT = setTimeout(() => el.style.opacity = 0, duration);
+    this._msgT = setTimeout(() => el.style.opacity = 0, 1800);
   }
 
   // ---------------- SHOOTING ----------------
@@ -2682,8 +1859,10 @@ class Game {
       dir.x += (Math.random() - 0.5) * spread; dir.y += (Math.random() - 0.5) * spread; dir.z += (Math.random() - 0.5) * spread;
       dir.normalize();
       this.spawnThrown(muzzlePos, dir, w);
-      // smooth projectile recoil flick
-      this.applyWeaponRecoil(w, 0.85);
+      // light recoil flick
+      this.gunGroup.position.z = -0.46 - w.kick * 2;
+      this.gunGroup.rotation.x = 0.05 + w.kick * 2;
+      this.camera.rotation.x += w.kick;
       return;
     }
 
@@ -2737,8 +1916,10 @@ class Game {
       }
     }
 
-    // smooth recoil + flash (scaled per weapon)
-    this.applyWeaponRecoil(w, w.pellets ? 0.95 : 0.8);
+    // recoil + flash (scaled per weapon)
+    this.gunGroup.position.z = -0.42 - (w.kick || 0.01) * 3;
+    this.gunGroup.rotation.x = 0.06 + (w.kick || 0.01) * 2.5;
+    this.camera.rotation.x += w.kick || 0.012;
     this.muzzleFlash.material.opacity = 1;
     this.muzzleFlash.rotation.z = Math.random() * Math.PI;
     this.muzzleFlash.scale.setScalar(w.pellets ? 1.6 : (w.pierce ? 1.8 : (w.projectile ? 1.4 : 1)));
@@ -2986,7 +2167,6 @@ class Game {
       }
       P.ridingCar = (support === 'car') ? onCar : null;
     }
-    supportY = this.supportFromClimbables(this.camera.position, supportY);
     if (this.camera.position.y < supportY) { this.camera.position.y = supportY; P.velocity.y = 0; P.onGround = true; }
     else if (this.camera.position.y > supportY + 0.05) { P.onGround = false; }
     P.floorY = supportY;
@@ -3045,21 +2225,12 @@ class Game {
       this.sound.shoot(w.name.toLowerCase());
       this.updateHUD();
     }
-    // gun sway/return (ADS pulls weapon toward centre with damped recoil instead of snapping)
+    // gun sway/return (ADS pulls weapon toward centre)
     const w0 = this.player.weapons[this.player.weaponIdx];
-    const smooth = this.weaponSmooth || (this.weaponSmooth = { recoilZ: 0, recoilPitch: 0, recoilRoll: 0 });
-    smooth.recoilZ = THREE.MathUtils.lerp(smooth.recoilZ, 0, 1 - Math.exp(-dt * 8));
-    smooth.recoilPitch = THREE.MathUtils.lerp(smooth.recoilPitch, 0, 1 - Math.exp(-dt * 10));
-    smooth.recoilRoll = THREE.MathUtils.lerp(smooth.recoilRoll, 0, 1 - Math.exp(-dt * 9));
-    const moving = Math.abs(mx) + Math.abs(mz);
-    const bob = P.onGround && moving > 0 ? Math.sin(P.bobTimer) : 0;
     const adsX = this.aiming ? 0.0 : 0.32, adsY = this.aiming ? -0.18 : -0.3, adsZ = this.aiming ? -0.46 : -0.6;
-    const targetGun = this._tmp.set(
-      adsX + (-this.input.a + this.input.d) * 0.024,
-      adsY + bob * 0.018,
-      adsZ - smooth.recoilZ + Math.abs(bob) * 0.012
-    );
-    this.gunGroup.position.lerp(targetGun, 1 - Math.exp(-dt * 14));
+    this.gunGroup.position.z = THREE.MathUtils.lerp(this.gunGroup.position.z, adsZ, dt * 9);
+    this.gunGroup.position.x = THREE.MathUtils.lerp(this.gunGroup.position.x, adsX, dt * 12);
+    this.gunGroup.position.y = THREE.MathUtils.lerp(this.gunGroup.position.y, adsY, dt * 12);
     // zoom FOV toward aim target
     const isSniper = w0.pierce;
     const targetFOV = this.aiming ? this.baseFOV * (isSniper ? 0.32 : 0.62) : this.baseFOV;
@@ -3067,11 +2238,8 @@ class Game {
       this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFOV, dt * 12);
       this.camera.updateProjectionMatrix();
     }
-    if (!this.gunGroup.userData.reloading) {
-      this.gunGroup.rotation.x = THREE.MathUtils.lerp(this.gunGroup.rotation.x, smooth.recoilPitch + bob * 0.012, 1 - Math.exp(-dt * 12));
-      this.gunGroup.rotation.z = THREE.MathUtils.lerp(this.gunGroup.rotation.z, smooth.recoilRoll, 1 - Math.exp(-dt * 10));
-    }
-    this.gunGroup.rotation.y = THREE.MathUtils.lerp(this.gunGroup.rotation.y, (-this.input.a + this.input.d) * 0.032, 1 - Math.exp(-dt * 7));
+    if (!this.gunGroup.userData.reloading) this.gunGroup.rotation.x = THREE.MathUtils.lerp(this.gunGroup.rotation.x, 0, dt * 9);
+    this.gunGroup.rotation.y = THREE.MathUtils.lerp(this.gunGroup.rotation.y, (-this.input.a + this.input.d) * 0.04, dt * 6);
     this.muzzleFlash.material.opacity = THREE.MathUtils.lerp(this.muzzleFlash.material.opacity, 0, dt * 22);
     this.muzzleLight.intensity = THREE.MathUtils.lerp(this.muzzleLight.intensity, 0, dt * 20);
 
@@ -3284,59 +2452,11 @@ class Game {
       }
       jp.petals.geometry.attributes.position.needsUpdate = true;
       jp.lanternLights.forEach(l => { l.light.intensity = l.base + Math.sin(t * 6 + l.ph) * 0.18; });
-      if (jp.stars) jp.stars.rotation.y += dt * 0.015;
-      if (jp.moonGlow) jp.moonGlow.intensity = 1.05 + Math.sin(t * 0.7) * 0.14;
-      if (jp.marketGlow) jp.marketGlow.intensity = 2.0 + Math.sin(t * 2.5) * 0.22;
-      if (jp.floatingLanterns) jp.floatingLanterns.forEach(l => {
-        l.group.position.y = l.baseY + Math.sin(t * 1.2 + l.ph) * 0.45;
-        l.group.position.x += Math.sin(t * 0.45 + l.ph) * l.drift * dt;
-        l.group.rotation.y += dt * 0.18;
-        if (l.light) l.light.intensity = 0.55 + Math.sin(t * 2.2 + l.ph) * 0.12;
-      });
-      if (jp.fireworks) {
-        if (t > (jp.nextFirework || 0)) {
-          this.spawnJapanFirework(jp);
-          jp.nextFirework = t + 2.0 + Math.random() * 2.2;
-        }
-        for (let b = jp.fireworks.length - 1; b >= 0; b--) {
-          const burst = jp.fireworks[b];
-          burst.life -= dt;
-          if (burst.light) burst.light.intensity = Math.max(0, burst.life * 2.4);
-          for (let i = burst.parts.length - 1; i >= 0; i--) {
-            const p = burst.parts[i];
-            p.userData.life -= dt;
-            p.userData.vel.y -= 4.2 * dt;
-            p.position.addScaledVector(p.userData.vel, dt);
-            p.material.opacity = Math.max(0, p.userData.life);
-            p.scale.multiplyScalar(1 + dt * 0.34);
-            if (p.userData.life <= 0) { this.worldGroup.remove(p); burst.parts.splice(i, 1); }
-          }
-          if (burst.life <= 0 && burst.parts.length === 0) {
-            if (burst.light) this.worldGroup.remove(burst.light);
-            jp.fireworks.splice(b, 1);
-          }
-        }
-      }
       if (jp.hangLanterns) jp.hangLanterns.forEach(l => {
         const pulse = l.base + Math.sin(t * 4 + l.ph) * 0.3;
         if (l.mesh) l.mesh.material.emissiveIntensity = pulse;
         if (l.light) l.light.intensity = 0.7 + Math.sin(t * 4 + l.ph) * 0.2;
         if (l.mesh) l.mesh.position.y += Math.sin(t * 2 + l.ph) * 0.0006;
-      });
-    }
-    if (this.homeDefense) {
-      const hd = this.homeDefense;
-      if (hd.core) {
-        const pulse = 1 + Math.sin(performance.now() * 0.006) * 0.08;
-        hd.core.scale.lerp(new THREE.Vector3(pulse, pulse, pulse), dt * 3.2);
-        hd.core.rotation.y += dt * 0.7;
-      }
-      if (hd.coreLight) hd.coreLight.intensity += ((1.65 + Math.sin(performance.now() * 0.006) * 0.35) - hd.coreLight.intensity) * Math.min(1, dt * 4);
-      if (hd.smoke) hd.smoke.forEach((p, i) => {
-        p.position.y += dt * (0.08 + i * 0.01);
-        p.position.x += Math.sin(performance.now() * 0.001 + i) * dt * 0.05;
-        p.material.opacity = 0.18 + Math.sin(performance.now() * 0.002 + i) * 0.06;
-        if (p.position.y > 10) p.position.y = 6.1 + i * 0.2;
       });
     }
     // particles
@@ -3364,13 +2484,8 @@ class Game {
     // enemies
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i], ud = e.userData;
-      const home = (this.level === 'home' && this.homeDefense && this.homeDefense.hp > 0) ? this.homeDefense : null;
-      const playerVec = new THREE.Vector3().subVectors(this.camera.position, e.position);
-      const playerDist2D = Math.hypot(playerVec.x, playerVec.z);
-      const targetPos = (home && playerDist2D > 4.2) ? home.target : this.camera.position;
-      const toPlayer = new THREE.Vector3().subVectors(targetPos, e.position);
+      const toPlayer = this._tmp.subVectors(this.camera.position, e.position);
       const dist2D = Math.hypot(toPlayer.x, toPlayer.z);
-      const targetIsHome = !!(home && targetPos === home.target);
       const time = Date.now() * 0.006 + ud.animOffset;
 
       // hit flash decay
@@ -3390,19 +2505,12 @@ class Game {
         if (ud.hover) e.position.y = Math.sin(time) * 0.25;
         // fire
         if (Date.now() - ud.lastFire > ud.fireRate && dist2D < (ud.range || 26) + 12) {
-          ud.lastFire = Date.now();
-          if (targetIsHome) {
-            this.damageHomeDefense((ud.projDmg || ud.dmg || 8) * 0.85);
-            this.spawnSparks(home.core ? home.core.position.clone() : home.target.clone().setY(1.2), 0xff7a33, 6);
-          } else this.enemyFire(e);
+          ud.lastFire = Date.now(); this.enemyFire(e);
           if (ud.parts.orb) ud.parts.orb.scale.setScalar(1.6);
         }
         if (ud.parts && ud.parts.orb) ud.parts.orb.scale.lerp(new THREE.Vector3(1, 1, 1), dt * 4);
         // boss also melees if close
-        if (ud.boss && dist2D < 3.5) {
-          if (targetIsHome) this.damageHomeDefense(ud.dmg * dt * 1.6);
-          else { P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD(); if (P.hp <= 0) this.endGame(); }
-        }
+        if (ud.boss && dist2D < 3.5) { P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD(); if (P.hp <= 0) this.endGame(); }
       } else {
         // melee chaser
         const atkRange = ud.boss ? 3.5 : 1.6 + (ud.type === 'tank' ? 0.6 : 0);
@@ -3415,14 +2523,9 @@ class Game {
           ud.parts.legs.forEach((l, k) => l.rotation.x = Math.sin(time * (ud.crawl ? 2 : 1) + (k % 2) * Math.PI) * sw);
           ud.parts.arms.forEach((a, k) => a.rotation.x = Math.sin(time + (k % 2) * Math.PI) * 0.5);
         } else {
-          if (targetIsHome) {
-            this.damageHomeDefense(ud.dmg * dt * (ud.boss ? 1.8 : 1.15));
-            if (home.core) home.core.rotation.y += dt * 5;
-          } else {
-            P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD();
-            if (P.hp <= 0) this.endGame();
-          }
+          P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD();
           ud.parts.arms.forEach(a => a.rotation.x = -Math.PI / 2.2);
+          if (P.hp <= 0) this.endGame();
         }
       }
     }
@@ -3477,7 +2580,6 @@ class Game {
     document.getElementById('score-val').innerText = this.score.toLocaleString();
     document.getElementById('wave-val').innerText = this.wave;
     document.getElementById('enemies-val').innerText = this.enemies.length;
-    this.updateHomeDefenseHUD();
     const hpPct = Math.max(0, this.player.hp / this.player.maxHp * 100);
     document.getElementById('health-bar').style.width = hpPct + '%';
     document.getElementById('hp-num').innerText = Math.max(0, Math.ceil(this.player.hp));
@@ -3490,8 +2592,7 @@ class Game {
     this.player.weapons.forEach((wp, i) => {
       const d = document.createElement('div');
       d.className = 'wep-chip' + (i === this.player.weaponIdx ? ' active' : '');
-      const keyLabel = i < 9 ? String(i + 1) : (i === 9 ? '0' : 'SW');
-      d.innerHTML = `<span class="wep-key">${keyLabel}</span><span class="wep-lbl">${wp.name}</span>`;
+      d.innerHTML = `<span class="wep-key">${i + 1}</span><span class="wep-lbl">${wp.name}</span>`;
       cont.appendChild(d);
     });
   }
