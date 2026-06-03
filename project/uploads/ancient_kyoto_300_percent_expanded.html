@@ -1,0 +1,1797 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <title>Ancient Kyoto Expanded - Temple District | Night Fireworks</title>
+
+    <style>
+
+        body {
+
+            margin: 0;
+
+            overflow: hidden;
+
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+
+            background-color: #050515;
+
+        }
+
+        #info {
+
+            position: absolute;
+
+            bottom: 20px;
+
+            left: 20px;
+
+            background: rgba(12, 12, 28, 0.85);
+
+            backdrop-filter: blur(10px);
+
+            padding: 12px 20px;
+
+            border-radius: 8px;
+
+            color: #f0e6d2;
+
+            font-family: 'Courier New', monospace;
+
+            font-weight: bold;
+
+            border-left: 4px solid #cc3333;
+
+            pointer-events: none;
+
+            z-index: 100;
+
+            font-size: 13px;
+
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+
+        }
+
+        #controls {
+
+            position: absolute;
+
+            bottom: 20px;
+
+            right: 20px;
+
+            background: rgba(12, 12, 28, 0.75);
+
+            backdrop-filter: blur(8px);
+
+            padding: 8px 16px;
+
+            border-radius: 20px;
+
+            color: #aaa;
+
+            font-size: 11px;
+
+            font-family: monospace;
+
+            pointer-events: none;
+
+            z-index: 100;
+
+            border: 1px solid rgba(255,255,255,0.1);
+
+        }
+
+        .title {
+
+            position: absolute;
+
+            top: 20px;
+
+            left: 20px;
+
+            background: rgba(20, 10, 10, 0.85);
+
+            backdrop-filter: blur(8px);
+
+            padding: 8px 18px;
+
+            border-radius: 6px;
+
+            color: #ffd700;
+
+            font-size: 14px;
+
+            font-weight: bold;
+
+            font-family: 'Georgia', serif;
+
+            letter-spacing: 1px;
+
+            pointer-events: none;
+
+            z-index: 100;
+
+            border-bottom: 2px solid #cc3333;
+
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+
+        }
+
+        @media (max-width: 768px) {
+
+            #info { font-size: 10px; padding: 8px 12px; }
+
+            .title { font-size: 11px; top: 12px; left: 12px; }
+
+            #controls { font-size: 9px; }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="title">🏯 EXPANDED FEUDAL KYOTO | TEMPLE DISTRICT + STREETS</div>
+
+    <div id="info">
+
+        🌸 Kinkaku-ji | Pagoda | Torii Path | Machiya Streets | Shrines | Bridges | Lantern District
+
+    </div>
+
+    <div id="controls">
+
+        🖱️ Left Click + Drag to Orbit | Right Click + Drag to Pan | Scroll to Zoom
+
+    </div>
+
+
+
+    <script type="importmap">
+
+        {
+
+            "imports": {
+
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+
+            }
+
+        }
+
+    </script>
+
+
+
+    <script type="module">
+
+        import * as THREE from 'three';
+
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+
+
+        // --- Setup Scene (Deep Indigo Night Sky) ---
+
+        const scene = new THREE.Scene();
+
+        scene.background = new THREE.Color(0x050716);
+
+        scene.fog = new THREE.FogExp2(0x050716, 0.009);
+
+
+
+
+        // Camera Config
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+
+        camera.position.set(34, 22, 42);
+
+
+
+        // Renderer Config
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        renderer.shadowMap.enabled = true;
+
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+        renderer.toneMappingExposure = 1.0;
+
+        document.body.appendChild(renderer.domElement);
+
+
+
+        // Controls
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+
+        controls.enableDamping = true;
+
+        controls.dampingFactor = 0.05;
+
+        controls.maxPolarAngle = Math.PI / 2 - 0.05; // Don't clip under ground
+
+        controls.target.set(0, 3.2, 0);
+        controls.maxDistance = 85;
+        controls.minDistance = 8;
+
+
+
+        // --- Sophisticated Lighting ---
+
+        const ambientLight = new THREE.AmbientLight(0x0f1126, 0.6);
+
+        scene.add(ambientLight);
+
+        
+
+        const moonLight = new THREE.DirectionalLight(0xaaddff, 0.85);
+
+        moonLight.position.set(25, 35, -15);
+
+        moonLight.castShadow = true;
+
+        moonLight.shadow.mapSize.width = 2048;
+
+        moonLight.shadow.mapSize.height = 2048;
+
+        moonLight.shadow.camera.near = 0.5;
+
+        moonLight.shadow.camera.far = 80;
+
+        const d = 25;
+
+        moonLight.shadow.camera.left = -d;
+
+        moonLight.shadow.camera.right = d;
+
+        moonLight.shadow.camera.top = d;
+
+        moonLight.shadow.camera.bottom = -d;
+
+        moonLight.shadow.bias = -0.0005;
+
+        scene.add(moonLight);
+
+        
+
+        // Ambient environment bounce illumination
+
+        const floorGlow = new THREE.DirectionalLight(0x553344, 0.3);
+
+        floorGlow.position.set(0, -1, 0);
+
+        scene.add(floorGlow);
+
+
+
+        // --- Materials Library ---
+
+        const lacquerVermilion = new THREE.MeshStandardMaterial({ color: 0xaa2211, roughness: 0.3, metalness: 0.1 });
+
+        const sumiRoof = new THREE.MeshStandardMaterial({ color: 0x22252c, roughness: 0.5 });
+
+        const goldLeaf = new THREE.MeshStandardMaterial({ color: 0xe6b800, metalness: 0.75, roughness: 0.25, emissive: 0x332200 });
+
+        const agedWood = new THREE.MeshStandardMaterial({ color: 0x4a3321, roughness: 0.75 });
+
+        const shojiWhite = new THREE.MeshStandardMaterial({ color: 0xeeebd9, roughness: 0.9, emissive: 0x554433 });
+
+        const stoneLanternMat = new THREE.MeshStandardMaterial({ color: 0x6e6a5f, roughness: 0.8 });
+
+        const lanternGlowMat = new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0xff5511, emissiveIntensity: 2.5 });
+
+
+
+        // --- Ground & Features ---
+
+        const mossMat = new THREE.MeshStandardMaterial({ color: 0x1d3318, roughness: 0.95 });
+
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(96, 96), mossMat);
+
+        ground.rotation.x = -Math.PI / 2;
+
+        ground.receiveShadow = true;
+
+        scene.add(ground);
+
+        
+
+        // Structured River Bed / Pond
+
+        const waterGroup = new THREE.Group();
+
+        waterGroup.position.set(-4, -0.02, 5);
+
+        
+
+        const waterMat = new THREE.MeshStandardMaterial({ color: 0x0a222d, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.85 });
+
+        const pondGeo = new THREE.CylinderGeometry(4.5, 4.8, 0.1, 32);
+
+        const pondWater = new THREE.Mesh(pondGeo, waterMat);
+
+        waterGroup.add(pondWater);
+
+        
+
+        // Stone Border around Pond
+
+        const borderStoneMat = new THREE.MeshStandardMaterial({ color: 0x44423c, roughness: 0.9 });
+
+        for(let i=0; i<24; i++){
+
+            const angle = (i / 24) * Math.PI * 2;
+
+            const size = 0.3 + Math.random()*0.3;
+
+            const stone = new THREE.Mesh(new THREE.BoxGeometry(size, 0.3, size*1.4), borderStoneMat);
+
+            stone.position.set(Math.cos(angle)*4.6, 0.05, Math.sin(angle)*4.6);
+
+            stone.rotation.y = -angle + (Math.random()-0.5)*0.5;
+
+            stone.castShadow = true;
+
+            waterGroup.add(stone);
+
+        }
+
+        scene.add(waterGroup);
+
+
+
+        // Stone Pathways
+
+        const pathMat = new THREE.MeshStandardMaterial({ color: 0x55524c, roughness: 0.9 });
+
+        function buildSegmentedPath(startZ, endZ, x, width) {
+
+            for(let z = startZ; z <= endZ; z += 0.8) {
+
+                const step = new THREE.Mesh(new THREE.BoxGeometry(width, 0.02, 0.6), pathMat);
+
+                step.position.set(x + (Math.random()-0.5)*0.05, 0.01, z);
+
+                step.receiveShadow = true;
+
+                scene.add(step);
+
+            }
+
+        }
+
+        buildSegmentedPath(-10, 10, 0, 1.4);
+
+
+
+        // --- Traditional Curved Roof Blueprint Generator ---
+
+        function createJapaneseRoofGeometry(baseWidth, baseDepth, height, flare) {
+
+            const geometry = new THREE.BufferGeometry();
+
+            const vertices = [];
+
+            const indices = [];
+
+            
+
+            const segments = 10;
+
+            // Generate standard hip-and-gable concave curve profile
+
+            for (let i = 0; i <= segments; i++) {
+
+                const t = i / segments;
+
+                // Concave distribution curve mapping
+
+                const y = Math.pow(t, 2.5) * height; 
+
+                const currentWidth = baseWidth * (1 - t);
+
+                const currentDepth = baseDepth * (1 - t);
+
+                
+
+                // Add extended dramatic flare projection near lower boundaries
+
+                const flareFactor = (i === 0) ? flare : 0;
+
+                const w = (currentWidth / 2) + flareFactor;
+
+                const d = (currentDepth / 2) + flareFactor;
+
+                
+
+                // 4 corners of per-tier sliced profile matrix
+
+                vertices.push(-w, y, -d); // Left-Back
+
+                vertices.push( w, y, -d); // Right-Back
+
+                vertices.push( w, y,  d); // Right-Front
+
+                vertices.push(-w, y,  d); // Left-Front
+
+            }
+
+            
+
+            // Build index buffers bridging successive geometry layers
+
+            for (let i = 0; i < segments; i++) {
+
+                const curr = i * 4;
+
+                const next = (i + 1) * 4;
+
+                
+
+                // Back Face index mappings
+
+                indices.push(curr, curr + 1, next + 1);
+
+                indices.push(curr, next + 1, next);
+
+                // Right Face index mappings
+
+                indices.push(curr + 1, curr + 2, next + 2);
+
+                indices.push(curr + 1, next + 2, next + 1);
+
+                // Front Face index mappings
+
+                indices.push(curr + 2, curr + 3, next + 3);
+
+                indices.push(curr + 2, next + 3, next + 2);
+
+                // Left Face index mappings
+
+                indices.push(curr + 3, curr, next);
+
+                indices.push(curr + 3, next, next + 3);
+
+            }
+
+            
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+            geometry.setIndex(indices);
+
+            geometry.computeVertexNormals();
+
+            return geometry;
+
+        }
+
+
+
+        // --- Modular Structure Detail Additions ---
+
+        function applyShojiPanels(group, width, height, count, side='front') {
+
+            const panelW = width / count;
+
+            for(let i=0; i<count; i++) {
+
+                const panel = new THREE.Mesh(new THREE.BoxGeometry(panelW - 0.04, height - 0.04, 0.04), shojiWhite);
+
+                const offsetX = -width/2 + panelW/2 + (i * panelW);
+
+                
+
+                // Wood Grille Framework Trim Matrix Overlay
+
+                const frameOuter = new THREE.Mesh(new THREE.BoxGeometry(panelW, height, 0.06), agedWood);
+
+                frameOuter.position.copy(panel.position);
+
+                panel.add(frameOuter);
+
+                
+
+                if (side === 'front') panel.position.set(offsetX, height/2, width/2);
+
+                if (side === 'back') panel.position.set(offsetX, height/2, -width/2);
+
+                if (side === 'left') { panel.position.set(-width/2, height/2, offsetX); panel.rotation.y = Math.PI/2; }
+
+                if (side === 'right') { panel.position.set(width/2, height/2, offsetX); panel.rotation.y = Math.PI/2; }
+
+                
+
+                panel.castShadow = true;
+
+                group.add(panel);
+
+            }
+
+        }
+
+
+
+        function addBalconyRailings(group, width, elevation) {
+
+            const railHeight = 0.35;
+
+            const railMat = agedWood;
+
+            
+
+            // Horizontal main structural banisters
+
+            const topRailGeom = new THREE.BoxGeometry(width + 0.1, 0.03, 0.03);
+
+            const rFront = new THREE.Mesh(topRailGeom, railMat); rFront.position.set(0, elevation + railHeight, width/2);
+
+            const rBack = new THREE.Mesh(topRailGeom, railMat);  rBack.position.set(0, elevation + railHeight, -width/2);
+
+            const rLeft = new THREE.Mesh(topRailGeom, railMat);  rLeft.position.set(-width/2, elevation + railHeight, 0); rLeft.rotation.y = Math.PI/2;
+
+            const rRight = new THREE.Mesh(topRailGeom, railMat); rRight.position.set(width/2, elevation + railHeight, 0); rRight.rotation.y = Math.PI/2;
+
+            group.add(rFront, rBack, rLeft, rRight);
+
+            
+
+            // Baluster miniature support struts
+
+            const totalStruts = 8;
+
+            for(let i=0; i<=totalStruts; i++) {
+
+                const delta = -width/2 + (width/totalStruts)*i;
+
+                const verticalStrut = new THREE.Mesh(new THREE.BoxGeometry(0.02, railHeight, 0.02), railMat);
+
+                
+
+                const sF = verticalStrut.clone(); sF.position.set(delta, elevation + railHeight/2, width/2);
+
+                const sB = verticalStrut.clone(); sB.position.set(delta, elevation + railHeight/2, -width/2);
+
+                const sL = verticalStrut.clone(); sL.position.set(-width/2, elevation + railHeight/2, delta); sL.rotation.y = Math.PI/2;
+
+                const sR = verticalStrut.clone(); sR.position.set(width/2, elevation + railHeight/2, delta); sR.rotation.y = Math.PI/2;
+
+                group.add(sF, sB, sL, sR);
+
+            }
+
+        }
+
+
+
+        // --- Building 1: Authentic Kinkaku-ji Pavilion ---
+
+        const kinkakuGroup = new THREE.Group();
+
+        kinkakuGroup.position.set(-3, 0, -2);
+
+        
+
+        // Base Foundation Rock Decking
+
+        const baseFoundation = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.6, 6.5), stoneLanternMat);
+
+        baseFoundation.position.y = 0.3;
+
+        baseFoundation.receiveShadow = true;
+
+        kinkakuGroup.add(baseFoundation);
+
+
+
+        // --- Floor 1 (Traditional Dark Aged Wood Core Enclosure) ---
+
+        const f1H = 1.3;
+
+        const f1W = 5.2;
+
+        const floor1Core = new THREE.Group();
+
+        floor1Core.position.y = 0.6;
+
+        applyShojiPanels(floor1Core, f1W, f1H, 4, 'front');
+
+        applyShojiPanels(floor1Core, f1W, f1H, 4, 'back');
+
+        applyShojiPanels(floor1Core, f1W, f1H, 4, 'left');
+
+        applyShojiPanels(floor1Core, f1W, f1H, 4, 'right');
+
+        
+
+        // Ground Deck Pillars (Engawa Perimeter Support Columns)
+
+        for(let x = -f1W/2; x <= f1W/2; x += f1W/2) {
+
+            for(let z = -f1W/2; z <= f1W/2; z += f1W/2) {
+
+                if(Math.abs(x) === f1W/2 || Math.abs(z) === f1W/2) {
+
+                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, f1H), agedWood);
+
+                    post.position.set(x, f1H/2, z);
+
+                    post.castShadow = true;
+
+                    floor1Core.add(post);
+
+                }
+
+            }
+
+        }
+
+        kinkakuGroup.add(floor1Core);
+
+
+
+        // Roof Tier 1
+
+        const r1Geo = createJapaneseRoofGeometry(6.0, 6.0, 0.8, 0.35);
+
+        const roof1 = new THREE.Mesh(r1Geo, sumiRoof);
+
+        roof1.position.y = 0.6 + f1H;
+
+        roof1.castShadow = true;
+
+        kinkakuGroup.add(roof1);
+
+
+
+        // --- Floor 2 (Gilded Gold Leaf Exterior Wrapper) ---
+
+        const f2H = 1.2;
+
+        const f2W = 4.4;
+
+        const floor2Core = new THREE.Group();
+
+        floor2Core.position.y = 0.6 + f1H + 0.1;
+
+        
+
+        const f2Walls = new THREE.Mesh(new THREE.BoxGeometry(f2W, f2H, f2W), goldLeaf);
+
+        f2Walls.position.y = f2H/2;
+
+        f2Walls.castShadow = true;
+
+        floor2Core.add(f2Walls);
+
+        applyShojiPanels(floor2Core, f2W, f2H, 3, 'front');
+
+        applyShojiPanels(floor2Core, f2W, f2H, 3, 'right');
+
+        addBalconyRailings(floor2Core, f2W + 0.4, 0);
+
+        kinkakuGroup.add(floor2Core);
+
+
+
+        // Roof Tier 2
+
+        const r2Geo = createJapaneseRoofGeometry(5.0, 5.0, 0.75, 0.3);
+
+        const roof2 = new THREE.Mesh(r2Geo, sumiRoof);
+
+        roof2.position.y = floor2Core.position.y + f2H;
+
+        roof2.castShadow = true;
+
+        kinkakuGroup.add(roof2);
+
+
+
+        // --- Floor 3 (Sancho-cho Peak Sanctuary Room) ---
+
+        const f3H = 1.1;
+
+        const f3W = 3.4;
+
+        const floor3Core = new THREE.Group();
+
+        floor3Core.position.y = roof2.position.y + 0.1;
+
+        
+
+        const f3Walls = new THREE.Mesh(new THREE.BoxGeometry(f3W, f3H, f3W), goldLeaf);
+
+        f3Walls.position.y = f3H/2;
+
+        f3Walls.castShadow = true;
+
+        floor3Core.add(f3Walls);
+
+        
+
+        // Decorative traditional arched windows (Kato-mado style shapes)
+
+        addBalconyRailings(floor3Core, f3W + 0.3, 0);
+
+        kinkakuGroup.add(floor3Core);
+
+
+
+        // Top Roof Apex Dome Curvature
+
+        const r3Geo = createJapaneseRoofGeometry(4.0, 4.0, 0.9, 0.4);
+
+        const roof3 = new THREE.Mesh(r3Geo, goldLeaf); // Historic Golden Pavilion roof capping
+
+        roof3.position.y = floor3Core.position.y + f3H;
+
+        roof3.castShadow = true;
+
+        kinkakuGroup.add(roof3);
+
+
+
+        // Bronze Phoenix Roof Finial Apex Spire (Hou-ou Ornamentation)
+
+        const spireGroup = new THREE.Group();
+
+        spireGroup.position.y = roof3.position.y + 0.8;
+
+        const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.8), goldLeaf);
+
+        const phoenix = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), goldLeaf);
+
+        phoenix.position.y = 0.4;
+
+        spireGroup.add(rod, phoenix);
+
+        kinkakuGroup.add(spireGroup);
+
+
+
+        scene.add(kinkakuGroup);
+
+
+
+        // --- Building 2: Five-Story Pagoda (Goju-no-to) ---
+
+        const pagodaGroup = new THREE.Group();
+
+        pagodaGroup.position.set(10, 0, -6);
+
+        
+
+        const pagodaBase = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 4), stoneLanternMat);
+
+        pagodaBase.position.y = 0.25;
+
+        pagodaBase.receiveShadow = true;
+
+        pagodaGroup.add(pagodaBase);
+
+
+
+        let currentY = 0.5;
+
+        const totalStories = 5;
+
+        for(let i=0; i<totalStories; i++) {
+
+            const scaleFactor = 1 - (i * 0.1);
+
+            const floorWidth = 2.4 * scaleFactor;
+
+            const floorHeight = 1.0;
+
+            
+
+            // Central structural framing core
+
+            const story = new THREE.Mesh(new THREE.BoxGeometry(floorWidth, floorHeight, floorWidth), lacquerVermilion);
+
+            story.position.y = currentY + floorHeight/2;
+
+            story.castShadow = true;
+
+            pagodaGroup.add(story);
+
+            
+
+            // Wrapped window lattices
+
+            applyShojiPanels(pagodaGroup, floorWidth+0.02, floorHeight, 2, 'front');
+
+            pagodaGroup.children[pagodaGroup.children.length-1].position.y = currentY;
+
+            
+
+            // Flared Overhanging Balconies per Level
+
+            addBalconyRailings(pagodaGroup, floorWidth + 0.4, currentY);
+
+
+
+            // Large Sloping Eaves Roof Layer
+
+            const pRoofGeo = createJapaneseRoofGeometry(floorWidth * 2.1, floorWidth * 2.1, 0.6, 0.35);
+
+            const pRoof = new THREE.Mesh(pRoofGeo, sumiRoof);
+
+            pRoof.position.y = currentY + floorHeight;
+
+            pRoof.castShadow = true;
+
+            pagodaGroup.add(pRoof);
+
+            
+
+            currentY += floorHeight + 0.2;
+
+        }
+
+
+
+        // Metallic Spire Finial Tower Crown (Sorin Standard Ring Set)
+
+        const sorinSpire = new THREE.Group();
+
+        sorinSpire.position.y = currentY - 0.1;
+
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.07, 2.2), agedWood);
+
+        shaft.position.y = 1.1;
+
+        sorinSpire.add(shaft);
+
+        
+
+        // Tiered cluster loop rings
+
+        for(let r=0; r<9; r++){
+
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2 - r*0.012, 0.03, 6, 16), goldLeaf);
+
+            ring.rotation.x = Math.PI/2;
+
+            ring.position.y = 0.5 + (r * 0.15);
+
+            sorinSpire.add(ring);
+
+        }
+
+        pagodaGroup.add(sorinSpire);
+
+        scene.add(pagodaGroup);
+
+
+
+        // --- Traditional Authentic Torii Gate Elements ---
+
+        function buildAuthenticTorii(x, z, rotY) {
+
+            const torii = new THREE.Group();
+
+            torii.position.set(x, 0, z);
+
+            torii.rotation.y = rotY;
+
+
+
+            // Curved Top Lintels (Kasagi)
+
+            const kasagiGeo = createJapaneseRoofGeometry(3.2, 0.3, 0.25, 0.15);
+
+            const kasagi = new THREE.Mesh(kasagiGeo, lacquerVermilion);
+
+            kasagi.position.set(0, 2.5, 0);
+
+            kasagi.rotation.x = Math.PI; // Invert curved roof model math upside down
+
+            torii.add(kasagi);
+
+
+
+            // Sub-tie support bar beam (Nuki)
+
+            const nuki = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.12, 0.15), lacquerVermilion);
+
+            nuki.position.y = 2.15;
+
+            torii.add(nuki);
+
+
+
+            // Splayed Pillar Struts (Main Columns - Shimmei Angle Orientation)
+
+            const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 2.4), lacquerVermilion);
+
+            pillarL.position.set(-0.9, 1.2, 0);
+
+            pillarL.rotation.z = -0.06; // Inward stance tilt
+
+            pillarL.castShadow = true;
+
+            
+
+            const blackBaseL = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.15, 0.3), sumiRoof);
+
+            blackBaseL.position.y = -1.1;
+
+            pillarL.add(blackBaseL);
+
+
+
+            const pillarR = pillarL.clone();
+
+            pillarR.position.set(0.9, 1.2, 0);
+
+            pillarR.rotation.z = 0.06;
+
+            
+
+            torii.add(pillarL, pillarR);
+
+            scene.add(torii);
+
+        }
+
+
+
+        // Sequential Pathway Layout Matrix (Fushimi Inari Style Shrine Arc Grid)
+
+        for(let step = 0; step < 8; step++) {
+
+            buildAuthenticTorii(0, -8 + (step * 2.4), 0);
+
+        }
+
+
+
+        // --- Highly Detailed Lantern Installations (Kasuga-doro Style) ---
+
+        function createKasugaLantern(x, z) {
+
+            const lantern = new THREE.Group();
+
+            lantern.position.set(x, 0, z);
+
+
+
+            // Base platform stone block
+
+            const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.4), stoneLanternMat);
+
+            base.position.y = 0.075;
+
+            lantern.add(base);
+
+
+
+            // Tapered center pedestal post
+
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 0.9), stoneLanternMat);
+
+            post.position.y = 0.6;
+
+            post.castShadow = true;
+
+            lantern.add(post);
+
+
+
+            // Middle Platform Shelf ring (Chubushi)
+
+            const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.1, 0.45), stoneLanternMat);
+
+            shelf.position.y = 1.1;
+
+            lantern.add(shelf);
+
+
+
+            // Illumination Fire Chamber Screen Box (Hibukuro)
+
+            const lightBox = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.35, 0.32), lanternGlowMat);
+
+            lightBox.position.y = 1.325;
+
+            lantern.add(lightBox);
+
+            
+
+            // Outer wood frame structural overlay window grid window accents
+
+            const trim = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.37, 0.34), agedWood);
+
+            trim.position.copy(lightBox.position);
+
+            // Quick primitive frame extraction simulation wire mask alternative
+
+            lightBox.add(trim);
+
+
+
+            // Flared roof cap detailing (Kasa)
+
+            const capGeo = createJapaneseRoofGeometry(0.55, 0.55, 0.2, 0.05);
+
+            const cap = new THREE.Mesh(capGeo, stoneLanternMat);
+
+            cap.position.y = 1.5;
+
+            lantern.add(cap);
+
+
+
+            // Add active positional light source
+
+            const light = new THREE.PointLight(0xff7722, 0.8, 6);
+
+            light.position.set(0, 1.3, 0);
+
+            light.castShadow = true;
+
+            light.shadow.bias = -0.002;
+
+            lantern.add(light);
+
+
+
+            scene.add(lantern);
+
+        }
+
+
+
+        const lanternPlacements = [
+
+            [-1.3, -6], [1.3, -6],
+
+            [-1.3, -1.2], [1.3, -1.2],
+
+            [-1.3, 3.6], [1.3, 3.6],
+
+            [-1.3, 8.4], [1.3, 8.4]
+
+        ];
+
+        lanternPlacements.forEach(pt => createKasugaLantern(pt[0], pt[1]));
+
+
+
+
+
+        // --- Expanded Kyoto District: Streets, Side Alleys, Machiya Houses, Shrines ---
+        // 300% expansion pass: adds a much larger playable village district around the original temple scene.
+
+        function createStoneStreet(x, z, length, width, rotationY = 0, segmentSize = 0.9) {
+            const streetGroup = new THREE.Group();
+            streetGroup.position.set(x, 0.015, z);
+            streetGroup.rotation.y = rotationY;
+
+            const total = Math.floor(length / segmentSize);
+            for (let i = 0; i < total; i++) {
+                const stoneLength = segmentSize * (0.78 + Math.random() * 0.26);
+                const stoneWidth = width * (0.82 + Math.random() * 0.12);
+                const slab = new THREE.Mesh(new THREE.BoxGeometry(stoneWidth, 0.025, stoneLength), pathMat);
+                slab.position.set((Math.random() - 0.5) * 0.08, 0, -length / 2 + i * segmentSize + segmentSize / 2);
+                slab.rotation.y = (Math.random() - 0.5) * 0.04;
+                slab.receiveShadow = true;
+                streetGroup.add(slab);
+            }
+
+            // Fine gravel shoulder lines to make the streets read wider and more intentional.
+            const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x373632, roughness: 0.95 });
+            [-1, 1].forEach(side => {
+                const shoulder = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.018, length), shoulderMat);
+                shoulder.position.set(side * (width / 2 + 0.16), -0.004, 0);
+                shoulder.receiveShadow = true;
+                streetGroup.add(shoulder);
+            });
+
+            scene.add(streetGroup);
+            return streetGroup;
+        }
+
+        function createCanalBridge(x, z, rotationY = 0) {
+            const bridgeGroup = new THREE.Group();
+            bridgeGroup.position.set(x, 0, z);
+            bridgeGroup.rotation.y = rotationY;
+
+            const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x5a3923, roughness: 0.55 });
+            const railMat = lacquerVermilion;
+
+            for (let i = 0; i < 7; i++) {
+                const t = i / 6;
+                const y = Math.sin(t * Math.PI) * 0.35 + 0.16;
+                const plank = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.08, 0.28), bridgeMat);
+                plank.position.set(0, y, -1.0 + i * 0.34);
+                plank.rotation.x = (0.5 - t) * 0.25;
+                plank.castShadow = true;
+                plank.receiveShadow = true;
+                bridgeGroup.add(plank);
+            }
+
+            [-1.25, 1.25].forEach(side => {
+                const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 2.5), railMat);
+                rail.position.set(side, 0.78, 0);
+                rail.castShadow = true;
+                bridgeGroup.add(rail);
+
+                for (let j = 0; j < 5; j++) {
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.62, 0.08), railMat);
+                    post.position.set(side, 0.46, -1.0 + j * 0.5);
+                    post.castShadow = true;
+                    bridgeGroup.add(post);
+                }
+            });
+
+            scene.add(bridgeGroup);
+        }
+
+        function createMachiyaHouse(x, z, rotY = 0, scale = 1, floors = 1, accent = null) {
+            const house = new THREE.Group();
+            house.position.set(x, 0, z);
+            house.rotation.y = rotY;
+
+            const plasterMat = new THREE.MeshStandardMaterial({ color: accent || 0x8f806b, roughness: 0.88 });
+            const darkBeamMat = new THREE.MeshStandardMaterial({ color: 0x2b1b13, roughness: 0.75 });
+            const warmWindowMat = new THREE.MeshStandardMaterial({ color: 0xf5d08a, roughness: 0.5, emissive: 0xff8844, emissiveIntensity: 0.45 });
+
+            const w = 2.4 * scale;
+            const dpth = 2.0 * scale;
+            const h = (1.05 + floors * 0.82) * scale;
+
+            const base = new THREE.Mesh(new THREE.BoxGeometry(w, h, dpth), plasterMat);
+            base.position.y = h / 2 + 0.08;
+            base.castShadow = true;
+            base.receiveShadow = true;
+            house.add(base);
+
+            // Wooden beams and storefront trim.
+            const beamY = [0.25 * scale, h * 0.52, h - 0.15 * scale];
+            beamY.forEach(y => {
+                const beam = new THREE.Mesh(new THREE.BoxGeometry(w + 0.08, 0.08 * scale, 0.07 * scale), darkBeamMat);
+                beam.position.set(0, y, dpth / 2 + 0.04);
+                house.add(beam);
+            });
+
+            for (let i = -1; i <= 1; i += 2) {
+                const post = new THREE.Mesh(new THREE.BoxGeometry(0.08 * scale, h, 0.08 * scale), darkBeamMat);
+                post.position.set(i * (w / 2 - 0.1), h / 2, dpth / 2 + 0.06);
+                house.add(post);
+            }
+
+            const shopWindow = new THREE.Mesh(new THREE.BoxGeometry(w * 0.42, 0.48 * scale, 0.05), warmWindowMat);
+            shopWindow.position.set(-w * 0.21, 0.62 * scale, dpth / 2 + 0.08);
+            house.add(shopWindow);
+
+            const door = new THREE.Mesh(new THREE.BoxGeometry(w * 0.24, 0.8 * scale, 0.05), darkBeamMat);
+            door.position.set(w * 0.25, 0.52 * scale, dpth / 2 + 0.09);
+            house.add(door);
+
+            if (floors > 1) {
+                for (let k = 0; k < 2; k++) {
+                    const upperWindow = new THREE.Mesh(new THREE.BoxGeometry(w * 0.26, 0.34 * scale, 0.05), shojiWhite);
+                    upperWindow.position.set((-0.32 + k * 0.64) * w, h * 0.72, dpth / 2 + 0.09);
+                    house.add(upperWindow);
+                }
+            }
+
+            const roofGeo = createJapaneseRoofGeometry(w * 1.28, dpth * 1.35, 0.55 * scale, 0.18 * scale);
+            const roof = new THREE.Mesh(roofGeo, sumiRoof);
+            roof.position.y = h + 0.08;
+            roof.rotation.y = Math.PI / 4;
+            roof.scale.z = 0.78;
+            roof.castShadow = true;
+            house.add(roof);
+
+            // Small paper signboard hanging from the shop front.
+            const signMat = new THREE.MeshStandardMaterial({ color: 0xf4e0b4, roughness: 0.7, emissive: 0x332000, emissiveIntensity: 0.2 });
+            const sign = new THREE.Mesh(new THREE.BoxGeometry(0.42 * scale, 0.34 * scale, 0.04), signMat);
+            sign.position.set(-w * 0.46, 1.18 * scale, dpth / 2 + 0.12);
+            house.add(sign);
+
+            scene.add(house);
+            return house;
+        }
+
+        function createSmallShrine(x, z, rotY = 0, scale = 1) {
+            const shrine = new THREE.Group();
+            shrine.position.set(x, 0, z);
+            shrine.rotation.y = rotY;
+
+            const platform = new THREE.Mesh(new THREE.BoxGeometry(2.7 * scale, 0.28 * scale, 2.3 * scale), stoneLanternMat);
+            platform.position.y = 0.14 * scale;
+            platform.receiveShadow = true;
+            shrine.add(platform);
+
+            const core = new THREE.Mesh(new THREE.BoxGeometry(1.75 * scale, 1.25 * scale, 1.55 * scale), lacquerVermilion);
+            core.position.y = 0.28 * scale + 0.62 * scale;
+            core.castShadow = true;
+            shrine.add(core);
+
+            applyShojiPanels(shrine, 1.75 * scale, 0.85 * scale, 2, 'front');
+            shrine.children[shrine.children.length - 1].position.y += 0.36 * scale;
+
+            const roof = new THREE.Mesh(createJapaneseRoofGeometry(2.6 * scale, 2.2 * scale, 0.55 * scale, 0.25 * scale), sumiRoof);
+            roof.position.y = 1.65 * scale;
+            roof.castShadow = true;
+            shrine.add(roof);
+
+            const finial = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * scale, 0.04 * scale, 0.65 * scale), goldLeaf);
+            finial.position.y = 2.2 * scale;
+            shrine.add(finial);
+
+            scene.add(shrine);
+        }
+
+        function createYaguraWatchtower(x, z, rotY = 0, scale = 1) {
+            const tower = new THREE.Group();
+            tower.position.set(x, 0, z);
+            tower.rotation.y = rotY;
+
+            const legMat = agedWood;
+            const deckMat = new THREE.MeshStandardMaterial({ color: 0x604126, roughness: 0.78 });
+
+            [-1, 1].forEach(ix => {
+                [-1, 1].forEach(iz => {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055 * scale, 0.075 * scale, 2.1 * scale, 6), legMat);
+                    leg.position.set(ix * 0.72 * scale, 1.05 * scale, iz * 0.72 * scale);
+                    leg.rotation.z = -ix * 0.04;
+                    leg.castShadow = true;
+                    tower.add(leg);
+                });
+            });
+
+            const deck = new THREE.Mesh(new THREE.BoxGeometry(1.9 * scale, 0.16 * scale, 1.9 * scale), deckMat);
+            deck.position.y = 1.95 * scale;
+            deck.castShadow = true;
+            tower.add(deck);
+
+            addBalconyRailings(tower, 2.0 * scale, 1.95 * scale);
+
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.22 * scale, 0.82 * scale, 1.22 * scale), shojiWhite);
+            cabin.position.y = 2.48 * scale;
+            cabin.castShadow = true;
+            tower.add(cabin);
+
+            const roof = new THREE.Mesh(createJapaneseRoofGeometry(2.1 * scale, 2.1 * scale, 0.52 * scale, 0.25 * scale), sumiRoof);
+            roof.position.y = 2.9 * scale;
+            roof.castShadow = true;
+            tower.add(roof);
+
+            scene.add(tower);
+        }
+
+        function createStreetLanternLine(points) {
+            points.forEach(([x, z]) => createKasugaLantern(x, z));
+        }
+
+        // Wider street network: main north-south street, east-west shopping roads, and diagonal alleys.
+        createStoneStreet(0, 0, 42, 1.5, 0);
+        createStoneStreet(-13, 0, 36, 1.15, 0);
+        createStoneStreet(14, 1, 34, 1.15, 0);
+        createStoneStreet(0, 13, 42, 1.2, Math.PI / 2);
+        createStoneStreet(0, -14, 38, 1.2, Math.PI / 2);
+        createStoneStreet(-17, 8, 22, 0.85, Math.PI / 2);
+        createStoneStreet(16, -8, 24, 0.85, Math.PI / 2);
+        createStoneStreet(-9, -9, 23, 0.75, Math.PI / 4);
+        createStoneStreet(11, 10, 22, 0.75, -Math.PI / 4);
+
+        createCanalBridge(-4, 5.2, Math.PI / 2);
+        createCanalBridge(2.2, 5.1, Math.PI / 2);
+
+        const houseAccents = [0x8f806b, 0x6f5c49, 0x9c8a70, 0x7b6a54, 0x937157, 0x66584a];
+        const machiyaBlocks = [
+            [-17, -17, 0.08, 1.05, 2], [-13.2, -17.4, -0.04, 0.95, 1], [-9.8, -17.1, 0.04, 1.0, 2],
+            [8.8, -18, -0.06, 1.0, 1], [12.4, -17.8, 0.05, 1.08, 2], [16.0, -17.6, -0.05, 0.92, 1],
+            [-20, -6.5, Math.PI / 2, 1.0, 2], [-20.5, -2.8, Math.PI / 2, 0.92, 1], [-20.2, 1.2, Math.PI / 2, 1.04, 2],
+            [20.5, -5.8, -Math.PI / 2, 1.08, 2], [20.1, -1.6, -Math.PI / 2, 0.94, 1], [20.4, 2.2, -Math.PI / 2, 1.02, 2],
+            [-16, 17.4, Math.PI, 1.1, 2], [-12.4, 17.1, Math.PI, 0.95, 1], [-8.8, 17.6, Math.PI, 1.0, 2],
+            [7.8, 17.3, Math.PI, 1.03, 2], [11.6, 17.4, Math.PI, 0.96, 1], [15.1, 17.2, Math.PI, 1.07, 2],
+            [-15.6, 8.3, 0.0, 0.86, 1], [-11.8, 8.5, 0.02, 0.9, 1], [11.8, -8.6, Math.PI, 0.9, 1], [15.4, -8.4, Math.PI, 0.86, 1]
+        ];
+
+        machiyaBlocks.forEach((b, idx) => {
+            createMachiyaHouse(b[0], b[1], b[2], b[3], b[4], houseAccents[idx % houseAccents.length]);
+        });
+
+        // Extra civic/religious landmarks so the map has multiple destinations beyond the two original buildings.
+        createSmallShrine(-24, 12, Math.PI / 2, 1.12);
+        createSmallShrine(24, 11, -Math.PI / 2, 1.0);
+        createSmallShrine(-23, -13, Math.PI / 2, 0.92);
+        createYaguraWatchtower(23, -13, -Math.PI / 4, 1.0);
+        createYaguraWatchtower(-24, -20, Math.PI / 5, 0.92);
+        createYaguraWatchtower(24, 19, -Math.PI / 6, 0.88);
+
+        // Dense lantern grids for readable streets at night.
+        createStreetLanternLine([
+            [-3.0, -16], [3.0, -16], [-3.0, -12], [3.0, -12], [-3.0, 12], [3.0, 12], [-3.0, 16], [3.0, 16],
+            [-16, -3.0], [-16, 3.0], [16, -3.0], [16, 3.0], [-18, 13], [-12, 13], [12, 13], [18, 13],
+            [-18, -14], [-12, -14], [12, -14], [18, -14]
+        ]);
+
+        // Small courtyard stones and decorative garden islands between buildings.
+        const courtyardMat = new THREE.MeshStandardMaterial({ color: 0x3f3c36, roughness: 0.96 });
+        const courtyardCenters = [[-14, -12], [14, -12], [-14, 13], [14, 13], [0, 19], [0, -20]];
+        courtyardCenters.forEach(([cx, cz]) => {
+            for (let i = 0; i < 10; i++) {
+                const pebble = new THREE.Mesh(new THREE.CylinderGeometry(0.11 + Math.random()*0.08, 0.13 + Math.random()*0.08, 0.045, 8), courtyardMat);
+                pebble.position.set(cx + (Math.random()-0.5)*4.2, 0.035, cz + (Math.random()-0.5)*3.2);
+                pebble.rotation.y = Math.random() * Math.PI;
+                pebble.receiveShadow = true;
+                scene.add(pebble);
+            }
+        });
+
+
+        // --- Custom Natural Assets (Organic Weeping Sakura Canopy Trees) ---
+
+        function buildOrganicSakura(x, z, scaling=1.0) {
+
+            const treeGroup = new THREE.Group();
+
+            treeGroup.position.set(x, 0, z);
+
+
+
+            // Twisted organic multi-part natural branching trunk model assembly
+
+            const trunkMaterial = agedWood;
+
+            const baseTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2*scaling, 0.35*scaling, 1.8*scaling, 7), trunkMaterial);
+
+            baseTrunk.position.y = 0.9*scaling;
+
+            baseTrunk.castShadow = true;
+
+            treeGroup.add(baseTrunk);
+
+
+
+            // Secondary angled limb branches
+
+            const limbCount = 3;
+
+            const leafMat = new THREE.MeshStandardMaterial({ 
+
+                color: 0xffb3cc, 
+
+                roughness: 0.6, 
+
+                emissive: 0xff6699, 
+
+                emissiveIntensity: 0.12 
+
+            });
+
+
+
+            for(let i=0; i<limbCount; i++) {
+
+                const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.1*scaling, 0.16*scaling, 1.2*scaling), trunkMaterial);
+
+                const angle = (i/limbCount) * Math.PI * 2;
+
+                limb.position.set(Math.cos(angle)*0.4*scaling, 1.5*scaling, Math.sin(angle)*0.4*scaling);
+
+                limb.rotation.z = 0.5;
+
+                limb.rotation.y = angle;
+
+                treeGroup.add(limb);
+
+
+
+                // Multi-tiered foliage cluster variants per limb division mapping node
+
+                const leafCluster = new THREE.Mesh(new THREE.SphereGeometry(0.9*scaling, 8, 8), leafMat);
+
+                leafCluster.position.set(Math.cos(angle)*0.9*scaling, 2.0*scaling, Math.sin(angle)*0.9*scaling);
+
+                leafCluster.scale.set(1.4, 0.7, 1.1); // Dynamic natural cloud shape flattening distortions
+
+                leafCluster.castShadow = true;
+
+                treeGroup.add(leafCluster);
+
+            }
+
+
+
+            scene.add(treeGroup);
+
+        }
+
+
+
+        // Populate scenery coordinates avoiding structures
+
+        const forestCoordinates = [
+
+            [-9, -12], [-12, -6], [-10, 2], [-11, 10], [-5, 14],
+
+            [8, 12], [13, 8], [11, 2], [14, -12], [8, -14],
+
+            [-6, -6], [5, -10]
+
+        ];
+
+        forestCoordinates.forEach(c => buildOrganicSakura(c[0], c[1], 0.9 + Math.random()*0.4));
+
+
+
+        // --- Particle Simulation Engine: Falling Blossom Petals & Distant Cosmos ---
+
+        const petalTotal = 400;
+
+        const petalGeometry = new THREE.BufferGeometry();
+
+        const petalPositions = new Float32Array(petalTotal * 3);
+
+        const petalVelocityData = [];
+
+
+
+        for(let i=0; i<petalTotal; i++) {
+
+            petalPositions[i*3] = (Math.random()-0.5) * 40;
+
+            petalPositions[i*3+1] = Math.random() * 15;
+
+            petalPositions[i*3+2] = (Math.random()-0.5) * 40;
+
+            
+
+            petalVelocityData.push({
+
+                y: 0.02 + Math.random()*0.03,
+
+                x: (Math.random()-0.5) * 0.02,
+
+                swivelTime: Math.random() * Math.PI
+
+            });
+
+        }
+
+        petalGeometry.setAttribute('position', new THREE.BufferAttribute(petalPositions, 3));
+
+        const petalSystemMat = new THREE.PointsMaterial({ color: 0xffccd9, size: 0.06, transparent: true, opacity: 0.8 });
+
+        const petalParticles = new THREE.Points(petalGeometry, petalSystemMat);
+
+        scene.add(petalParticles);
+
+
+
+        // Distant background star field array maps
+
+        const starTotal = 600;
+
+        const starGeometry = new THREE.BufferGeometry();
+
+        const starPositions = new Float32Array(starTotal * 3);
+
+        for(let i=0; i<starTotal; i++) {
+
+            starPositions[i*3] = (Math.random()-0.5) * 150;
+
+            starPositions[i*3+1] = 20 + Math.random() * 40;
+
+            starPositions[i*3+2] = -30 - Math.random() * 60; // Bias back behind horizon plane
+
+        }
+
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+
+        const skyStarMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.5 });
+
+        const skyStars = new THREE.Points(starGeometry, skyStarMat);
+
+        scene.add(skyStars);
+
+
+
+        // --- High Detail Sky Firework Trajectory Explosions ---
+
+        const fireworkColorPalette = [0xe6194B, 0x3cb44b, 0xffe119, 0x4363d8, 0xf58231, 0x911eb4, 0x42d4f4, 0xf032e6];
+
+        
+
+        function triggerAdvancedFirework() {
+
+            const launchX = (Math.random() - 0.5) * 30;
+
+            const launchZ = -10 - Math.random() * 15; // Set backdrop distance alignment
+
+            const apexY = 12 + Math.random() * 8;
+
+            const tint = fireworkColorPalette[Math.floor(Math.random() * fireworkColorPalette.length)];
+
+            
+
+            // Flare Upwards Projectile Shell Tracing
+
+            const shellGeo = new THREE.SphereGeometry(0.1, 4, 4);
+
+            const shellMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+            const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+
+            shellMesh.position.set(launchX, 0.5, launchZ);
+
+            scene.add(shellMesh);
+
+            
+
+            // Ambient flash projection light illumination logic mapping
+
+            const flashLight = new THREE.PointLight(tint, 0.0, 40);
+
+            flashLight.position.set(launchX, apexY, launchZ);
+
+            scene.add(flashLight);
+
+
+
+            let progress = 0;
+
+            function ascend() {
+
+                progress += 0.025;
+
+                shellMesh.position.y = progress * apexY;
+
+                
+
+                if(progress < 1) {
+
+                    requestAnimationFrame(ascend);
+
+                } else {
+
+                    scene.remove(shellMesh);
+
+                    explodeShellBurst(launchX, apexY, launchZ, tint, flashLight);
+
+                }
+
+            }
+
+            ascend();
+
+        }
+
+
+
+        function explodeShellBurst(x, y, z, colorHex, flashLight) {
+
+            flashLight.intensity = 4.0; // Instant blind explosion peak luminance burst
+
+            
+
+            const particleCount = 90;
+
+            const cloudGeo = new THREE.BufferGeometry();
+
+            const positions = new Float32Array(particleCount * 3);
+
+            const velocities = [];
+
+            
+
+            for(let i=0; i<particleCount; i++) {
+
+                positions[i*3] = x;
+
+                positions[i*3+1] = y;
+
+                positions[i*3+2] = z;
+
+                
+
+                // Pure spherical velocity distribution maps
+
+                const theta = Math.random() * Math.PI * 2;
+
+                const phi = Math.acos((Math.random() * 2) - 1);
+
+                const velocityMagnitude = 0.15 + Math.random() * 0.25;
+
+                
+
+                velocities.push(
+
+                    Math.sin(phi) * Math.cos(theta) * velocityMagnitude,
+
+                    Math.sin(phi) * Math.sin(theta) * velocityMagnitude,
+
+                    Math.cos(phi) * velocityMagnitude
+
+                );
+
+            }
+
+            
+
+            cloudGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const burstMat = new THREE.PointsMaterial({
+
+                color: colorHex,
+
+                size: 0.15,
+
+                transparent: true,
+
+                opacity: 1.0,
+
+                blending: THREE.AdditiveBlending
+
+            });
+
+            const burstParticles = new THREE.Points(cloudGeo, burstMat);
+
+            scene.add(burstParticles);
+
+            
+
+            let life = 1.0;
+
+            function dissipate() {
+
+                life -= 0.015;
+
+                flashLight.intensity = life * 2.0;
+
+                burstMat.opacity = life;
+
+                
+
+                const posArr = burstParticles.geometry.attributes.position.array;
+
+                for(let i=0; i<particleCount; i++) {
+
+                    posArr[i*3] += velocities[i*3];
+
+                    posArr[i*3+1] += velocities[i*3+1]; // Apply downward gravity drag dynamics over time
+
+                    velocities[i*3+1] -= 0.003; 
+
+                    posArr[i*3+2] += velocities[i*3+2];
+
+                }
+
+                burstParticles.geometry.attributes.position.needsUpdate = true;
+
+                
+
+                if(life > 0) {
+
+                    requestAnimationFrame(dissipate);
+
+                } else {
+
+                    scene.remove(burstParticles);
+
+                    scene.remove(flashLight);
+
+                }
+
+            }
+
+            dissipate();
+
+        }
+
+
+
+        // Loop execution configurations
+
+        setInterval(triggerAdvancedFirework, 2200);
+
+
+
+        // --- Core Animation Loop Logic Execution ---
+
+        let runtimeClock = 0;
+
+        function renderTick() {
+
+            requestAnimationFrame(renderTick);
+
+            runtimeClock += 0.01;
+
+
+
+            // Animate Floating Blossom Petals
+
+            const positions = petalParticles.geometry.attributes.position.array;
+
+            for (let i = 0; i < petalTotal; i++) {
+
+                const data = petalVelocityData[i];
+
+                data.swivelTime += 0.01;
+
+                
+
+                positions[i*3+1] -= data.y; // Y downward drift
+
+                positions[i*3] += Math.sin(data.swivelTime) * 0.01 + data.x; // Sway motion
+
+                
+
+                if (positions[i*3+1] < 0) {
+
+                    positions[i*3+1] = 14 + Math.random()*4;
+
+                    positions[i*3] = (Math.random()-0.5) * 40;
+
+                }
+
+            }
+
+            petalParticles.geometry.attributes.position.needsUpdate = true;
+
+
+
+            // Subtle Water Ripple Simulation via texture phase oscillation emulation
+
+            pondWater.scale.setScalar(1.0 + Math.sin(runtimeClock * 2.0) * 0.008);
+
+
+
+            controls.update();
+
+            renderer.render(scene, camera);
+
+        }
+
+
+
+        renderTick();
+
+
+
+        // Responsive Resizing View Handling Matrix
+
+        window.addEventListener('resize', () => {
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+        });
+
+    </script>
+
+</body>
+
+</html>
