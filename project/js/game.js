@@ -96,10 +96,11 @@ class Game {
     // per-level arsenals: default guns vs. Japan feudal loadout
     this.defaultWeapons = this.player.weapons;
     this.japanWeapons = [
-      { name: 'KATANA',   type: 'semi', rate: 360,  dmg: 90, color: 0xcfe8ff, ammo: Infinity, maxAmmo: Infinity, spread: 0, model: 'katana',   kick: 0, melee: true, reach: 4.2, arc: 0.6 },
+      { name: 'KATANA',   type: 'semi', rate: 320,  dmg: 90, color: 0xcfe8ff, ammo: Infinity, maxAmmo: Infinity, spread: 0, model: 'katana',   kick: 0, melee: true, reach: 4.35, arc: 0.55 },
       { name: 'SHURIKEN', type: 'semi', rate: 240,  dmg: 34, color: 0xc8d2dc, ammo: 60, maxAmmo: 180, spread: 0.02, model: 'shuriken', kick: 0.012, thrown: true, speed: 70 },
-      { name: 'BOW',      type: 'semi', rate: 720,  dmg: 120, color: 0x9a6b3a, ammo: 30, maxAmmo: 80, spread: 0.004, model: 'bow', kick: 0.02, arrow: true, speed: 92 }
+      { name: 'BOW',      type: 'semi', rate: 620,  dmg: 120, color: 0x9a6b3a, ammo: 30, maxAmmo: 80, spread: 0.003, model: 'bow', kick: 0.008, arrow: true, speed: 104 }
     ];
+    this.weaponSmooth = { bowDraw: 0, bowRelease: 0 };
 
     this.input = { w: 0, a: 0, s: 0, d: 0, jump: 0, shoot: 0, sprint: 0 };
     this.touchState = { moveX: 0, moveY: 0 };
@@ -1462,6 +1463,7 @@ class Game {
     // string
     const str = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1.45, 4), new THREE.MeshBasicMaterial({ color: 0xeeeeee }));
     str.position.set(0.12, 0, -0.2); g.add(str);
+    g.userData.string = str;
     // nocked arrow
     const arrow = new THREE.Group();
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.7, 6), new THREE.MeshStandardMaterial({ color: 0xcaa472 }));
@@ -1471,6 +1473,8 @@ class Game {
     const fl = new THREE.Mesh(new THREE.BoxGeometry(0.001, 0.06, 0.08), new THREE.MeshBasicMaterial({ color: 0xcc3344, side: THREE.DoubleSide }));
     fl.position.set(0.12, 0, -0.12); arrow.add(fl);
     g.add(arrow); g.userData.arrow = arrow;
+    g.userData.arrowBaseZ = arrow.position.z;
+    g.userData.stringBaseZ = str.position.z;
     g.userData.muzzle = new THREE.Vector3(0.12, 0, -0.85);
     return g;
   }
@@ -1478,6 +1482,10 @@ class Game {
   updateWeaponModel(name) {
     const key = (name || 'PISTOL').toLowerCase();
     Object.entries(this.gunModels).forEach(([k, m]) => m.visible = (k === key));
+    if (this.weaponSmooth) { this.weaponSmooth.bowDraw = 0; this.weaponSmooth.bowRelease = 0; }
+    this.swing = null;
+    const bow = this.gunModels && this.gunModels.bow;
+    if (bow && bow.userData.arrow) bow.userData.arrow.visible = true;
     const model = this.gunModels[key] || this.gunModels.pistol;
     const mz = model.userData.muzzle || new THREE.Vector3(0, 0.03, -0.6);
     this.muzzleFlash.position.copy(mz).add(new THREE.Vector3(0, 0, -0.04));
@@ -1846,7 +1854,7 @@ class Game {
         }
       }
       // slash arc effect + swing anim
-      this.swing = { start: performance.now(), dur: 230, dir: (this._swingFlip = !this._swingFlip) ? 1 : -1 };
+      this.swing = { start: performance.now(), dur: 300, dir: (this._swingFlip = !this._swingFlip) ? 1 : -1 };
       this.spawnSlashArc(camPos, baseDir, w.color);
       if (any) this.showHitmarker(false);
       return;
@@ -1859,10 +1867,12 @@ class Game {
       dir.x += (Math.random() - 0.5) * spread; dir.y += (Math.random() - 0.5) * spread; dir.z += (Math.random() - 0.5) * spread;
       dir.normalize();
       this.spawnThrown(muzzlePos, dir, w);
+      if (w.arrow && this.weaponSmooth) this.weaponSmooth.bowRelease = 1;
       // light recoil flick
-      this.gunGroup.position.z = -0.46 - w.kick * 2;
-      this.gunGroup.rotation.x = 0.05 + w.kick * 2;
-      this.camera.rotation.x += w.kick;
+      const recoil = w.arrow ? 0.45 : 1;
+      this.gunGroup.position.z = -0.46 - w.kick * 2 * recoil;
+      this.gunGroup.rotation.x = 0.05 + w.kick * 2 * recoil;
+      this.camera.rotation.x += w.kick * recoil;
       return;
     }
 
@@ -1987,7 +1997,7 @@ class Game {
     mesh.position.copy(pos);
     if (w.arrow) mesh.lookAt(pos.clone().add(dir));
     this.scene.add(mesh);
-    this.tProj.push({ mesh, vel: dir.clone().multiplyScalar(w.speed), life: 2.5, dmg: w.dmg, arrow: !!w.arrow, spin, grav: w.arrow ? 14 : 4, color: w.color, pierce: w.arrow ? 1 : 0, hitSet: new Set() });
+    this.tProj.push({ mesh, vel: dir.clone().multiplyScalar(w.speed), life: w.arrow ? 3.2 : 2.5, dmg: w.dmg, arrow: !!w.arrow, spin, grav: w.arrow ? 9 : 4, color: w.color, pierce: w.arrow ? 1 : 0, hitSet: new Set() });
   }
 
   // katana slash arc visual
@@ -2090,6 +2100,30 @@ class Game {
     document.body.classList.add('damage-effect');
     clearTimeout(this._dmgT);
     this._dmgT = setTimeout(() => document.body.classList.remove('damage-effect'), 200);
+  }
+
+  updateBowSmooth(w, dt) {
+    if (!this.gunModels || !this.gunModels.bow || !this.weaponSmooth) return;
+    const bow = this.gunModels.bow;
+    if (!bow.visible) return;
+    const hasArrow = !w || w.ammo > 0 || w.ammo === Infinity;
+    if (bow.userData.arrow) bow.userData.arrow.visible = hasArrow;
+    const desiredDraw = this.input.shoot && hasArrow ? 1 : 0;
+    this.weaponSmooth.bowDraw = THREE.MathUtils.lerp(this.weaponSmooth.bowDraw, desiredDraw, dt * (desiredDraw ? 8 : 12));
+    this.weaponSmooth.bowRelease = Math.max(0, this.weaponSmooth.bowRelease - dt * 5.5);
+    const draw = this.weaponSmooth.bowDraw;
+    const releaseKick = this.weaponSmooth.bowRelease;
+    if (bow.userData.arrow) {
+      bow.userData.arrow.position.z = (bow.userData.arrowBaseZ || 0) + draw * 0.18 - releaseKick * 0.05;
+      bow.userData.arrow.rotation.x = -draw * 0.04;
+    }
+    if (bow.userData.string) {
+      bow.userData.string.position.z = (bow.userData.stringBaseZ || -0.2) + draw * 0.13 - releaseKick * 0.04;
+      bow.userData.string.scale.y = 1 + draw * 0.03;
+    }
+    bow.rotation.x = THREE.MathUtils.lerp(bow.rotation.x, -draw * 0.035 + releaseKick * 0.08, dt * 10);
+    bow.rotation.y = THREE.MathUtils.lerp(bow.rotation.y, draw * 0.045, dt * 10);
+    bow.position.z = THREE.MathUtils.lerp(bow.position.z, -draw * 0.035 + releaseKick * 0.05, dt * 12);
   }
 
   // ---------------- UPDATE ----------------
@@ -2240,6 +2274,7 @@ class Game {
     }
     if (!this.gunGroup.userData.reloading) this.gunGroup.rotation.x = THREE.MathUtils.lerp(this.gunGroup.rotation.x, 0, dt * 9);
     this.gunGroup.rotation.y = THREE.MathUtils.lerp(this.gunGroup.rotation.y, (-this.input.a + this.input.d) * 0.04, dt * 6);
+    this.updateBowSmooth(w0, dt);
     this.muzzleFlash.material.opacity = THREE.MathUtils.lerp(this.muzzleFlash.material.opacity, 0, dt * 22);
     this.muzzleLight.intensity = THREE.MathUtils.lerp(this.muzzleLight.intensity, 0, dt * 20);
 
@@ -2305,16 +2340,20 @@ class Game {
     }
     // katana swing animation
     if (this.swing) {
-      const p = (performance.now() - this.swing.start) / this.swing.dur;
-      if (p >= 1) { this.swing = null; }
-      else {
-        const s = Math.sin(p * Math.PI);
-        this.gunGroup.rotation.z = this.swing.dir * s * 1.5;
-        this.gunGroup.rotation.x = s * 0.5;
-        this.gunGroup.position.x = 0.32 - this.swing.dir * s * 0.3;
-      }
+      const raw = (performance.now() - this.swing.start) / this.swing.dur;
+      const p = Math.min(Math.max(raw, 0), 1);
+      const eased = p * p * (3 - 2 * p);
+      const attack = Math.sin(eased * Math.PI);
+      const sweep = Math.sin(eased * Math.PI * 0.85);
+      const baseX = this.aiming ? 0.0 : 0.32;
+      this.gunGroup.rotation.z = THREE.MathUtils.lerp(this.gunGroup.rotation.z, this.swing.dir * sweep * 1.18, dt * 18);
+      this.gunGroup.rotation.x = THREE.MathUtils.lerp(this.gunGroup.rotation.x, attack * 0.34, dt * 18);
+      this.gunGroup.rotation.y = THREE.MathUtils.lerp(this.gunGroup.rotation.y, -this.swing.dir * attack * 0.22, dt * 18);
+      this.gunGroup.position.x = THREE.MathUtils.lerp(this.gunGroup.position.x, baseX - this.swing.dir * attack * 0.22, dt * 18);
+      this.gunGroup.position.y = THREE.MathUtils.lerp(this.gunGroup.position.y, (this.aiming ? -0.18 : -0.3) + attack * 0.04, dt * 18);
+      if (raw >= 1) this.swing = null;
     } else {
-      this.gunGroup.rotation.z = THREE.MathUtils.lerp(this.gunGroup.rotation.z, 0, dt * 10);
+      this.gunGroup.rotation.z = THREE.MathUtils.lerp(this.gunGroup.rotation.z, 0, dt * 12);
     }
     // shuriken spin in hand
     const sk = this.gunModels && this.gunModels.shuriken;
