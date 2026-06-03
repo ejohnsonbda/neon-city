@@ -37,7 +37,7 @@ const EnemyFactory = {
       const s = this._desertShades[(Math.random() * this._desertShades.length) | 0];
       return new THREE.MeshStandardMaterial({ color: s, emissive: 0x3a2410, emissiveIntensity: 0.18, roughness: 1, metalness: 0.04, flatShading: true });
     }
-    return new THREE.MeshStandardMaterial({ color: shade, roughness: 0.95, metalness: 0.05, flatShading: true });
+    return new THREE.MeshStandardMaterial({ color: shade, emissive: shade, emissiveIntensity: 0.07, roughness: 0.9, metalness: 0.08, flatShading: true });
   },
   // "moss" slot = accent: jungle green for rock golems, pharaoh gold for desert
   _moss() {
@@ -50,7 +50,7 @@ const EnemyFactory = {
   },
   _eyeMat(hex) {
     const c = this._skin === 'desert' ? 0xffd35a : hex;
-    return new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2.4, roughness: 0.4 });
+    return new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 3.2, roughness: 0.35 });
   },
 
   // add a faceted rock chunk

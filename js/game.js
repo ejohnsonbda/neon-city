@@ -130,8 +130,8 @@ class Game {
     // tune bloom per level: punchy at night, subtle in daylight (avoids white-out)
     if (this.bloom) {
       const day = (level === 'fields' || level === 'desert' || level === 'japan');
-      if (day) { this.bloom.strength = 0.3; this.bloom.threshold = 0.88; this.bloom.radius = 0.4; }
-      else { this.bloom.strength = 0.85; this.bloom.threshold = 0.62; this.bloom.radius = 0.7; }
+      if (day) { this.bloom.strength = 0.22; this.bloom.threshold = 0.92; this.bloom.radius = 0.35; }
+      else { this.bloom.strength = 0.95; this.bloom.threshold = 0.52; this.bloom.radius = 0.75; }
     }
     if (level === 'fields') this.buildFields(this.worldGroup);
     else if (level === 'megacity') this.buildMegaCity(this.worldGroup);
@@ -307,9 +307,9 @@ class Game {
     sunGlow.position.set(60 * S * 0.5, 50 * S * 0.5, -55 * S * 0.5); W.add(sunGlow);
 
     // ===== lighting (harsh desert sun) =====
-    W.add(new THREE.AmbientLight(0xc9b48a, 0.42));
-    W.add(new THREE.HemisphereLight(0xe8d4ae, 0x5a4c30, 0.34));
-    const sun = new THREE.DirectionalLight(0xffe0a0, 1.15);
+    W.add(new THREE.AmbientLight(0xc9b48a, 0.28));
+    W.add(new THREE.HemisphereLight(0xe8d4ae, 0x5a4c30, 0.22));
+    const sun = new THREE.DirectionalLight(0xffe0a0, 0.82);
     sun.position.set(60, 120, -50); sun.castShadow = true; sun.shadow.bias = -0.0002;
     sun.shadow.camera.left = -220; sun.shadow.camera.right = 220; sun.shadow.camera.top = 220; sun.shadow.camera.bottom = -220;
     sun.shadow.camera.far = 600; sun.shadow.mapSize.set(2048, 2048); W.add(sun);
@@ -323,9 +323,9 @@ class Game {
     this.scene.background = null;
     this.scene.fog = new THREE.Fog(0xc4d8ea, 120, 560);
 
-    // soft day sky dome
+    // soft day sky dome (golden hour — deeper blue above, warm amber/gold at horizon)
     const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 24),
-      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#4f8fcf', '#f0dcc4'), side: THREE.BackSide, fog: false }));
+      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#2d5fa8', '#e8a84a'), side: THREE.BackSide, fog: false }));
     W.add(sky);
 
     // ground: lush grass with stone courtyard
@@ -502,12 +502,12 @@ class Game {
     }
     bridge.position.set(-20, 0.6, -2); W.add(bridge);
 
-    // ===== sun + lighting =====
-    const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(12, 16, 16), new THREE.MeshBasicMaterial({ color: 0xfff4d6, fog: false }));
-    sunDisc.position.set(180, 150, 120); W.add(sunDisc);
-    W.add(new THREE.AmbientLight(0xbccfe0, 0.55));
-    W.add(new THREE.HemisphereLight(0xaad0f5, 0x4a6238, 0.45));
-    const sun = new THREE.DirectionalLight(0xfff2d6, 1.5);
+    // ===== sun + lighting (golden hour — warm but not over-exposed) =====
+    const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(12, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffcc88, fog: false }));
+    sunDisc.position.set(180, 90, 120); W.add(sunDisc);
+    W.add(new THREE.AmbientLight(0xc8b89a, 0.32));
+    W.add(new THREE.HemisphereLight(0xa0c0f0, 0x3a5a28, 0.28));
+    const sun = new THREE.DirectionalLight(0xffcc88, 0.95);
     sun.position.set(120, 140, 90); sun.castShadow = true; sun.shadow.bias = -0.0002;
     sun.shadow.camera.left = -120; sun.shadow.camera.right = 120; sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
     sun.shadow.camera.far = 480; sun.shadow.mapSize.set(2048, 2048); W.add(sun);
@@ -621,11 +621,11 @@ class Game {
 
     // ground
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(95 * S, 95 * S),
-      new THREE.MeshStandardMaterial({ color: 0x4a5740, roughness: 0.92, metalness: 0.05 }));
+      new THREE.MeshStandardMaterial({ color: 0x30323a, roughness: 0.78, metalness: 0.22 }));
     ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true; W.add(ground);
 
     // road grid + markings
-    const roadMat = new THREE.MeshStandardMaterial({ color: 0x33343f, roughness: 0.7, metalness: 0.2 });
+    const roadMat = new THREE.MeshStandardMaterial({ color: 0x28292f, roughness: 0.65, metalness: 0.28 });
     const lineMat = new THREE.MeshStandardMaterial({ color: 0xffe7a0, emissive: 0x4a3a10, emissiveIntensity: 0.5 });
     for (let i = -36; i <= 36; i += 6) {
       if (Math.abs(i) < 3) continue;
@@ -879,7 +879,7 @@ class Game {
         new THREE.MeshStandardMaterial({ color: buildingColors[ci % buildingColors.length], roughness: 0.35, metalness: 0.5 }));
       body.position.y = h / 2; body.castShadow = true; body.receiveShadow = true; grp.add(body);
       // emissive window bands (cheap: a few glowing rings instead of hundreds of window meshes)
-      const nm = new THREE.MeshStandardMaterial({ color: neonColors[ni % neonColors.length], emissive: neonColors[ni % neonColors.length], emissiveIntensity: 0.7 });
+      const nm = new THREE.MeshStandardMaterial({ color: neonColors[ni % neonColors.length], emissive: neonColors[ni % neonColors.length], emissiveIntensity: 1.2 });
       const bands = Math.min(6, Math.max(2, Math.floor(h / (1.6 * 6))));
       for (let r = 0; r < bands; r++) {
         const by = (r + 1) * (h / (bands + 1));
@@ -1060,7 +1060,7 @@ class Game {
     const fTex = new THREE.Texture(TextureGen.img.asphalt); fTex.needsUpdate = true;
     fTex.wrapS = fTex.wrapT = THREE.RepeatWrapping; fTex.repeat.set(60, 60); fTex.encoding = THREE.sRGBEncoding;
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.7, metalness: 0.28, color: 0x6b7280 }));
+      new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.48, metalness: 0.55, color: 0x48505e }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
 
     const variants = [];
@@ -1068,9 +1068,9 @@ class Game {
       const t = TextureGen.createBuilding();
       t.map.wrapS = t.map.wrapT = THREE.RepeatWrapping;
       t.emissive.wrapS = t.emissive.wrapT = THREE.RepeatWrapping;
-      t.map.repeat.set(1, 2); t.emissive.repeat.set(1, 2); t.map.encoding = THREE.sRGBEncoding;
+      t.map.repeat.set(1, 12); t.emissive.repeat.set(1, 12); t.map.encoding = THREE.sRGBEncoding;
       variants.push(new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.emissive, emissive: 0xffffff,
-        emissiveIntensity: 1.25, roughness: 0.35, metalness: 0.55 }));
+        emissiveIntensity: 1.6, roughness: 0.28, metalness: 0.6 }));
     }
     const bldgGeo = new THREE.BoxGeometry(10, 1, 10);
     const billboards = []; const blockSize = 26;
@@ -1126,8 +1126,8 @@ class Game {
     const hues = [0x19f0ff, 0xff2d95, 0x9b5cff, 0xffb347, 0x39ff14];
     for (let i = 0; i < 18; i++) {
       const hue = hues[(Math.random() * hues.length) | 0];
-      const pl = new THREE.PointLight(hue, 2.4, 16, 2.2);
-      pl.position.set((Math.random() - 0.5) * 300, 2.6 + Math.random() * 2.2, (Math.random() - 0.5) * 300);
+      const pl = new THREE.PointLight(hue, 3.0, 24, 1.6);
+      pl.position.set((Math.random() - 0.5) * 280, 2.4 + Math.random() * 1.8, (Math.random() - 0.5) * 280);
       W.add(pl);
       const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), new THREE.MeshBasicMaterial({ color: hue }));
       bulb.position.copy(pl.position); W.add(bulb);
@@ -1146,12 +1146,13 @@ class Game {
     this.scene.background = null;
     this.scene.fog = new THREE.Fog(0x9fd0ee, 90, 360);
     const fsky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 24),
-      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#4f8fcf', '#cfe6d8'), side: THREE.BackSide, fog: false }));
+      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#4a8fd4', '#e8d0a8'), side: THREE.BackSide, fog: false }));
     W.add(fsky);
 
     // rolling grass ground
+    const grassTex = TextureGen.createGrass(false); grassTex.repeat.set(60, 60);
     const grass = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ color: 0x3d6e2f, roughness: 0.95, metalness: 0 }));
+      new THREE.MeshStandardMaterial({ map: grassTex, color: 0x3d6e2f, roughness: 0.95, metalness: 0 }));
     grass.rotation.x = -Math.PI / 2; grass.receiveShadow = true; W.add(grass);
     // dirt path patch around spawn
     const path = new THREE.Mesh(new THREE.CircleGeometry(10, 32),
