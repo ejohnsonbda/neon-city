@@ -12,7 +12,13 @@ class Game {
     this.camera = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, 0.1, 1200);
     this.camera.rotation.order = 'YXZ';
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    try {
+      this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    } catch (err) {
+      Game.showFatalStartupError('WebGL could not start. Please enable hardware acceleration or try another browser.', err);
+      this.failed = true;
+      return;
+    }
     this.renderer.setClearColor(0x05060c, 1);
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setSize(innerWidth, innerHeight);
@@ -69,6 +75,7 @@ class Game {
     this.level = 'city';
     this.score = 0;
     this.wave = 1;
+    this.waveCountdown = null;
 
     this.player = {
       speed: 14, runSpeed: 22, jumpForce: 14,
@@ -86,13 +93,20 @@ class Game {
       ]
     };
 
-    // per-level arsenals: default guns vs. Japan feudal loadout
+    // per-level arsenals: the neon katana and bow are available in every theatre;
+    // Japan keeps the focused traditional loadout with shuriken support.
     this.defaultWeapons = this.player.weapons;
     this.japanWeapons = [
-      { name: 'KATANA',   type: 'semi', rate: 360,  dmg: 90, color: 0xcfe8ff, ammo: Infinity, maxAmmo: Infinity, spread: 0, model: 'katana',   kick: 0, melee: true, reach: 4.2, arc: 0.6 },
+      { name: 'KATANA',   type: 'semi', rate: 320,  dmg: 90, color: 0xcfe8ff, ammo: Infinity, maxAmmo: Infinity, spread: 0, model: 'katana',   kick: 0, melee: true, reach: 4.35, arc: 0.55 },
       { name: 'SHURIKEN', type: 'semi', rate: 240,  dmg: 34, color: 0xc8d2dc, ammo: 60, maxAmmo: 180, spread: 0.02, model: 'shuriken', kick: 0.012, thrown: true, speed: 70 },
-      { name: 'BOW',      type: 'semi', rate: 720,  dmg: 120, color: 0x9a6b3a, ammo: 30, maxAmmo: 80, spread: 0.004, model: 'bow', kick: 0.02, arrow: true, speed: 92 }
+      { name: 'BOW',      type: 'semi', rate: 620,  dmg: 120, color: 0x19f0ff, ammo: 30, maxAmmo: 80, spread: 0.003, model: 'bow', kick: 0.008, arrow: true, speed: 104 }
     ];
+    this.defaultWeapons = [
+      ...this.defaultWeapons,
+      { ...this.japanWeapons[0] },
+      { ...this.japanWeapons[2] }
+    ];
+    this.weaponSmooth = { bowDraw: 0, bowRelease: 0 };
 
     this.input = { w: 0, a: 0, s: 0, d: 0, jump: 0, shoot: 0, sprint: 0 };
     this.touchState = { moveX: 0, moveY: 0 };
@@ -638,8 +652,7 @@ class Game {
     }
 
     // buildings with enhanced facade textures (real concrete + neon window bands)
-    const concrete = TextureGen.img.concrete;
-    const baseTex = () => { const t = new THREE.Texture(concrete); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 4); t.encoding = THREE.sRGBEncoding; return t; };
+    const baseTex = () => TextureGen.createImageTexture('concrete', () => TextureGen.createStonePath(), 2, 4);
     const tints = [0x9fb0c4, 0xb6a98f, 0x8fa9b8, 0xc2b6a0, 0x9aa7b5];
     const neonColors = [0xff3366, 0x33ffcc, 0xffaa33, 0xaa44ff, 0x19f0ff, 0xff66aa];
     const winMats = neonColors.map(c => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.0 }));
@@ -1057,11 +1070,61 @@ class Game {
       new THREE.MeshBasicMaterial({ map: TextureGen.createSky(), side: THREE.BackSide, fog: false }));
     W.add(sky);
 
-    const fTex = new THREE.Texture(TextureGen.img.asphalt); fTex.needsUpdate = true;
-    fTex.wrapS = fTex.wrapT = THREE.RepeatWrapping; fTex.repeat.set(60, 60); fTex.encoding = THREE.sRGBEncoding;
+    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 60, 60);
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
       new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.7, metalness: 0.28, color: 0x6b7280 }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
+
+    // NEON CITY street detail: sidewalks, grass strips, and readable street signs
+    const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x8a8f9b, roughness: 0.72, metalness: 0.12 });
+    const curbMat = new THREE.MeshStandardMaterial({ color: 0xd7dbe4, roughness: 0.5, metalness: 0.18 });
+    const grassTex = TextureGen.createGrass(true); grassTex.repeat.set(18, 18);
+    const cityGrassMat = new THREE.MeshStandardMaterial({ map: grassTex, color: 0x1f6f35, roughness: 0.95, metalness: 0.02 });
+    const signPostMat = new THREE.MeshStandardMaterial({ color: 0xb9c9d8, roughness: 0.35, metalness: 0.75 });
+    const signFaceMat = new THREE.MeshBasicMaterial({ color: 0x10263c });
+    const signGlowMat = new THREE.MeshBasicMaterial({ color: 0x19f0ff, transparent: true, opacity: 0.18 });
+    const addCitySlab = (w, d, x, z, mat, y = 0.045, h = 0.09) => {
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      slab.position.set(x, y, z); slab.receiveShadow = true; slab.castShadow = true; W.add(slab);
+      return slab;
+    };
+    // Raised sidewalks around the main neon avenue cross.
+    [[-11.5, 0, 4.6, 310], [11.5, 0, 4.6, 310], [0, -11.5, 310, 4.6], [0, 11.5, 310, 4.6]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, sidewalkMat, 0.075, 0.15));
+    // Thin bright curbs make the sidewalks easy to read while moving at speed.
+    [[-6.7, 0, 0.42, 310], [6.7, 0, 0.42, 310], [-16.3, 0, 0.34, 310], [16.3, 0, 0.34, 310],
+     [0, -6.7, 310, 0.42], [0, 6.7, 310, 0.42], [0, -16.3, 310, 0.34], [0, 16.3, 310, 0.34]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, curbMat, 0.16, 0.06));
+    // Grass pockets and median strips break up the asphalt without blocking gameplay.
+    [[-23, 0, 5.0, 300], [23, 0, 5.0, 300], [0, -23, 300, 5.0], [0, 23, 300, 5.0],
+     [-23, -23, 20, 20], [23, -23, 20, 20], [-23, 23, 20, 20], [23, 23, 20, 20]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, cityGrassMat, 0.035, 0.045));
+
+    const makeStreetSignTexture = (label) => {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#061321'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.strokeStyle = '#19f0ff'; ctx.lineWidth = 6; ctx.strokeRect(6, 6, c.width - 12, c.height - 12);
+      ctx.fillStyle = '#19f0ff'; ctx.font = 'bold 30px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = '#19f0ff'; ctx.shadowBlur = 12; ctx.fillText(label, c.width / 2, c.height / 2);
+      const tex = new THREE.CanvasTexture(c); tex.needsUpdate = true;
+      if ('encoding' in tex && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+      if ('colorSpace' in tex && THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+    const addStreetSign = (x, z, label, rot = 0) => {
+      const g = new THREE.Group();
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.2, 8), signPostMat);
+      post.position.y = 1.6; post.castShadow = true; g.add(post);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.78, 0.09), signFaceMat);
+      panel.position.set(0, 3.1, 0); panel.castShadow = true; g.add(panel);
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.52, 0.58), new THREE.MeshBasicMaterial({ map: makeStreetSignTexture(label), transparent: true }));
+      face.position.set(0, 3.1, 0.055); g.add(face);
+      const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 0.92), signGlowMat);
+      glow.position.set(0, 3.1, 0.062); g.add(glow);
+      g.position.set(x, 0, z); g.rotation.y = rot; W.add(g);
+      const light = new THREE.PointLight(0x19f0ff, 0.55, 8, 2.4);
+      light.position.set(x, 3.05, z); W.add(light);
+    };
+    [[-17, -17, 'NEON AVE', Math.PI / 4], [17, -17, 'NIGHTFALL', -Math.PI / 4], [-17, 17, 'CYBER ST', Math.PI * 0.75], [17, 17, 'DOWNTOWN', -Math.PI * 0.75],
+     [0, -31, 'MAIN ST', 0], [0, 31, 'PLAZA', Math.PI], [-31, 0, 'MARKET', Math.PI / 2], [31, 0, 'SKYWAY', -Math.PI / 2]].forEach(s => addStreetSign(s[0], s[1], s[2], s[3]));
 
     const variants = [];
     for (let i = 0; i < 5; i++) {
@@ -1222,7 +1285,7 @@ class Game {
 
     // colorful enterable houses
     const bodyCols = [0xf6b43a, 0x6fb3e0, 0xef6f6c, 0x8fd17a, 0xcd88ff, 0xffd35c];
-    const roofTex = new THREE.Texture(TextureGen.img.asphalt); // fallback if no tile tex
+    const roofTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createRoofTile('#26323d'), 6, 6); // fallback if no tile tex
     const houseSpots = [[-26, 20], [28, 18], [-30, -22], [26, -26], [0, 34], [44, 0], [-46, -6]];
     houseSpots.forEach(([sx, sz], i) => {
       const col = bodyCols[i % bodyCols.length];
@@ -1260,6 +1323,7 @@ class Game {
     this._matDark = new THREE.MeshStandardMaterial({ color: 0x16181d, roughness: 0.45, metalness: 0.6 });
     this._matMetal = new THREE.MeshStandardMaterial({ color: 0x4a505c, metalness: 0.9, roughness: 0.25 });
     this._matPoly = new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.6, metalness: 0.4 });
+    this.gltfLoader = null;
 
     this.gunModels = {
       pistol:  this._buildPistol(0x19f0ff),
@@ -1273,6 +1337,7 @@ class Game {
       bow:     this._buildBow()
     };
     Object.values(this.gunModels).forEach(m => { m.visible = false; this.gunGroup.add(m); });
+    this.loadNeonWeaponModels();
 
     // shared muzzle flash + light
     this.muzzleFlash = new THREE.Mesh(
@@ -1286,6 +1351,80 @@ class Game {
     this.gunGroup.position.set(0.32, -0.3, -0.6);
     this.camera.add(this.gunGroup);
     this.scene.add(this.camera);
+  }
+
+
+  loadWeaponGLB(key, path, cfg = {}) {
+    if (!this.gltfLoader || !this.gunModels || !this.gunModels[key]) return;
+    const fallback = this.gunModels[key];
+    fallback.userData.loadingGLB = true;
+    this.gltfLoader.load(path, gltf => {
+      try {
+        const source = gltf.scene || (gltf.scenes && gltf.scenes[0]);
+        if (!source) return;
+        const holder = new THREE.Group();
+        holder.name = cfg.name || `${key}_neon_glb_holder`;
+        const model = source.clone(true);
+        model.traverse(o => {
+          if (o.isMesh) {
+            o.castShadow = true;
+            o.receiveShadow = true;
+            if (o.material) {
+              const mats = Array.isArray(o.material) ? o.material : [o.material];
+              mats.forEach(m => {
+                if (m.map) m.map.encoding = THREE.sRGBEncoding;
+                if (m.emissiveMap) m.emissiveMap.encoding = THREE.sRGBEncoding;
+                m.needsUpdate = true;
+              });
+            }
+          }
+        });
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+        model.scale.setScalar((cfg.fit || 0.95) / maxDim);
+        const fitBox = new THREE.Box3().setFromObject(model);
+        const center = fitBox.getCenter(new THREE.Vector3());
+        model.position.sub(center);
+        model.rotation.set(cfg.rotX || 0, cfg.rotY || 0, cfg.rotZ || 0);
+        model.position.add(cfg.offset || new THREE.Vector3());
+        holder.add(model);
+        holder.userData.muzzle = (cfg.muzzle || fallback.userData.muzzle || new THREE.Vector3(0, 0.03, -0.6)).clone();
+        holder.userData.loadedGLB = true;
+        holder.userData.weaponSource = path;
+        holder.visible = fallback.visible;
+        this.gunGroup.remove(fallback);
+        this.gunModels[key] = holder;
+        this.gunGroup.add(holder);
+        if (this.player && this.player.weapons && this.player.weapons[this.player.weaponIdx]) {
+          this.updateWeaponModel(this.player.weapons[this.player.weaponIdx].name);
+        }
+      } catch (err) {
+        console.warn('Neon weapon GLB setup failed for', key, err);
+      }
+    }, undefined, err => console.warn('Neon weapon GLB failed to load:', path, err));
+  }
+
+  loadNeonWeaponModels() {
+    if (!window.THREE || !THREE.GLTFLoader) return;
+    this.gltfLoader = this.gltfLoader || new THREE.GLTFLoader();
+    const base = 'assets/models/weapons/';
+    this.loadWeaponGLB('katana', base + 'smooth_neon_katana.glb', {
+      fit: 1.52,
+      rotX: -0.20,
+      rotY: Math.PI,
+      rotZ: -0.32,
+      offset: new THREE.Vector3(0.08, -0.04, -0.40),
+      muzzle: new THREE.Vector3(0.09, 0, -1.36)
+    });
+    this.loadWeaponGLB('bow', base + 'smooth_neon_bow.glb', {
+      fit: 1.26,
+      rotX: -0.10,
+      rotY: Math.PI * 0.5,
+      rotZ: 0.02,
+      offset: new THREE.Vector3(0.08, -0.02, -0.32),
+      muzzle: new THREE.Vector3(0.12, 0, -0.92)
+    });
   }
 
   _accent(hex) { return new THREE.MeshBasicMaterial({ color: hex }); }
@@ -1457,6 +1596,7 @@ class Game {
     // string
     const str = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1.45, 4), new THREE.MeshBasicMaterial({ color: 0xeeeeee }));
     str.position.set(0.12, 0, -0.2); g.add(str);
+    g.userData.string = str;
     // nocked arrow
     const arrow = new THREE.Group();
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.7, 6), new THREE.MeshStandardMaterial({ color: 0xcaa472 }));
@@ -1466,6 +1606,8 @@ class Game {
     const fl = new THREE.Mesh(new THREE.BoxGeometry(0.001, 0.06, 0.08), new THREE.MeshBasicMaterial({ color: 0xcc3344, side: THREE.DoubleSide }));
     fl.position.set(0.12, 0, -0.12); arrow.add(fl);
     g.add(arrow); g.userData.arrow = arrow;
+    g.userData.arrowBaseZ = arrow.position.z;
+    g.userData.stringBaseZ = str.position.z;
     g.userData.muzzle = new THREE.Vector3(0.12, 0, -0.85);
     return g;
   }
@@ -1473,6 +1615,10 @@ class Game {
   updateWeaponModel(name) {
     const key = (name || 'PISTOL').toLowerCase();
     Object.entries(this.gunModels).forEach(([k, m]) => m.visible = (k === key));
+    if (this.weaponSmooth) { this.weaponSmooth.bowDraw = 0; this.weaponSmooth.bowRelease = 0; }
+    this.swing = null;
+    const bow = this.gunModels && this.gunModels.bow;
+    if (bow && bow.userData.arrow) bow.userData.arrow.visible = true;
     const model = this.gunModels[key] || this.gunModels.pistol;
     const mz = model.userData.muzzle || new THREE.Vector3(0, 0.03, -0.6);
     this.muzzleFlash.position.copy(mz).add(new THREE.Vector3(0, 0, -0.04));
@@ -1562,12 +1708,8 @@ class Game {
       if (code === 'Space') { this.input.jump = down; if (down) this.jump(); }
       if (code === 'ShiftLeft') this.input.sprint = down;
       if (code === 'Escape' && down) this.togglePause();
-      if (code === 'Digit1' && down) this.switchWeapon(0);
-      if (code === 'Digit2' && down) this.switchWeapon(1);
-      if (code === 'Digit3' && down) this.switchWeapon(2);
-      if (code === 'Digit4' && down) this.switchWeapon(3);
-      if (code === 'Digit5' && down) this.switchWeapon(4);
-      if (code === 'Digit6' && down) this.switchWeapon(5);
+      const digit = /^Digit([1-9])$/.exec(code);
+      if (digit && down) this.switchWeapon(parseInt(digit[1], 10) - 1);
       if (code === 'KeyR' && down) this.reload();
     };
     addEventListener('keydown', e => onKey(e.code, true));
@@ -1627,6 +1769,7 @@ class Game {
 
   // ---------------- GAME FLOW ----------------
   start() {
+    if (this.failed) return;
     this.gameStarted = true; this.isPaused = false; this.sound.resume();
     if (this.music) { this.music.pause(); this.music.currentTime = 0; }
     // start gameplay music — Desert Raid for desert/egypt, Final Arena Run elsewhere
@@ -1634,10 +1777,12 @@ class Game {
     this.curGameMusic = (this.level === 'desert') ? this.gameMusic[1] : this.gameMusic[0];
     if (this.curGameMusic) this.curGameMusic.play().catch(() => {});
     this.buildWorld(this.level || 'city');
-    // pick arsenal for the level (Japan = katana / shuriken / bow)
+    // pick arsenal for the level: all theatres include the neon katana and bow,
+    // while Japan keeps the focused katana / shuriken / bow loadout.
     this.player.weapons = this.level === 'japan' ? this.japanWeapons : this.defaultWeapons;
     this.player.weaponIdx = 0;
     this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
+    this.waveCountdown = null;
     this.player.weapons.forEach(w => w.ammo = w.ammo === Infinity ? Infinity : Math.floor(w.maxAmmo * 0.6));
     this.camera.position.set(0, this.player.height, 0);
     if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
@@ -1662,10 +1807,9 @@ class Game {
     if (this.rings) { this.rings.forEach(r => this.scene.remove(r.mesh)); this.rings = []; }
     this.swing = null;
     document.getElementById('boss-bar-wrap').classList.add('hidden');
-    this.spawnWave();
     this.updateHUD();
     this.updateWeaponModel(this.player.weapons[0].name);
-    this.showMessage('WAVE 1', '#19f0ff');
+    this.startWaveCountdown(1);
   }
 
   togglePause() {
@@ -1716,6 +1860,33 @@ class Game {
     if (n >= 3) for (let i = 0; i < Math.floor(n / 3); i++) list.push('tank');
     // cap for performance
     return list.slice(0, 24);
+  }
+
+  startWaveCountdown(waveNumber) {
+    this.wave = waveNumber;
+    this.waveCountdown = { wave: waveNumber, timer: 3, lastShown: 3 };
+    this.showMessage('WAVE ' + waveNumber + ' IN 3', '#19f0ff', 1100);
+    this.updateHUD();
+  }
+
+  updateWaveCountdown(dt) {
+    if (!this.waveCountdown) return false;
+    const cd = this.waveCountdown;
+    cd.timer -= dt;
+    if (cd.timer > 0) {
+      const shown = Math.max(1, Math.ceil(cd.timer));
+      if (shown !== cd.lastShown) {
+        cd.lastShown = shown;
+        this.showMessage('WAVE ' + cd.wave + ' IN ' + shown, '#19f0ff', 1050);
+      }
+      return true;
+    }
+    this.waveCountdown = null;
+    this.spawnWave();
+    this.sound.wave();
+    this.showMessage('WAVE ' + cd.wave, '#39ff14', 1300);
+    this.updateHUD();
+    return true;
   }
 
   spawnWave() {
@@ -1813,7 +1984,7 @@ class Game {
         }
       }
       // slash arc effect + swing anim
-      this.swing = { start: performance.now(), dur: 230, dir: (this._swingFlip = !this._swingFlip) ? 1 : -1 };
+      this.swing = { start: performance.now(), dur: 300, dir: (this._swingFlip = !this._swingFlip) ? 1 : -1 };
       this.spawnSlashArc(camPos, baseDir, w.color);
       if (any) this.showHitmarker(false);
       return;
@@ -1826,10 +1997,12 @@ class Game {
       dir.x += (Math.random() - 0.5) * spread; dir.y += (Math.random() - 0.5) * spread; dir.z += (Math.random() - 0.5) * spread;
       dir.normalize();
       this.spawnThrown(muzzlePos, dir, w);
+      if (w.arrow && this.weaponSmooth) this.weaponSmooth.bowRelease = 1;
       // light recoil flick
-      this.gunGroup.position.z = -0.46 - w.kick * 2;
-      this.gunGroup.rotation.x = 0.05 + w.kick * 2;
-      this.camera.rotation.x += w.kick;
+      const recoil = w.arrow ? 0.45 : 1;
+      this.gunGroup.position.z = -0.46 - w.kick * 2 * recoil;
+      this.gunGroup.rotation.x = 0.05 + w.kick * 2 * recoil;
+      this.camera.rotation.x += w.kick * recoil;
       return;
     }
 
@@ -1954,7 +2127,7 @@ class Game {
     mesh.position.copy(pos);
     if (w.arrow) mesh.lookAt(pos.clone().add(dir));
     this.scene.add(mesh);
-    this.tProj.push({ mesh, vel: dir.clone().multiplyScalar(w.speed), life: 2.5, dmg: w.dmg, arrow: !!w.arrow, spin, grav: w.arrow ? 14 : 4, color: w.color, pierce: w.arrow ? 1 : 0, hitSet: new Set() });
+    this.tProj.push({ mesh, vel: dir.clone().multiplyScalar(w.speed), life: w.arrow ? 3.2 : 2.5, dmg: w.dmg, arrow: !!w.arrow, spin, grav: w.arrow ? 9 : 4, color: w.color, pierce: w.arrow ? 1 : 0, hitSet: new Set() });
   }
 
   // katana slash arc visual
@@ -2057,6 +2230,30 @@ class Game {
     document.body.classList.add('damage-effect');
     clearTimeout(this._dmgT);
     this._dmgT = setTimeout(() => document.body.classList.remove('damage-effect'), 200);
+  }
+
+  updateBowSmooth(w, dt) {
+    if (!this.gunModels || !this.gunModels.bow || !this.weaponSmooth) return;
+    const bow = this.gunModels.bow;
+    if (!bow.visible) return;
+    const hasArrow = !w || w.ammo > 0 || w.ammo === Infinity;
+    if (bow.userData.arrow) bow.userData.arrow.visible = hasArrow;
+    const desiredDraw = this.input.shoot && hasArrow ? 1 : 0;
+    this.weaponSmooth.bowDraw = THREE.MathUtils.lerp(this.weaponSmooth.bowDraw, desiredDraw, dt * (desiredDraw ? 8 : 12));
+    this.weaponSmooth.bowRelease = Math.max(0, this.weaponSmooth.bowRelease - dt * 5.5);
+    const draw = this.weaponSmooth.bowDraw;
+    const releaseKick = this.weaponSmooth.bowRelease;
+    if (bow.userData.arrow) {
+      bow.userData.arrow.position.z = (bow.userData.arrowBaseZ || 0) + draw * 0.18 - releaseKick * 0.05;
+      bow.userData.arrow.rotation.x = -draw * 0.04;
+    }
+    if (bow.userData.string) {
+      bow.userData.string.position.z = (bow.userData.stringBaseZ || -0.2) + draw * 0.13 - releaseKick * 0.04;
+      bow.userData.string.scale.y = 1 + draw * 0.03;
+    }
+    bow.rotation.x = THREE.MathUtils.lerp(bow.rotation.x, -draw * 0.035 + releaseKick * 0.08, dt * 10);
+    bow.rotation.y = THREE.MathUtils.lerp(bow.rotation.y, draw * 0.045, dt * 10);
+    bow.position.z = THREE.MathUtils.lerp(bow.position.z, -draw * 0.035 + releaseKick * 0.05, dt * 12);
   }
 
   // ---------------- UPDATE ----------------
@@ -2207,6 +2404,7 @@ class Game {
     }
     if (!this.gunGroup.userData.reloading) this.gunGroup.rotation.x = THREE.MathUtils.lerp(this.gunGroup.rotation.x, 0, dt * 9);
     this.gunGroup.rotation.y = THREE.MathUtils.lerp(this.gunGroup.rotation.y, (-this.input.a + this.input.d) * 0.04, dt * 6);
+    this.updateBowSmooth(w0, dt);
     this.muzzleFlash.material.opacity = THREE.MathUtils.lerp(this.muzzleFlash.material.opacity, 0, dt * 22);
     this.muzzleLight.intensity = THREE.MathUtils.lerp(this.muzzleLight.intensity, 0, dt * 20);
 
@@ -2272,16 +2470,20 @@ class Game {
     }
     // katana swing animation
     if (this.swing) {
-      const p = (performance.now() - this.swing.start) / this.swing.dur;
-      if (p >= 1) { this.swing = null; }
-      else {
-        const s = Math.sin(p * Math.PI);
-        this.gunGroup.rotation.z = this.swing.dir * s * 1.5;
-        this.gunGroup.rotation.x = s * 0.5;
-        this.gunGroup.position.x = 0.32 - this.swing.dir * s * 0.3;
-      }
+      const raw = (performance.now() - this.swing.start) / this.swing.dur;
+      const p = Math.min(Math.max(raw, 0), 1);
+      const eased = p * p * (3 - 2 * p);
+      const attack = Math.sin(eased * Math.PI);
+      const sweep = Math.sin(eased * Math.PI * 0.85);
+      const baseX = this.aiming ? 0.0 : 0.32;
+      this.gunGroup.rotation.z = THREE.MathUtils.lerp(this.gunGroup.rotation.z, this.swing.dir * sweep * 1.18, dt * 18);
+      this.gunGroup.rotation.x = THREE.MathUtils.lerp(this.gunGroup.rotation.x, attack * 0.34, dt * 18);
+      this.gunGroup.rotation.y = THREE.MathUtils.lerp(this.gunGroup.rotation.y, -this.swing.dir * attack * 0.22, dt * 18);
+      this.gunGroup.position.x = THREE.MathUtils.lerp(this.gunGroup.position.x, baseX - this.swing.dir * attack * 0.22, dt * 18);
+      this.gunGroup.position.y = THREE.MathUtils.lerp(this.gunGroup.position.y, (this.aiming ? -0.18 : -0.3) + attack * 0.04, dt * 18);
+      if (raw >= 1) this.swing = null;
     } else {
-      this.gunGroup.rotation.z = THREE.MathUtils.lerp(this.gunGroup.rotation.z, 0, dt * 10);
+      this.gunGroup.rotation.z = THREE.MathUtils.lerp(this.gunGroup.rotation.z, 0, dt * 12);
     }
     // shuriken spin in hand
     const sk = this.gunModels && this.gunModels.shuriken;
@@ -2503,12 +2705,9 @@ class Game {
     }
 
     // next wave
-    if (this.enemies.length === 0) {
-      this.wave++;
-      this.sound.wave();
-      this.showMessage('WAVE ' + this.wave, '#19f0ff');
-      this.spawnWave();
-      this.updateHUD();
+    this.updateWaveCountdown(dt);
+    if (this.enemies.length === 0 && !this.waveCountdown) {
+      this.startWaveCountdown(this.wave + 1);
     }
   }
 
@@ -2586,9 +2785,21 @@ class Game {
   }
 }
 
-window.onload = () => TextureGen.load(() => { window.game = new Game(); });
+Game.showFatalStartupError = function(message, err) {
+  console.error(message, err || '');
+  const overlay = document.getElementById('menu-overlay') || document.body;
+  const panel = document.createElement('div');
+  panel.style.cssText = 'max-width:720px;margin:24px auto;padding:20px;border:1px solid rgba(255,45,149,.65);background:rgba(8,10,18,.92);color:#fff;font:600 16px Rajdhani,Arial,sans-serif;line-height:1.45;box-shadow:0 0 34px rgba(255,45,149,.25);';
+  panel.innerHTML = `<b style="color:#ff2d95;font-family:Orbitron,Arial,sans-serif;letter-spacing:.08em">STARTUP ERROR</b><br>${message}`;
+  overlay.appendChild(panel);
+};
+
+window.onload = () => TextureGen.load(() => {
+  try { window.game = new Game(); }
+  catch (err) { Game.showFatalStartupError('The game failed to initialize. Check the browser console for details.', err); }
+});
 addEventListener('resize', () => {
-  if (window.game) {
+  if (window.game && game.camera && game.renderer) {
     game.camera.aspect = innerWidth / innerHeight;
     game.camera.updateProjectionMatrix();
     game.renderer.setSize(innerWidth, innerHeight);
