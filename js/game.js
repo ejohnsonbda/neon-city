@@ -84,12 +84,18 @@ class Game {
       ]
     };
 
-    // per-level arsenals: default guns vs. Japan feudal loadout
+    // per-level arsenals: the neon katana and bow are available in every theatre;
+    // Japan keeps the focused traditional loadout with shuriken support.
     this.defaultWeapons = this.player.weapons;
     this.japanWeapons = [
       { name: 'KATANA',   type: 'semi', rate: 320,  dmg: 90, color: 0xcfe8ff, ammo: Infinity, maxAmmo: Infinity, spread: 0, model: 'katana',   kick: 0, melee: true, reach: 4.35, arc: 0.55 },
       { name: 'SHURIKEN', type: 'semi', rate: 240,  dmg: 34, color: 0xc8d2dc, ammo: 60, maxAmmo: 180, spread: 0.02, model: 'shuriken', kick: 0.012, thrown: true, speed: 70 },
-      { name: 'BOW',      type: 'semi', rate: 620,  dmg: 120, color: 0x9a6b3a, ammo: 30, maxAmmo: 80, spread: 0.003, model: 'bow', kick: 0.008, arrow: true, speed: 104 }
+      { name: 'BOW',      type: 'semi', rate: 620,  dmg: 120, color: 0x19f0ff, ammo: 30, maxAmmo: 80, spread: 0.003, model: 'bow', kick: 0.008, arrow: true, speed: 104 }
+    ];
+    this.defaultWeapons = [
+      ...this.defaultWeapons,
+      { ...this.japanWeapons[0] },
+      { ...this.japanWeapons[2] }
     ];
     this.weaponSmooth = { bowDraw: 0, bowRelease: 0 };
 
@@ -1309,6 +1315,7 @@ class Game {
     this._matDark = new THREE.MeshStandardMaterial({ color: 0x16181d, roughness: 0.45, metalness: 0.6 });
     this._matMetal = new THREE.MeshStandardMaterial({ color: 0x4a505c, metalness: 0.9, roughness: 0.25 });
     this._matPoly = new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.6, metalness: 0.4 });
+    this.gltfLoader = null;
 
     this.gunModels = {
       pistol:  this._buildPistol(0x19f0ff),
@@ -1322,6 +1329,7 @@ class Game {
       bow:     this._buildBow()
     };
     Object.values(this.gunModels).forEach(m => { m.visible = false; this.gunGroup.add(m); });
+    this.loadNeonWeaponModels();
 
     // shared muzzle flash + light
     this.muzzleFlash = new THREE.Mesh(
@@ -1335,6 +1343,80 @@ class Game {
     this.gunGroup.position.set(0.32, -0.3, -0.6);
     this.camera.add(this.gunGroup);
     this.scene.add(this.camera);
+  }
+
+
+  loadWeaponGLB(key, path, cfg = {}) {
+    if (!this.gltfLoader || !this.gunModels || !this.gunModels[key]) return;
+    const fallback = this.gunModels[key];
+    fallback.userData.loadingGLB = true;
+    this.gltfLoader.load(path, gltf => {
+      try {
+        const source = gltf.scene || (gltf.scenes && gltf.scenes[0]);
+        if (!source) return;
+        const holder = new THREE.Group();
+        holder.name = cfg.name || `${key}_neon_glb_holder`;
+        const model = source.clone(true);
+        model.traverse(o => {
+          if (o.isMesh) {
+            o.castShadow = true;
+            o.receiveShadow = true;
+            if (o.material) {
+              const mats = Array.isArray(o.material) ? o.material : [o.material];
+              mats.forEach(m => {
+                if (m.map) m.map.encoding = THREE.sRGBEncoding;
+                if (m.emissiveMap) m.emissiveMap.encoding = THREE.sRGBEncoding;
+                m.needsUpdate = true;
+              });
+            }
+          }
+        });
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+        model.scale.setScalar((cfg.fit || 0.95) / maxDim);
+        const fitBox = new THREE.Box3().setFromObject(model);
+        const center = fitBox.getCenter(new THREE.Vector3());
+        model.position.sub(center);
+        model.rotation.set(cfg.rotX || 0, cfg.rotY || 0, cfg.rotZ || 0);
+        model.position.add(cfg.offset || new THREE.Vector3());
+        holder.add(model);
+        holder.userData.muzzle = (cfg.muzzle || fallback.userData.muzzle || new THREE.Vector3(0, 0.03, -0.6)).clone();
+        holder.userData.loadedGLB = true;
+        holder.userData.weaponSource = path;
+        holder.visible = fallback.visible;
+        this.gunGroup.remove(fallback);
+        this.gunModels[key] = holder;
+        this.gunGroup.add(holder);
+        if (this.player && this.player.weapons && this.player.weapons[this.player.weaponIdx]) {
+          this.updateWeaponModel(this.player.weapons[this.player.weaponIdx].name);
+        }
+      } catch (err) {
+        console.warn('Neon weapon GLB setup failed for', key, err);
+      }
+    }, undefined, err => console.warn('Neon weapon GLB failed to load:', path, err));
+  }
+
+  loadNeonWeaponModels() {
+    if (!window.THREE || !THREE.GLTFLoader) return;
+    this.gltfLoader = this.gltfLoader || new THREE.GLTFLoader();
+    const base = 'assets/models/weapons/';
+    this.loadWeaponGLB('katana', base + 'smooth_neon_katana.glb', {
+      fit: 1.52,
+      rotX: -0.20,
+      rotY: Math.PI,
+      rotZ: -0.32,
+      offset: new THREE.Vector3(0.08, -0.04, -0.40),
+      muzzle: new THREE.Vector3(0.09, 0, -1.36)
+    });
+    this.loadWeaponGLB('bow', base + 'smooth_neon_bow.glb', {
+      fit: 1.26,
+      rotX: -0.10,
+      rotY: Math.PI * 0.5,
+      rotZ: 0.02,
+      offset: new THREE.Vector3(0.08, -0.02, -0.32),
+      muzzle: new THREE.Vector3(0.12, 0, -0.92)
+    });
   }
 
   _accent(hex) { return new THREE.MeshBasicMaterial({ color: hex }); }
@@ -1618,12 +1700,8 @@ class Game {
       if (code === 'Space') { this.input.jump = down; if (down) this.jump(); }
       if (code === 'ShiftLeft') this.input.sprint = down;
       if (code === 'Escape' && down) this.togglePause();
-      if (code === 'Digit1' && down) this.switchWeapon(0);
-      if (code === 'Digit2' && down) this.switchWeapon(1);
-      if (code === 'Digit3' && down) this.switchWeapon(2);
-      if (code === 'Digit4' && down) this.switchWeapon(3);
-      if (code === 'Digit5' && down) this.switchWeapon(4);
-      if (code === 'Digit6' && down) this.switchWeapon(5);
+      const digit = /^Digit([1-9])$/.exec(code);
+      if (digit && down) this.switchWeapon(parseInt(digit[1], 10) - 1);
       if (code === 'KeyR' && down) this.reload();
     };
     addEventListener('keydown', e => onKey(e.code, true));
@@ -1691,7 +1769,8 @@ class Game {
     this.curGameMusic = (this.level === 'desert') ? this.gameMusic[1] : this.gameMusic[0];
     if (this.curGameMusic) this.curGameMusic.play().catch(() => {});
     this.buildWorld(this.level || 'city');
-    // pick arsenal for the level (Japan = katana / shuriken / bow)
+    // pick arsenal for the level: all theatres include the neon katana and bow,
+    // while Japan keeps the focused katana / shuriken / bow loadout.
     this.player.weapons = this.level === 'japan' ? this.japanWeapons : this.defaultWeapons;
     this.player.weaponIdx = 0;
     this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
