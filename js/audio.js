@@ -3,20 +3,34 @@
 // ============================================================
 class SoundManager {
   constructor() {
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    this.master = this.ctx.createGain();
-    this.master.gain.value = 0.35;
-    this.master.connect(this.ctx.destination);
     this.buffers = {};
+    this.enabled = false;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) {
+      console.warn('[SoundManager] WebAudio is not available; continuing silently.');
+      return;
+    }
+    try {
+      this.ctx = new AudioCtx();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.35;
+      this.master.connect(this.ctx.destination);
+      this.enabled = true;
+    } catch (err) {
+      console.warn('[SoundManager] WebAudio failed to initialize; continuing silently.', err);
+    }
   }
-  resume() { if (this.ctx.state === 'suspended') this.ctx.resume(); }
+  resume() { if (this.enabled && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); }
   loadSample(name, url) {
-    fetch(url).then(r => r.arrayBuffer()).then(a => this.ctx.decodeAudioData(a))
-      .then(buf => { this.buffers[name] = buf; }).catch(() => {});
+    if (!this.enabled || !url) return;
+    fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
+      .then(a => this.ctx.decodeAudioData(a))
+      .then(buf => { this.buffers[name] = buf; })
+      .catch(err => console.warn(`[SoundManager] Sample '${name}' unavailable; using procedural fallback.`, err));
   }
   playSample(name, vol = 1, rate = 1) {
     const buf = this.buffers[name];
-    if (!buf || this.ctx.state === 'suspended') return false;
+    if (!this.enabled || !buf || this.ctx.state === 'suspended') return false;
     const src = this.ctx.createBufferSource(); src.buffer = buf;
     src.playbackRate.value = rate;
     const g = this.ctx.createGain(); g.gain.value = vol;
@@ -24,12 +38,12 @@ class SoundManager {
     return true;
   }
   setVolume(v) {
-    this.master.gain.value = v;
+    if (this.enabled && this.master) this.master.gain.value = v;
     const el = document.getElementById('vol-val');
     if (el) el.innerText = Math.round(v * 100) + '%';
   }
   tone(freq, type, dur, vol = 1, slide = 0) {
-    if (this.ctx.state === 'suspended') return;
+    if (!this.enabled || this.ctx.state === 'suspended') return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = type;
@@ -41,7 +55,7 @@ class SoundManager {
     osc.start(); osc.stop(this.ctx.currentTime + dur);
   }
   noise(dur, vol = 0.5, freq = 1200) {
-    if (this.ctx.state === 'suspended') return;
+    if (!this.enabled || this.ctx.state === 'suspended') return;
     const n = Math.floor(this.ctx.sampleRate * dur);
     const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const d = buf.getChannelData(0);

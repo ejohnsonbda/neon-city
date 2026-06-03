@@ -12,7 +12,13 @@ class Game {
     this.camera = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, 0.1, 1200);
     this.camera.rotation.order = 'YXZ';
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    try {
+      this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    } catch (err) {
+      Game.showFatalStartupError('WebGL could not start. Please enable hardware acceleration or try another browser.', err);
+      this.failed = true;
+      return;
+    }
     this.renderer.setClearColor(0x05060c, 1);
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setSize(innerWidth, innerHeight);
@@ -638,8 +644,7 @@ class Game {
     }
 
     // buildings with enhanced facade textures (real concrete + neon window bands)
-    const concrete = TextureGen.img.concrete;
-    const baseTex = () => { const t = new THREE.Texture(concrete); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 4); t.encoding = THREE.sRGBEncoding; return t; };
+    const baseTex = () => TextureGen.createImageTexture('concrete', () => TextureGen.createStonePath(), 2, 4);
     const tints = [0x9fb0c4, 0xb6a98f, 0x8fa9b8, 0xc2b6a0, 0x9aa7b5];
     const neonColors = [0xff3366, 0x33ffcc, 0xffaa33, 0xaa44ff, 0x19f0ff, 0xff66aa];
     const winMats = neonColors.map(c => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.0 }));
@@ -1057,8 +1062,7 @@ class Game {
       new THREE.MeshBasicMaterial({ map: TextureGen.createSky(), side: THREE.BackSide, fog: false }));
     W.add(sky);
 
-    const fTex = new THREE.Texture(TextureGen.img.asphalt); fTex.needsUpdate = true;
-    fTex.wrapS = fTex.wrapT = THREE.RepeatWrapping; fTex.repeat.set(60, 60); fTex.encoding = THREE.sRGBEncoding;
+    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 60, 60);
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
       new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.7, metalness: 0.28, color: 0x6b7280 }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
@@ -1222,7 +1226,7 @@ class Game {
 
     // colorful enterable houses
     const bodyCols = [0xf6b43a, 0x6fb3e0, 0xef6f6c, 0x8fd17a, 0xcd88ff, 0xffd35c];
-    const roofTex = new THREE.Texture(TextureGen.img.asphalt); // fallback if no tile tex
+    const roofTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createRoofTile('#26323d'), 6, 6); // fallback if no tile tex
     const houseSpots = [[-26, 20], [28, 18], [-30, -22], [26, -26], [0, 34], [44, 0], [-46, -6]];
     houseSpots.forEach(([sx, sz], i) => {
       const col = bodyCols[i % bodyCols.length];
@@ -1627,6 +1631,7 @@ class Game {
 
   // ---------------- GAME FLOW ----------------
   start() {
+    if (this.failed) return;
     this.gameStarted = true; this.isPaused = false; this.sound.resume();
     if (this.music) { this.music.pause(); this.music.currentTime = 0; }
     // start gameplay music — Desert Raid for desert/egypt, Final Arena Run elsewhere
@@ -2586,9 +2591,21 @@ class Game {
   }
 }
 
-window.onload = () => TextureGen.load(() => { window.game = new Game(); });
+Game.showFatalStartupError = function(message, err) {
+  console.error(message, err || '');
+  const overlay = document.getElementById('menu-overlay') || document.body;
+  const panel = document.createElement('div');
+  panel.style.cssText = 'max-width:720px;margin:24px auto;padding:20px;border:1px solid rgba(255,45,149,.65);background:rgba(8,10,18,.92);color:#fff;font:600 16px Rajdhani,Arial,sans-serif;line-height:1.45;box-shadow:0 0 34px rgba(255,45,149,.25);';
+  panel.innerHTML = `<b style="color:#ff2d95;font-family:Orbitron,Arial,sans-serif;letter-spacing:.08em">STARTUP ERROR</b><br>${message}`;
+  overlay.appendChild(panel);
+};
+
+window.onload = () => TextureGen.load(() => {
+  try { window.game = new Game(); }
+  catch (err) { Game.showFatalStartupError('The game failed to initialize. Check the browser console for details.', err); }
+});
 addEventListener('resize', () => {
-  if (window.game) {
+  if (window.game && game.camera && game.renderer) {
     game.camera.aspect = innerWidth / innerHeight;
     game.camera.updateProjectionMatrix();
     game.renderer.setSize(innerWidth, innerHeight);

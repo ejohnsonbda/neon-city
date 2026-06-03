@@ -14,8 +14,12 @@ const NEON = {
 const TextureGen = {
   _palette: ['#19f0ff', '#ff2d95', '#9b5cff', '#ffd166', '#39ff14'],
   img: {},
+  _loaded: false,
 
-  // Preload the real photo textures (from the neon-city kit) then run cb
+  // Preload the real photo textures (from the neon-city kit) then run cb.
+  // Missing files used to leave incomplete Image objects in materials, which
+  // produced broken/black textures and WebGL warnings. The loader now times out
+  // cleanly and lets all material builders fall back to procedural canvases.
   load(cb) {
     const R = window.__resources || {};
     const srcs = {
@@ -26,13 +30,63 @@ const TextureGen = {
       dark: R.texDark || 'T_dark_interior.png'
     };
     const keys = Object.keys(srcs);
-    let n = keys.length;
+    let remaining = keys.length;
+    let callbackFired = false;
+    const done = () => {
+      if (callbackFired) return;
+      callbackFired = true;
+      this._loaded = true;
+      if (typeof cb === 'function') cb();
+    };
+    const settle = () => { if (--remaining <= 0) done(); };
+    if (!keys.length) return done();
+
     keys.forEach(k => {
       const im = new Image();
-      im.onload = im.onerror = () => { if (--n === 0) cb(); };
-      im.src = srcs[k];
+      im.decoding = 'async';
       this.img[k] = im;
+      let settled = false;
+      const finish = ok => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (!ok || !(im.naturalWidth || im.width)) {
+          console.warn(`[TextureGen] Using procedural fallback for ${k}; failed to load ${srcs[k]}`);
+          this.img[k] = null;
+        }
+        settle();
+      };
+      const timer = setTimeout(() => finish(false), 5000);
+      im.onload = () => finish(true);
+      im.onerror = () => finish(false);
+      im.src = srcs[k];
     });
+
+    // Absolute safety net: never leave the title screen waiting forever.
+    setTimeout(done, 7500);
+  },
+
+  _applyTextureDefaults(t, repeatX, repeatY) {
+    if (!t) return t;
+    t.needsUpdate = true;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(repeatX || 1, repeatY || repeatX || 1);
+    if ('encoding' in t && THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
+    if ('colorSpace' in t && THREE.SRGBColorSpace) t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  },
+
+  createImageTexture(key, fallbackFactory, repeatX = 1, repeatY = repeatX) {
+    const img = this.img && this.img[key];
+    let t;
+    if (img && (img.naturalWidth || img.width)) {
+      t = new THREE.Texture(img);
+    } else if (typeof fallbackFactory === 'function') {
+      t = fallbackFactory.call(this);
+    } else {
+      t = this.createAsphalt();
+    }
+    return this._applyTextureDefaults(t, repeatX, repeatY);
   },
 
   // A lit-window building using the real interior photo textures.
