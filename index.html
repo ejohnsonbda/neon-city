@@ -1,5 +1,31 @@
-<!DOCTYPE html>
-<html>
-<head><meta http-equiv="refresh" content="0; url=Neon City Nightfall.html"></head>
-<body><a href="Neon City Nightfall.html">Open Neon City: Nightfall</a></body>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Neon City Nightfall</title>
+  <style>
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:radial-gradient(circle at 50% 20%,#17304a,#05060c 62%); color:white; font-family:Inter,system-ui,Segoe UI,Arial,sans-serif; }
+    main { width:min(760px,calc(100vw - 40px)); padding:34px; border:1px solid rgba(25,240,255,.36); border-radius:22px; background:rgba(4,10,18,.72); box-shadow:0 0 48px rgba(25,240,255,.12); }
+    h1 { margin:0 0 10px; letter-spacing:.12em; text-transform:uppercase; text-shadow:0 0 16px #19f0ff; }
+    p { color:#c8d4df; line-height:1.55; }
+    nav { display:grid; gap:12px; margin-top:24px; }
+    a { color:white; text-decoration:none; border:1px solid rgba(25,240,255,.42); border-radius:14px; padding:14px 16px; background:rgba(25,240,255,.08); font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+    a:hover { border-color:#19f0ff; box-shadow:0 0 18px rgba(25,240,255,.28); }
+    small { display:block; color:#7f93a8; margin-top:22px; line-height:1.45; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Neon City Nightfall</h1>
+    <p>The recommended launcher is now the modular Three.js FPS project. The original prototype files remain available for reference and compatibility.</p>
+    <nav>
+      <a href="./modular-fps.html">Launch Modular Three.js FPS</a>
+      <a href="./Neon%20City%20Nightfall.html">Open Original Prototype</a>
+      <a href="./project/Neon%20City%20Nightfall.html">Open Project Prototype Copy</a>
+      <a href="./MODULAR_FPS_ARCHITECTURE.md">Read Modular Architecture Notes</a>
+    </nav>
+    <small>Use a local or hosted static web server for ES module loading. The modular app uses an import map for Three.js and does not require a bundler.</small>
+  </main>
+</body>
 </html>
