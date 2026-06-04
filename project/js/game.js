@@ -71,6 +71,7 @@ class Game {
     this.portals = [];
     this.portalCooldown = 0;
     this.boss = null;
+    this.bosses = [];
 
     this.isPaused = false;
     this.gameStarted = false;
@@ -149,11 +150,12 @@ class Game {
     this.portalCooldown = 0;
     // tune bloom per level: punchy at night, subtle in daylight (avoids white-out)
     if (this.bloom) {
-      const day = (level === 'fields' || level === 'desert' || level === 'japan');
+      const day = (level === 'fields' || level === 'desert' || level === 'japan' || level === 'houseyard');
       if (day) { this.bloom.strength = 0.3; this.bloom.threshold = 0.88; this.bloom.radius = 0.4; }
       else { this.bloom.strength = 0.85; this.bloom.threshold = 0.62; this.bloom.radius = 0.7; }
     }
     if (level === 'fields') this.buildFields(this.worldGroup);
+    else if (level === 'houseyard') this.buildHouseYardBossLevel(this.worldGroup);
     else if (level === 'megacity') this.buildMegaCity(this.worldGroup);
     else if (level === 'rail') this.buildRailCity(this.worldGroup);
     else if (level === 'desert') this.buildDesert(this.worldGroup);
@@ -1739,6 +1741,179 @@ class Game {
     moon.shadow.camera.far = 500; moon.shadow.mapSize.set(2048, 2048); W.add(moon);
   }
 
+  // ================= COLORFUL HOUSE YARD BOSS ARENA =================
+  buildHouseYardBossLevel(W) {
+    this.scene.background = new THREE.Color(0x87ceeb);
+    this.scene.fog = new THREE.Fog(0x87ceeb, 75, 260);
+
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(760, 32, 20),
+      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#59a7e8', '#ffd5a8'), side: THREE.BackSide, fog: false }));
+    W.add(sky);
+
+    const grassTex = TextureGen.createGrass(false); grassTex.repeat.set(34, 34);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(240, 240),
+      new THREE.MeshStandardMaterial({ map: grassTex, color: 0x6da55a, roughness: 0.88, metalness: 0.02 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true; W.add(ground);
+
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0xd7b881, roughness: 0.92 });
+    [[0, 22, 7.0, 42, 0], [0, -22, 5.2, 26, 0], [-16, 4, 5.4, 25, Math.PI / 2], [16, 4, 5.4, 25, Math.PI / 2]].forEach(([x, z, w, d, r]) => {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, d), pathMat);
+      p.position.set(x, 0.012, z); p.rotation.y = r; p.receiveShadow = true; W.add(p);
+    });
+
+    const mat = {
+      body: new THREE.MeshStandardMaterial({ color: 0xf9b43a, roughness: 0.35, metalness: 0.04 }),
+      roof: new THREE.MeshStandardMaterial({ color: 0xdd4a4a, emissive: 0x331100, emissiveIntensity: 0.08, roughness: 0.42 }),
+      trim: new THREE.MeshStandardMaterial({ color: 0xfff0e0, roughness: 0.45 }),
+      wood: new THREE.MeshStandardMaterial({ color: 0xbc9a6c, roughness: 0.38 }),
+      brick: new THREE.MeshStandardMaterial({ color: 0xb55a3a, roughness: 0.75 }),
+      step: new THREE.MeshStandardMaterial({ color: 0xccaa88, roughness: 0.75 }),
+      fence: new THREE.MeshStandardMaterial({ color: 0xc9a87c, roughness: 0.82 }),
+      deck: new THREE.MeshStandardMaterial({ color: 0xd8bd89, roughness: 0.72 }),
+      cyan: new THREE.MeshStandardMaterial({ color: 0x4ecdc4, emissive: 0x226666, emissiveIntensity: 0.3, roughness: 0.35 }),
+      magenta: new THREE.MeshStandardMaterial({ color: 0xff6f61, emissive: 0x662222, emissiveIntensity: 0.22, roughness: 0.35 }),
+      green: new THREE.MeshStandardMaterial({ color: 0x9ed93a, emissive: 0x224400, emissiveIntensity: 0.16, roughness: 0.45 }),
+      yellow: new THREE.MeshStandardMaterial({ color: 0xffe55c, emissive: 0x443300, emissiveIntensity: 0.2, roughness: 0.38 }),
+      purple: new THREE.MeshStandardMaterial({ color: 0xcd88ff, emissive: 0x331155, emissiveIntensity: 0.22, roughness: 0.4 })
+    };
+
+    const style = { wall: mat.body, floor: mat.deck, roof: mat.trim, lamp: 0xffaa66,
+      win: new THREE.MeshBasicMaterial({ color: 0x4ecdc4, side: THREE.DoubleSide }) };
+    this.buildMultiFloorStructure(W, 0, 0, 12.4, 11.6, style, {
+      floorY: 3.72, stairX: -8.0, stairZ: 7.9, stairLen: 8.4, stairWidth: 2.4, stairAxis: 'z', stairDir: -1,
+      steps: 10, stairMat: mat.step, railMat: mat.trim, deckMat: mat.deck, balconyDepth: 2.3,
+      doorMat: new THREE.MeshStandardMaterial({ color: 0x593a24, emissive: 0xffaa66, emissiveIntensity: 0.25, roughness: 0.42 })
+    });
+
+    const coneRoof = new THREE.Mesh(new THREE.ConeGeometry(9.0, 4.6, 4), mat.roof);
+    coneRoof.rotation.y = Math.PI / 4; coneRoof.position.set(0, 6.2, 0); coneRoof.castShadow = true; W.add(coneRoof); this.objects.push(coneRoof);
+    this.structureBox(W, 13.0, 0.22, 12.2, 0, 3.62, 0, mat.trim, false, true);
+    this.structureBox(W, 1.1, 2.2, 1.1, 4.4, 5.0, 3.8, mat.brick, true, false);
+    this.structureBox(W, 1.35, 0.28, 1.35, 4.4, 6.22, 3.8, mat.brick, true, false);
+    this.structureBox(W, 2.2, 0.24, 1.05, 0, 0.16, 6.48, mat.step, false, true);
+    this.structureBox(W, 2.7, 0.22, 1.25, 0, 0.42, 7.12, mat.step, false, true);
+
+    const addPanel = (w, h, x, y, z, rotY, m) => {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.12), m);
+      p.position.set(x, y, z); p.rotation.y = rotY || 0; p.castShadow = true; p.receiveShadow = true; W.add(p); return p;
+    };
+    addPanel(1.65, 1.05, -3.6, 1.72, 5.83, 0, mat.cyan);
+    addPanel(1.65, 1.05, 3.6, 1.72, 5.83, 0, mat.magenta);
+    addPanel(1.45, 1.0, -6.28, 1.74, -1.7, Math.PI / 2, mat.purple);
+    addPanel(1.45, 1.0, 6.28, 1.74, 1.8, -Math.PI / 2, mat.cyan);
+    addPanel(1.35, 0.9, 0, 1.78, -5.83, 0, mat.yellow);
+    const attic = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.16, 8), mat.magenta);
+    attic.rotation.x = Math.PI / 2; attic.position.set(0, 5.18, 5.05); attic.castShadow = true; W.add(attic);
+
+    const sidePorches = [
+      { x: -12.2, z: -2.0, w: 6.8, d: 3.0, sx: -12.2, sz: -5.0 },
+      { x: 12.2, z: -2.0, w: 6.8, d: 3.0, sx: 12.2, sz: -5.0 }
+    ];
+    sidePorches.forEach(p => {
+      this.structureBox(W, p.w, 0.2, p.d, p.x, 2.35, p.z, mat.deck, false, true);
+      this.buildPlayableStairs(W, p.sx, p.sz, 4.0, 1.8, 2.35, 6, mat.step, 'z', -1);
+      this.buildStructureRail(W, p.x, 2.95, p.z - p.d / 2, p.w, 'x', mat.trim);
+      this.buildStructureRail(W, p.x - p.w / 2, 2.95, p.z, p.d, 'z', mat.trim);
+      this.buildStructureRail(W, p.x + p.w / 2, 2.95, p.z, p.d, 'z', mat.trim);
+    });
+
+    const fenceR = 58, posts = 72;
+    for (let i = 0; i < posts; i++) {
+      const a = (i / posts) * Math.PI * 2;
+      const x = Math.cos(a) * fenceR, z = Math.sin(a) * fenceR;
+      const post = this.structureBox(W, 0.34, 1.35, 0.34, x, 0.65, z, mat.fence, i % 3 === 0, false);
+      post.rotation.y = a;
+      if (i % 2 === 0) {
+        const a2 = ((i + 1) % posts) / posts * Math.PI * 2;
+        const x2 = Math.cos(a2) * fenceR, z2 = Math.sin(a2) * fenceR;
+        const len = Math.hypot(x2 - x, z2 - z);
+        const rail = this.structureBox(W, len, 0.14, 0.14, (x + x2) / 2, 0.83, (z + z2) / 2, mat.fence, false, false);
+        rail.rotation.y = Math.atan2(z2 - z, x2 - x);
+        const rail2 = this.structureBox(W, len, 0.12, 0.12, (x + x2) / 2, 0.38, (z + z2) / 2, mat.fence, false, false);
+        rail2.rotation.y = rail.rotation.y;
+      }
+    }
+    this.structureBox(W, 0.5, 2.2, 0.5, -2.8, 1.1, fenceR - 0.4, mat.fence, true, false);
+    this.structureBox(W, 0.5, 2.2, 0.5, 2.8, 1.1, fenceR - 0.4, mat.fence, true, false);
+    this.structureBox(W, 6.4, 0.24, 0.42, 0, 2.18, fenceR - 0.4, mat.fence, false, false);
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.92 });
+    const leafMats = [0x5fb05f, 0x7ccd7c, 0x8eda55].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.96, flatShading: true }));
+    const addTree = (x, z, s) => {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.32 * s, 0.52 * s, 1.5 * s, 6), trunkMat);
+      trunk.position.set(x, 0.75 * s, z); trunk.castShadow = true; W.add(trunk); this.objects.push(trunk);
+      [1.35, 2.0, 2.58].forEach((y, k) => {
+        const f = new THREE.Mesh(new THREE.ConeGeometry((1.15 - k * 0.2) * s, (1.25 - k * 0.16) * s, 8), leafMats[k]);
+        f.position.set(x, y * s, z); f.castShadow = true; W.add(f);
+      });
+    };
+    [[-32,26,2.4],[32,24,2.6],[34,-25,2.2],[-34,-24,2.3],[-45,0,2.0],[45,4,2.1],[-18,40,1.8],[18,42,1.9],[-42,34,1.7],[42,36,1.7],[-22,-42,1.9],[22,-40,1.9]].forEach(t => addTree(t[0], t[1], t[2]));
+
+    const bushMats = [0x6aaf4e, 0x7cb357, 0x5c9e3e].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true }));
+    [[-8,9],[8,9],[-9,-8],[9,-8],[5,17],[-6,18],[21,3],[-21,1],[-16,-18],[17,-18],[0,30],[-28,12],[28,12]].forEach(([x, z], i) => {
+      const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.85, 7, 6), bushMats[i % bushMats.length]);
+      b1.position.set(x, 0.42, z); b1.castShadow = true; W.add(b1);
+      const b2 = new THREE.Mesh(new THREE.SphereGeometry(0.62, 7, 6), bushMats[(i + 1) % bushMats.length]);
+      b2.position.set(x + 0.58, 0.36, z + 0.42); b2.castShadow = true; W.add(b2);
+    });
+
+    const flowerCols = [0xff69b4, 0xffdd77, 0xffaa66, 0xdd88ff, 0x66ccff, 0xffffff];
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0x77aa55, roughness: 1 });
+    for (let i = 0; i < 240; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 15 + Math.random() * 40;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (Math.abs(x) < 10 && Math.abs(z) < 10) continue;
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.28, 4), stemMat);
+      stem.position.set(x, 0.14, z); W.add(stem);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), new THREE.MeshStandardMaterial({ color: flowerCols[(Math.random() * flowerCols.length) | 0], emissive: 0x332000, emissiveIntensity: 0.14 }));
+      head.position.set(x, 0.33, z); head.castShadow = true; W.add(head);
+    }
+
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x5c9e3e, roughness: 0.95, flatShading: true });
+    for (let i = 0; i < 360; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 12 + Math.random() * 45;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const h = 0.12 + Math.random() * 0.22;
+      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.06, h, 3), grassMat);
+      blade.position.set(x, h / 2 - 0.04, z); blade.rotation.y = Math.random() * Math.PI; W.add(blade);
+    }
+
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xf8f9fa, emissive: 0xeeeeee, emissiveIntensity: 0.1, roughness: 1 });
+    [[-48,38,-36],[38,44,24],[0,48,-52],[58,34,-12],[-68,42,22]].forEach(([x, y, z]) => {
+      const cg = new THREE.Group();
+      [[0,0,0,4.8],[5,-.4,2,5.7],[-4,-.2,-1.6,4.2],[1.8,1.0,-4.2,4.6]].forEach(([px, py, pz, s]) => {
+        const c = new THREE.Mesh(new THREE.SphereGeometry(s, 8, 7), cloudMat); c.position.set(px, py, pz); cg.add(c);
+      });
+      cg.position.set(x, y, z); W.add(cg);
+    });
+
+    const sparkGeo = new THREE.BufferGeometry();
+    const count = 420, positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2, r = 8 + Math.random() * 48;
+      positions[i * 3] = Math.cos(a) * r;
+      positions[i * 3 + 1] = 0.7 + Math.random() * 7.0;
+      positions[i * 3 + 2] = Math.sin(a) * r;
+    }
+    sparkGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const sparkles = new THREE.Points(sparkGeo, new THREE.PointsMaterial({ color: 0xffdd88, size: 0.09, transparent: true, opacity: 0.58 }));
+    W.add(sparkles);
+    this.houseYardProps = { sparkles };
+
+    W.add(new THREE.AmbientLight(0x404060, 0.65));
+    W.add(new THREE.HemisphereLight(0xb7dcff, 0x69a751, 0.72));
+    const sun = new THREE.DirectionalLight(0xfff5d1, 1.35);
+    sun.position.set(70, 130, 55); sun.castShadow = true; sun.shadow.camera.left = -95; sun.shadow.camera.right = 95; sun.shadow.camera.top = 95; sun.shadow.camera.bottom = -95; sun.shadow.camera.far = 320; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
+    const doorLight = new THREE.PointLight(0xffaa66, 1.0, 15); doorLight.position.set(0, 2.1, 7.2); W.add(doorLight);
+    const rimLight = new THREE.PointLight(0xffaa66, 0.55, 28, 2); rimLight.position.set(-8, 4, 8); W.add(rimLight);
+
+    const backPortal = this.createPortal(W, new THREE.Vector3(0, 1.8, fenceR - 5), new THREE.Vector3(0, this.player.height, 0), 0x6da55a, 'COUNTRYSIDE PORTAL');
+    backPortal.targetLevel = 'fields';
+    this._houseYardSpawn = new THREE.Vector3(0, this.player.height, 31);
+  }
+
   // ================= DAY COUNTRYSIDE =================
   buildFields(W) {
     this.scene.background = null;
@@ -1835,6 +2010,9 @@ class Game {
 
     // Concept-sheet farm compound: barn loft, farmhouse balcony, stable, silo lookout, fences, and hay cover.
     this.addFieldsPlayableStructures(W);
+
+    const housePortal = this.createPortal(W, new THREE.Vector3(0, 1.8, 62), new THREE.Vector3(0, this.player.height, 31), 0xffaa66, 'BOSS HOUSE PORTAL');
+    housePortal.targetLevel = 'houseyard';
 
     // wooden perimeter fence ring
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0xc2a878, roughness: 0.8 });
@@ -2176,7 +2354,8 @@ class Game {
       { id: 'rail', name: 'RAIL CITY', desc: 'Ride the monorail · day to night.', art: 'rail' },
       { id: 'desert', name: 'EGYPT DESERT', desc: 'Pyramids, jungle & pharaoh golems.', art: 'desert' },
       { id: 'jungle', name: 'LOST JUNGLE', desc: 'Dense canopy, ruins & beast patrols.', art: 'jungle' },
-      { id: 'japan', name: 'FEUDAL JAPAN', desc: 'Katana, shuriken & bow only.', art: 'japan' }
+      { id: 'japan', name: 'FEUDAL JAPAN', desc: 'Katana, shuriken & bow only.', art: 'japan' },
+      { id: 'houseyard', name: 'BOSS HOUSE YARD', desc: 'Colorful yard arena · five bosses per wave · unlimited ammo.', art: 'houseyard' }
     ];
     levels.forEach(l => {
       const c = document.createElement('div');
@@ -2313,7 +2492,7 @@ class Game {
     if (this.music) { this.music.pause(); this.music.currentTime = 0; }
     // start gameplay music — Desert Raid for desert/egypt, Final Arena Run elsewhere
     this.gameMusic.forEach(m => { m.pause(); m.currentTime = 0; });
-    this.curGameMusic = (this.level === 'desert' || this.level === 'jungle') ? this.gameMusic[1] : this.gameMusic[0];
+    this.curGameMusic = (this.level === 'desert' || this.level === 'jungle' || this.level === 'houseyard') ? this.gameMusic[1] : this.gameMusic[0];
     if (this.curGameMusic) this.curGameMusic.play().catch(() => {});
     this.buildWorld(this.level || 'city');
     // pick arsenal for the level: all theatres include the neon katana and bow,
@@ -2321,13 +2500,14 @@ class Game {
     this.player.weapons = this.level === 'japan' ? this.japanWeapons : this.defaultWeapons;
     this.player.weaponIdx = 0;
     this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
-    this.waveCountdown = null;
-    this.player.weapons.forEach(w => w.ammo = w.ammo === Infinity ? Infinity : Math.floor(w.maxAmmo * 0.6));
+    this.waveCountdown = null; this.boss = null; this.bosses = [];
+    this.player.weapons.forEach(w => w.ammo = (this.level === 'houseyard' || w.ammo === Infinity) ? Infinity : Math.floor(w.maxAmmo * 0.6));
     this.camera.position.set(0, this.player.height, 0);
     if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
     if (this._desertSpawn && this.level === 'desert') this.camera.position.copy(this._desertSpawn);
     if (this._jungleSpawn && this.level === 'jungle') this.camera.position.copy(this._jungleSpawn);
     if (this._japanSpawn && this.level === 'japan') this.camera.position.copy(this._japanSpawn);
+    if (this._houseYardSpawn && this.level === 'houseyard') this.camera.position.copy(this._houseYardSpawn);
     this.player.ridingCar = null; this.player.floorY = this.player.height;
     this.camera.rotation.set(0, 0, 0);
     // time-of-day chip only on rail level
@@ -2394,6 +2574,13 @@ class Game {
       for (let i = 0; i < count; i++) list.push(type);
     };
     const jungleLevel = this.level === 'jungle';
+    if (this.level === 'houseyard') {
+      const bossTypes = [];
+      const heavyType = hasEnemy('spider') && n % 5 === 0 ? 'spider' : 'boss';
+      bossTypes.push(heavyType);
+      while (bossTypes.length < 5) bossTypes.push('boss');
+      return bossTypes;
+    }
 
     if (n % 10 === 0 && hasEnemy('spider')) {
       list.push('spider');
@@ -2477,7 +2664,7 @@ class Game {
 
     let pos = new THREE.Vector3(), ok = false, tries = 0;
     while (!ok && tries++ < 40) {
-      const a = Math.random() * Math.PI * 2, d = (cfg.boss ? 55 : 38) + Math.random() * 55;
+      const a = Math.random() * Math.PI * 2, d = this.level === 'houseyard' ? (34 + Math.random() * 22) : ((cfg.boss ? 55 : 38) + Math.random() * 55);
       pos.set(Math.cos(a) * d, 0, Math.sin(a) * d);
       ok = true;
       for (const o of this.objects) if (pos.distanceTo(o.position) < 9) { ok = false; break; }
@@ -2494,7 +2681,9 @@ class Game {
     this.scene.add(mesh);
     this.enemies.push(mesh);
     if (cfg.boss) {
-      this.boss = mesh;
+      this.bosses ||= [];
+      this.bosses.push(mesh);
+      this.boss = this.bosses[0] || mesh;
       document.getElementById('boss-bar-wrap').classList.remove('hidden');
       this.sound.boss();
       const bossName = type === 'spider' ? 'SUPER APEX SPIDER' : 'APEX HORROR';
@@ -2746,7 +2935,12 @@ class Game {
     else if (r > 0.82) this.spawnHealth(e.position);
     else if (r > 0.55) this.spawnAmmo(e.position);
 
-    if (e === this.boss) { this.boss = null; document.getElementById('boss-bar-wrap').classList.add('hidden'); this.showMessage('APEX DOWN', '#39ff14'); }
+    if (e.userData && e.userData.boss) {
+      if (this.bosses) this.bosses = this.bosses.filter(b => b !== e);
+      this.boss = this.bosses && this.bosses.length ? this.bosses[0] : null;
+      if (!this.boss) document.getElementById('boss-bar-wrap').classList.add('hidden');
+      this.showMessage(this.level === 'houseyard' ? 'BOSS DOWN' : 'APEX DOWN', '#39ff14');
+    }
     this.scene.remove(e);
     this.enemies.splice(idx, 1);
     this.updateHUD();
@@ -2971,7 +3165,7 @@ class Game {
       if (this.camera.position.distanceTo(it.position) < 2) {
         this.sound.collect();
         if (it.userData.health) { P.hp = Math.min(P.maxHp, P.hp + 35); this.showMessage('+ HEALTH', '#ff3355'); }
-        else { P.weapons.forEach(w => { if (w.name !== 'PISTOL') w.ammo = Math.min(w.maxAmmo, w.ammo + 30); }); this.showMessage('+ AMMO', '#39ff14'); }
+        else { P.weapons.forEach(w => { if (w.name !== 'PISTOL') w.ammo = this.level === 'houseyard' ? Infinity : Math.min(w.maxAmmo, w.ammo + 30); }); this.showMessage(this.level === 'houseyard' ? 'AMMO ALREADY UNLIMITED' : '+ AMMO', '#39ff14'); }
         this.updateHUD();
         this.scene.remove(it); this.items.splice(i, 1);
       }
@@ -2981,7 +3175,9 @@ class Game {
     const w = P.weapons[P.weaponIdx];
     const now = Date.now();
     if (this.input.shoot && w.ammo > 0 && !this.gunGroup.userData.reloading && now - (w.lastShot || 0) > w.rate) {
-      w.ammo--; w.lastShot = now;
+      if (this.level !== 'houseyard') w.ammo--;
+      else w.ammo = Infinity;
+      w.lastShot = now;
       this.fireWeapon(w);
       this.sound.shoot(w.name.toLowerCase());
       this.updateHUD();
@@ -3302,7 +3498,15 @@ class Game {
     }
 
     // boss bar
-    if (this.boss) {
+    if (this.bosses && this.bosses.length) {
+      const liveBosses = this.bosses.filter(b => this.enemies.includes(b));
+      this.bosses = liveBosses;
+      this.boss = liveBosses[0] || null;
+      const hp = liveBosses.reduce((sum, b) => sum + Math.max(0, b.userData.hp), 0);
+      const maxHp = liveBosses.reduce((sum, b) => sum + Math.max(1, b.userData.maxHp), 0);
+      document.getElementById('boss-bar-wrap').classList.toggle('hidden', liveBosses.length === 0);
+      document.getElementById('boss-bar').style.width = maxHp ? Math.max(0, hp / maxHp * 100) + '%' : '0%';
+    } else if (this.boss) {
       document.getElementById('boss-bar').style.width = Math.max(0, this.boss.userData.hp / this.boss.userData.maxHp * 100) + '%';
     }
 
