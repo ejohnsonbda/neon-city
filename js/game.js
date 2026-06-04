@@ -127,6 +127,7 @@ class Game {
   buildWorld(level) {
     if (this.worldGroup) this.scene.remove(this.worldGroup);
     this.objects = [];
+    this.elevatedSupports = [];
     this.worldGroup = new THREE.Group();
     this.scene.add(this.worldGroup);
     this.level = level;
@@ -378,6 +379,9 @@ class Game {
     sun.shadow.camera.left = -220; sun.shadow.camera.right = 220; sun.shadow.camera.top = 220; sun.shadow.camera.bottom = -220;
     sun.shadow.camera.far = 600; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
 
+    // Concept-sheet playable temple, tomb/scaffold route, balcony, and sandstone cover.
+    this.addDesertPlayableStructures(W, S, stoneMat, darkStone);
+
     const desertPortal = this.createPortal(W, new THREE.Vector3(-16 * S, 1.8 * S, 18 * S), new THREE.Vector3(23 * S, this.player.height, -20 * S), 0x78ff65, 'JUNGLE PORTAL');
     desertPortal.targetLevel = 'jungle';
     this.desertProps = { fireLights, birds, ankhs, sandP, fireflies, span: 50 * S, S };
@@ -457,6 +461,9 @@ class Game {
       const mush = new THREE.Mesh(new THREE.SphereGeometry(0.11 * S, 8, 6), new THREE.MeshStandardMaterial({ color: i % 2 ? 0x78ff65 : 0x35caff, emissive: i % 2 ? 0x78ff65 : 0x35caff, emissiveIntensity: 1.2 }));
       mush.position.set((-25 + Math.random() * 50) * S, 0.12 * S, (-25 + Math.random() * 50) * S); mush.scale.y = 0.45; W.add(mush);
     }
+
+    // Concept-sheet playable ruin core, ziggurat tiers, treehouse rooms, vine bridge, and mossy cover.
+    this.addJunglePlayableStructures(W, S, stoneMat, mossMat);
 
     const portal = this.createPortal(W, new THREE.Vector3(23 * S, 1.8 * S, -20 * S), new THREE.Vector3(-16 * S, this.player.height, 18 * S), 0xffd166, 'EGYPT PORTAL');
     portal.targetLevel = 'desert';
@@ -753,6 +760,9 @@ class Game {
     [[-40, 20], [40, 18], [-44, -14], [44, -12], [-38, -34], [38, -32], [0, -64], [-20, -52], [20, -50]]
       .forEach(([x, z], i) => addSakura(x, z, 1.0 + (i % 2) * 0.3));
 
+    // Concept-sheet second-floor dojo/inn routes, balcony bridge, and castle approach overlook.
+    this.addJapanPlayableStructures(W, addRoof, japanStyle);
+
     this.japanProps.hangLanterns = hangLanterns;
   }
 
@@ -1014,6 +1024,9 @@ class Game {
     }
     W.add(depot);
 
+    // Concept-sheet station hall, train-corridor room, second-floor overlook, and depot cover.
+    this.addRailPlayableStructures(W, S, { concreteMat, deckMat, barrierMat, cyanMat, magMat, darkMetalMat }, registerPlatform);
+
     // Signal pylons and abstract transit glyphs from the concept frames.
     const signalPositions = [[deckX + 11, -deckD], [deckX - 18, deckD], [-rx, -rz * 0.8], [rx * 0.15, rz + 24], [-rx - 20, 0], [0, -rz - 24]];
     signalPositions.forEach((p, i) => {
@@ -1192,6 +1205,9 @@ class Game {
         beacon.position.y = h + 1.0 * S; b.add(beacon);
       });
 
+    // Concept-sheet breaker/control rooms, cable bridge, power pylons, balconies, and generator cover.
+    this.addMegaCityPlayableStructures(W, S, { neonColors });
+
     // trees lining the avenues
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4a28, roughness: 1 });
     const leafMat = new THREE.MeshStandardMaterial({ color: 0x3f8c43, roughness: 1, flatShading: true });
@@ -1322,6 +1338,254 @@ class Game {
     const il = new THREE.PointLight(style.lamp || 0xffd9a0, 1.1, w + d); il.position.set(x, H - 0.6, z); W.add(il);
   }
 
+
+  // shared: register a mesh top as walkable support for upper floors, balconies, bridges, and stair treads
+  registerWalkableSupport(mesh, pad = 0.08) {
+    if (!this.elevatedSupports) this.elevatedSupports = [];
+    mesh.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(mesh);
+    const center = box.getCenter(new THREE.Vector3());
+    this.elevatedSupports.push({
+      mesh,
+      x: center.x,
+      z: center.z,
+      hw: Math.max((box.max.x - box.min.x) / 2 + pad, 0.35),
+      hd: Math.max((box.max.z - box.min.z) / 2 + pad, 0.35),
+      top: box.max.y
+    });
+    return mesh;
+  }
+
+  // shared: simple solid/decor box with optional collision and optional walkable top support
+  structureBox(W, w, h, d, x, y, z, mat, collide = false, support = false) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    W.add(m);
+    if (collide) this.objects.push(m);
+    if (support) this.registerWalkableSupport(m);
+    return m;
+  }
+
+  // shared: compact stair/ramp made from individual walkable treads so every level supports vertical routes
+  buildPlayableStairs(W, x, z, length, width, height, steps, mat, axis = 'z', dir = 1) {
+    const count = Math.max(3, steps || 8);
+    for (let i = 0; i < count; i++) {
+      const frac = (i + 1) / count;
+      const treadH = height / count;
+      const treadLen = length / count;
+      const y = frac * height - treadH / 2;
+      const off = -dir * length / 2 + dir * (i + 0.5) * treadLen;
+      const sx = axis === 'x' ? x + off : x;
+      const sz = axis === 'z' ? z + off : z;
+      const w = axis === 'x' ? treadLen : width;
+      const d = axis === 'z' ? treadLen : width;
+      this.structureBox(W, w, treadH, d, sx, y, sz, mat, false, true);
+    }
+  }
+
+  // shared: visual railings that leave movement clear while making balconies/catwalks readable
+  buildStructureRail(W, x, y, z, length, axis, mat) {
+    const rail = this.structureBox(W, axis === 'x' ? length : 0.16, 0.16, axis === 'z' ? length : 0.16, x, y, z, mat, false, false);
+    const posts = Math.max(2, Math.floor(length / 2.8));
+    for (let i = 0; i <= posts; i++) {
+      const off = -length / 2 + (length * i) / posts;
+      this.structureBox(W, 0.14, 0.78, 0.14, axis === 'x' ? x + off : x, y - 0.42, axis === 'z' ? z + off : z, mat, false, false);
+    }
+    return rail;
+  }
+
+  // shared: multi-floor enterable block built around buildEnterable, with second-floor deck, stair access, balcony, and door cue
+  buildMultiFloorStructure(W, x, z, w, d, style, opts = {}) {
+    this.buildEnterable(W, x, z, w, d, style);
+    const floorY = opts.floorY || 3.62;
+    const stairMat = opts.stairMat || style.floor || style.roof || style.wall;
+    const railMat = opts.railMat || style.roof || style.wall;
+    const deckMat = opts.deckMat || style.floor || style.roof || style.wall;
+    const deck = this.structureBox(W, w - 0.7, 0.18, d - 0.7, x, floorY, z, deckMat, false, true);
+    const balconyDepth = opts.balconyDepth || 1.55;
+    const balcony = this.structureBox(W, w * 0.62, 0.18, balconyDepth, x, floorY + 0.02, z + d / 2 + balconyDepth / 2, deckMat, false, true);
+    this.buildStructureRail(W, x, floorY + 0.78, z + d / 2 + balconyDepth + 0.03, w * 0.62, 'x', railMat);
+    this.buildStructureRail(W, x - w * 0.31, floorY + 0.78, z + d / 2 + balconyDepth / 2, balconyDepth, 'z', railMat);
+    this.buildStructureRail(W, x + w * 0.31, floorY + 0.78, z + d / 2 + balconyDepth / 2, balconyDepth, 'z', railMat);
+    const stairAxis = opts.stairAxis || 'z';
+    const stairDir = opts.stairDir || -1;
+    const stairLen = opts.stairLen || Math.max(6.5, d + 1.5);
+    const stairWidth = opts.stairWidth || 2.2;
+    const sx = opts.stairX ?? (stairAxis === 'x' ? x + w / 2 + stairLen / 2 - 0.4 : x - w / 2 - 1.6);
+    const sz = opts.stairZ ?? (stairAxis === 'z' ? z + d / 2 + stairLen / 2 - 0.2 : z + d / 2 + 1.6);
+    this.buildPlayableStairs(W, sx, sz, stairLen, stairWidth, floorY, opts.steps || 9, stairMat, stairAxis, stairDir);
+    const doorMat = opts.doorMat || new THREE.MeshStandardMaterial({ color: 0x05070b, emissive: style.lamp || 0x111111, emissiveIntensity: 0.28, roughness: 0.65 });
+    const upperDoor = new THREE.Mesh(new THREE.PlaneGeometry(1.35, 2.1), doorMat);
+    upperDoor.position.set(x, floorY + 1.05, z + d / 2 + 0.03);
+    upperDoor.rotation.y = 0;
+    W.add(upperDoor);
+    const glow = new THREE.PointLight(style.lamp || 0xffd9a0, 0.55, Math.max(w, d) * 1.2);
+    glow.position.set(x, floorY + 1.4, z + d / 2 + 0.6);
+    W.add(glow);
+    return { deck, balcony };
+  }
+
+  // ================= PLAYABLE STRUCTURE UPGRADES FROM CONCEPT SHEETS =================
+  addDesertPlayableStructures(W, S, stoneMatFn, darkStoneFn) {
+    const wall = stoneMatFn();
+    const floor = darkStoneFn();
+    const roof = stoneMatFn();
+    const lamp = 0xffc56a;
+    const templeStyle = { wall, floor, roof, lamp, win: new THREE.MeshBasicMaterial({ color: 0xffd166, side: THREE.DoubleSide }) };
+    this.buildMultiFloorStructure(W, -9 * S, 9.2 * S, 8.6 * S, 7.2 * S, templeStyle, {
+      floorY: 3.35 * S, stairX: -13.6 * S, stairZ: 13.8 * S, stairLen: 7.5 * S, stairWidth: 1.9 * S, stairAxis: 'z', stairDir: -1, steps: 10
+    });
+    const scaffoldMat = new THREE.MeshStandardMaterial({ color: 0x8f6b3e, roughness: 0.75, metalness: 0.05 });
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0xb88b55, roughness: 0.82 });
+    this.structureBox(W, 9.0 * S, 0.22 * S, 2.2 * S, 0.5 * S, 2.6 * S, 5.8 * S, deckMat, false, true);
+    this.buildStructureRail(W, 0.5 * S, 3.05 * S, 4.68 * S, 8.5 * S, 'x', scaffoldMat);
+    this.buildPlayableStairs(W, -4.6 * S, 7.2 * S, 6.2 * S, 1.5 * S, 2.55 * S, 8, deckMat, 'z', -1);
+    [[-3.2, 3.8], [-1.2, 3.2], [1.4, 3.4], [3.6, 4.0], [-5.8, 12.4], [6.2, 12.8]].forEach(([x, z], i) => {
+      this.structureBox(W, (1.2 + (i % 2) * 0.45) * S, 0.75 * S, 1.1 * S, x * S, 0.38 * S, z * S, i % 2 ? floor : wall, true, false);
+    });
+    const tombDoor = new THREE.Mesh(new THREE.PlaneGeometry(2.0 * S, 2.8 * S), new THREE.MeshBasicMaterial({ color: 0x120b08, side: THREE.DoubleSide }));
+    tombDoor.position.set(0.0 * S, 1.42 * S, -3.18 * S);
+    W.add(tombDoor);
+  }
+
+  addJunglePlayableStructures(W, S, stoneMat, mossMat) {
+    const vineMat = new THREE.MeshStandardMaterial({ color: 0x6f4d2c, roughness: 0.85 });
+    const hutMat = new THREE.MeshStandardMaterial({ color: 0x6b4425, roughness: 0.82 });
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x415a39, roughness: 0.92 });
+    const ruinStyle = { wall: stoneMat, floor: floorMat, roof: mossMat, lamp: 0x78ff65, win: new THREE.MeshBasicMaterial({ color: 0x78ff65, side: THREE.DoubleSide }) };
+    this.buildMultiFloorStructure(W, 9.5 * S, -10.8 * S, 7.4 * S, 6.5 * S, ruinStyle, {
+      floorY: 2.25 * S, stairX: 4.2 * S, stairZ: -6.8 * S, stairLen: 6.8 * S, stairWidth: 1.7 * S, stairAxis: 'z', stairDir: -1, steps: 8
+    });
+    [[8.5, 0.28, -11, 16, 0.55, 4.5], [8.5, 1.05, -14.6, 12, 0.55, 3.4], [8.5, 1.82, -17.4, 8, 0.55, 2.8]].forEach(([x, y, z, w, h, d]) => {
+      this.structureBox(W, w * S, h * S, d * S, x * S, y * S, z * S, y > 1.1 ? mossMat : stoneMat, false, true);
+    });
+    const leftHouse = this.structureBox(W, 5.2 * S, 2.4 * S, 4.0 * S, -18 * S, 5.2 * S, -8 * S, hutMat, false, true);
+    const rightHouse = this.structureBox(W, 5.0 * S, 2.2 * S, 4.0 * S, 19 * S, 5.0 * S, -18 * S, hutMat, false, true);
+    this.structureBox(W, 37 * S, 0.22 * S, 1.2 * S, 0.5 * S, 4.55 * S, -13.1 * S, vineMat, false, true);
+    this.buildStructureRail(W, 0.5 * S, 5.08 * S, -13.75 * S, 36 * S, 'x', vineMat);
+    this.buildPlayableStairs(W, -21.5 * S, -1.0 * S, 10.5 * S, 1.7 * S, 4.2 * S, 11, vineMat, 'z', -1);
+    [[3, -6], [5, -5], [13, -7], [15, -9], [17, -12], [4, -16]].forEach(([x, z], i) => {
+      this.structureBox(W, (1.2 + (i % 3) * 0.35) * S, 0.6 * S, 1.05 * S, x * S, 0.32 * S, z * S, i % 2 ? mossMat : stoneMat, true, false);
+    });
+    [leftHouse, rightHouse].forEach(room => {
+      const p = room.position;
+      const door = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * S, 1.6 * S), new THREE.MeshBasicMaterial({ color: 0x071409, side: THREE.DoubleSide }));
+      door.position.set(p.x, p.y - 0.25 * S, p.z + 2.03 * S);
+      W.add(door);
+    });
+  }
+
+  addJapanPlayableStructures(W, addRoof, styleFactory) {
+    const wood = new THREE.MeshStandardMaterial({ color: 0x6a4528, roughness: 0.78 });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x28160f, roughness: 0.82 });
+    const style = styleFactory(0xd9c4a3);
+    this.buildMultiFloorStructure(W, -34, -30, 10, 9, style, { floorY: 3.65, stairX: -40.2, stairZ: -25.4, stairLen: 7.5, stairWidth: 2.0, stairAxis: 'z', stairDir: -1, steps: 8, railMat: dark, stairMat: wood });
+    addRoof(W, -34, 7.2, -30, 12.4, 11.2, 1);
+    this.buildMultiFloorStructure(W, 34, -30, 10, 9, styleFactory(0xc98a5a), { floorY: 3.65, stairX: 40.2, stairZ: -25.4, stairLen: 7.5, stairWidth: 2.0, stairAxis: 'z', stairDir: -1, steps: 8, railMat: dark, stairMat: wood });
+    addRoof(W, 34, 7.2, -30, 12.4, 11.2, 1);
+    this.structureBox(W, 68, 0.18, 2.2, 0, 3.72, -30, wood, false, true);
+    this.buildStructureRail(W, 0, 4.42, -31.15, 66, 'x', dark);
+    this.buildPlayableStairs(W, -6, -39, 12, 2.0, 3.65, 10, wood, 'z', -1);
+    this.structureBox(W, 18, 0.22, 4.0, 0, 5.14, -43.2, wood, false, true);
+    this.buildStructureRail(W, 0, 5.85, -45.2, 17, 'x', dark);
+  }
+
+  addRailPlayableStructures(W, S, mats, registerPlatform) {
+    const { concreteMat, deckMat, barrierMat, cyanMat, magMat, darkMetalMat } = mats;
+    const hallStyle = { wall: concreteMat, floor: deckMat, roof: darkMetalMat, lamp: 0x19f0ff, win: new THREE.MeshBasicMaterial({ color: 0x19f0ff, side: THREE.DoubleSide }) };
+    const stationX = 30 * S + 2.8 * S;
+    this.buildMultiFloorStructure(W, stationX, -7.2 * S, 10.5 * S, 6.2 * S, hallStyle, {
+      floorY: 2.7 * S, stairX: stationX - 6.5 * S, stairZ: -2.6 * S, stairLen: 7.2 * S, stairWidth: 1.8 * S, stairAxis: 'z', stairDir: -1, steps: 9, stairMat: deckMat, railMat: cyanMat
+    });
+    const bridge = this.structureBox(W, 9.5 * S, 0.24 * S, 1.8 * S, stationX - 0.5 * S, 2.95 * S, -1.2 * S, deckMat, false, true);
+    registerPlatform(bridge);
+    this.buildStructureRail(W, stationX - 0.5 * S, 3.55 * S, -2.15 * S, 9.0 * S, 'x', cyanMat);
+    this.buildStructureRail(W, stationX - 0.5 * S, 3.55 * S, -0.25 * S, 9.0 * S, 'x', magMat);
+    [[stationX - 10 * S, -7.7 * S], [stationX + 6 * S, -12.2 * S], [-18 * S, 13 * S], [-23 * S, 14 * S]].forEach(([x, z], i) => {
+      this.structureBox(W, 2.8 * S, 1.1 * S, 1.25 * S, x, 0.55 * S, z, barrierMat, true, false);
+      this.structureBox(W, 2.0 * S, 0.12 * S, 0.09 * S, x, 1.14 * S, z + 0.65 * S, i % 2 ? cyanMat : magMat, false, false);
+    });
+    const trainCarMat = new THREE.MeshStandardMaterial({ color: 0x101a2b, roughness: 0.32, metalness: 0.65, emissive: 0x061426, emissiveIntensity: 0.35 });
+    this.buildMultiFloorStructure(W, -18 * S, 9.4 * S, 9.0 * S, 4.2 * S, { wall: trainCarMat, floor: deckMat, roof: darkMetalMat, lamp: 0xff2d95, win: new THREE.MeshBasicMaterial({ color: 0xff2d95, side: THREE.DoubleSide }) }, {
+      floorY: 2.15 * S, stairX: -23.2 * S, stairZ: 13.2 * S, stairLen: 5.8 * S, stairWidth: 1.4 * S, stairAxis: 'z', stairDir: -1, steps: 7, stairMat: deckMat, railMat: magMat
+    });
+  }
+
+  addMegaCityPlayableStructures(W, S, mats) {
+    const { neonColors } = mats;
+    const wall = new THREE.MeshStandardMaterial({ color: 0x263446, roughness: 0.4, metalness: 0.55 });
+    const floor = new THREE.MeshStandardMaterial({ color: 0x1a2030, roughness: 0.38, metalness: 0.6 });
+    const trim = new THREE.MeshStandardMaterial({ color: 0xffdd55, emissive: 0xffaa22, emissiveIntensity: 0.9, roughness: 0.25, metalness: 0.35 });
+    const cyan = new THREE.MeshStandardMaterial({ color: 0x33ffcc, emissive: 0x33ffcc, emissiveIntensity: 0.9, roughness: 0.25, metalness: 0.35 });
+    const subStyle = { wall, floor, roof: trim, lamp: 0xffdd55, win: new THREE.MeshBasicMaterial({ color: 0xffdd55, side: THREE.DoubleSide }) };
+    const ctrlStyle = { wall: new THREE.MeshStandardMaterial({ color: 0x1e3d4d, roughness: 0.36, metalness: 0.55 }), floor, roof: cyan, lamp: 0x33ffcc, win: new THREE.MeshBasicMaterial({ color: 0x33ffcc, side: THREE.DoubleSide }) };
+    this.buildMultiFloorStructure(W, -13 * S, 6 * S, 8.5 * S, 7.5 * S, subStyle, { floorY: 2.9 * S, stairX: -18.0 * S, stairZ: 11.2 * S, stairLen: 6.6 * S, stairWidth: 1.6 * S, stairAxis: 'z', stairDir: -1, steps: 8, stairMat: trim, railMat: trim });
+    this.buildMultiFloorStructure(W, 10 * S, 7 * S, 8.8 * S, 7.5 * S, ctrlStyle, { floorY: 3.1 * S, stairX: 4.6 * S, stairZ: 12.4 * S, stairLen: 7.2 * S, stairWidth: 1.8 * S, stairAxis: 'z', stairDir: -1, steps: 9, stairMat: cyan, railMat: cyan });
+    this.structureBox(W, 14.0 * S, 0.22 * S, 1.65 * S, -1.5 * S, 3.22 * S, 6.7 * S, floor, false, true);
+    this.buildStructureRail(W, -1.5 * S, 3.85 * S, 5.82 * S, 13.2 * S, 'x', cyan);
+    this.buildStructureRail(W, -1.5 * S, 3.85 * S, 7.58 * S, 13.2 * S, 'x', trim);
+    const pylonMat = new THREE.MeshStandardMaterial({ color: 0xb9c6d3, roughness: 0.4, metalness: 0.75 });
+    [[-24, 5], [23, 4]].forEach(([x, z]) => {
+      const h = 6.0 * S;
+      const lx = x * S, lz = z * S;
+      this.structureBox(W, 0.35 * S, h, 0.35 * S, lx - 1.8 * S, h / 2, lz, pylonMat, true, false);
+      this.structureBox(W, 0.35 * S, h, 0.35 * S, lx + 1.8 * S, h / 2, lz, pylonMat, true, false);
+      this.structureBox(W, 4.2 * S, 0.24 * S, 0.24 * S, lx, 3.4 * S, lz, pylonMat, false, false);
+      this.structureBox(W, 4.8 * S, 0.24 * S, 0.24 * S, lx, 5.1 * S, lz, pylonMat, false, false);
+    });
+    [[-20, 13], [-15, 14], [-8, 12], [3, 14], [15, 13], [20, 12], [-4, 2], [5, 2]].forEach(([x, z], i) => {
+      const mat = new THREE.MeshStandardMaterial({ color: neonColors[i % neonColors.length], emissive: neonColors[i % neonColors.length], emissiveIntensity: 0.35, roughness: 0.48, metalness: 0.55 });
+      this.structureBox(W, (1.5 + (i % 3) * 0.35) * S, 0.85 * S, 1.15 * S, x * S, 0.43 * S, z * S, mat, true, false);
+    });
+  }
+
+  addCityPlayableStructures(W) {
+    const wall = new THREE.MeshStandardMaterial({ color: 0x20242e, roughness: 0.66, metalness: 0.35 });
+    const floor = new THREE.MeshStandardMaterial({ color: 0x10131a, roughness: 0.55, metalness: 0.45 });
+    const cyan = new THREE.MeshBasicMaterial({ color: 0x19f0ff, side: THREE.DoubleSide });
+    const mag = new THREE.MeshBasicMaterial({ color: 0xff2d95, side: THREE.DoubleSide });
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x19f0ff, emissive: 0x19f0ff, emissiveIntensity: 0.9, roughness: 0.3, metalness: 0.35 });
+    const cityStyleA = { wall, floor, roof: new THREE.MeshStandardMaterial({ color: 0x171923, roughness: 0.7, metalness: 0.4 }), lamp: 0x19f0ff, win: cyan };
+    const cityStyleB = { wall: new THREE.MeshStandardMaterial({ color: 0x2b2031, roughness: 0.64, metalness: 0.35 }), floor, roof: new THREE.MeshStandardMaterial({ color: 0x1c1421, roughness: 0.7, metalness: 0.4 }), lamp: 0xff2d95, win: mag };
+    this.buildMultiFloorStructure(W, -18, -12, 12, 11, cityStyleA, { floorY: 4.0, stairX: -25.5, stairZ: -5.4, stairLen: 8.8, stairWidth: 2.2, stairAxis: 'z', stairDir: -1, steps: 10, railMat });
+    this.buildMultiFloorStructure(W, 18, -12, 12, 11, cityStyleB, { floorY: 4.0, stairX: 25.5, stairZ: -5.4, stairLen: 8.8, stairWidth: 2.2, stairAxis: 'z', stairDir: -1, steps: 10, railMat });
+    this.structureBox(W, 24, 0.22, 2.4, 0, 4.18, -12, new THREE.MeshStandardMaterial({ color: 0x171923, roughness: 0.45, metalness: 0.55 }), false, true);
+    this.buildStructureRail(W, 0, 4.88, -13.25, 23, 'x', railMat);
+    this.buildStructureRail(W, 0, 4.88, -10.75, 23, 'x', new THREE.MeshStandardMaterial({ color: 0xff2d95, emissive: 0xff2d95, emissiveIntensity: 0.85, roughness: 0.3, metalness: 0.35 }));
+    [[-9, -2], [-5, -2.5], [5, -2], [9, -2.5], [0, -22], [-28, -2], [28, -2]].forEach(([x, z], i) => {
+      this.structureBox(W, 2.1, 1.4, 1.7, x, 0.7, z, new THREE.MeshStandardMaterial({ color: i % 2 ? 0x2a2620 : 0x1e2638, roughness: 0.78, metalness: 0.25 }), true, false);
+    });
+  }
+
+  addFieldsPlayableStructures(W) {
+    const wood = new THREE.MeshStandardMaterial({ color: 0x8b5a32, roughness: 0.82 });
+    const barnWall = new THREE.MeshStandardMaterial({ color: 0x91482f, roughness: 0.66 });
+    const plaster = new THREE.MeshStandardMaterial({ color: 0xd9c89d, roughness: 0.74 });
+    const roof = new THREE.MeshStandardMaterial({ color: 0x6b2f2f, roughness: 0.75 });
+    const rail = new THREE.MeshStandardMaterial({ color: 0x5f3d20, roughness: 0.85 });
+    const barnStyle = { wall: barnWall, floor: wood, roof, lamp: 0xffd27a, win: new THREE.MeshBasicMaterial({ color: 0xffd27a, side: THREE.DoubleSide }) };
+    const farmStyle = { wall: plaster, floor: wood, roof, cone: roof, lamp: 0xffd9a0, win: new THREE.MeshBasicMaterial({ color: 0xb7e28c, side: THREE.DoubleSide }) };
+    this.buildMultiFloorStructure(W, -18, 16, 13, 11, barnStyle, { floorY: 4.0, stairX: -25.5, stairZ: 23.0, stairLen: 9.0, stairWidth: 2.4, stairAxis: 'z', stairDir: -1, steps: 10, railMat: rail, stairMat: wood });
+    this.buildMultiFloorStructure(W, 11, 18, 10, 9, farmStyle, { floorY: 3.65, stairX: 4.6, stairZ: 24.1, stairLen: 7.8, stairWidth: 2.1, stairAxis: 'z', stairDir: -1, steps: 8, railMat: rail, stairMat: wood });
+    this.buildMultiFloorStructure(W, 30, 9, 8.5, 8, { wall: new THREE.MeshStandardMaterial({ color: 0x8a6638, roughness: 0.8 }), floor: wood, roof, lamp: 0xffd9a0, win: new THREE.MeshBasicMaterial({ color: 0xffe2a0, side: THREE.DoubleSide }) }, { floorY: 3.4, stairX: 24.5, stairZ: 14.5, stairLen: 6.8, stairWidth: 1.9, stairAxis: 'z', stairDir: -1, steps: 7, railMat: rail, stairMat: wood });
+    const siloMat = new THREE.MeshStandardMaterial({ color: 0xd4d2bd, roughness: 0.62, metalness: 0.15 });
+    const siloDeck = this.structureBox(W, 4.8, 0.22, 4.8, 21, 5.8, 16, wood, false, true);
+    const silo = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.4, 11, 18), siloMat);
+    silo.position.set(21, 5.5, 16); silo.castShadow = true; silo.receiveShadow = true; W.add(silo); this.objects.push(silo);
+    this.buildPlayableStairs(W, 16.5, 22.0, 10.2, 1.7, 5.7, 11, wood, 'z', -1);
+    this.buildStructureRail(W, 21, 6.5, 13.6, 4.6, 'x', rail);
+    [[-30, 8, 0], [-22, 8, 0], [-6, 8, 0], [4, 8, 0], [18, 8, 0], [34, 8, 0], [-10, 28, 1.57], [2, 28, 1.57], [14, 28, 1.57]].forEach(([x, z, rot]) => {
+      const gate = this.structureBox(W, 7.0, 1.2, 0.18, x, 0.65, z, rail, true, false);
+      gate.rotation.y = rot;
+    });
+    [[-24, 23], [-21, 25], [-15, 25], [7, 25], [13, 24], [27, 14], [33, 14]].forEach(([x, z], i) => {
+      this.structureBox(W, 1.8, 1.0, 1.5, x, 0.5, z, new THREE.MeshStandardMaterial({ color: i % 2 ? 0xcaa85c : 0xd9b86c, roughness: 0.9 }), true, false);
+    });
+  }
+
+
   // ================= NIGHT CITY =================
   buildCity(W) {
     this.scene.background = null;
@@ -1431,6 +1695,8 @@ class Game {
     });
     const spots = [[-22, 18], [24, 16], [-26, -20], [20, -24], [0, 30], [38, -4], [-40, 2]];
     spots.forEach(([sx, sz]) => this.buildEnterable(W, sx, sz, 9 + Math.random() * 3, 9 + Math.random() * 3, cityStyle()));
+    // Concept-sheet downtown lobby/shop towers with stair access, balconies, and a skybridge combat lane.
+    this.addCityPlayableStructures(W);
 
     const crateGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
     const crateMat = new THREE.MeshStandardMaterial({ color: 0x2a2620, roughness: 0.8 });
@@ -1558,6 +1824,9 @@ class Game {
         lamp: 0xffd9a0
       });
     });
+
+    // Concept-sheet farm compound: barn loft, farmhouse balcony, stable, silo lookout, fences, and hay cover.
+    this.addFieldsPlayableStructures(W);
 
     // wooden perimeter fence ring
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0xc2a878, roughness: 0.8 });
@@ -2642,9 +2911,17 @@ class Game {
     this.camera.position.z += P.velocity.z * dt;
     this.camera.position.y += P.velocity.y * dt;
 
-    // determine support height under player (ground, station deck, or train car top)
+    // determine support height under player (ground, general upper floors, station deck, or train car top)
     let supportY = P.height;          // world floor
     let support = null;
+    if (this.elevatedSupports) {
+      for (const pl of this.elevatedSupports) {
+        if (Math.abs(this.camera.position.x - pl.x) < pl.hw && Math.abs(this.camera.position.z - pl.z) < pl.hd) {
+          const top = pl.top + P.height;
+          if (this.camera.position.y <= top + 1.05 && top > supportY) { supportY = top; support = 'structure'; }
+        }
+      }
+    }
     if (this.railProps) {
       const rp = this.railProps;
       // station ramp (sloped walkway up to the deck)
