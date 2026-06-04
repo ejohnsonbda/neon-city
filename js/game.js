@@ -141,7 +141,7 @@ class Game {
     if (level === 'fields') this.buildFields(this.worldGroup);
     else if (level === 'megacity') this.buildMegaCity(this.worldGroup);
     else if (level === 'rail') this.buildRailCity(this.worldGroup);
-    else if (level === 'desert') this.buildDesert(this.worldGroup);
+    else if (level === 'desert' || level === 'jungle') this.buildDesert(this.worldGroup);
     else if (level === 'japan') this.buildJapan(this.worldGroup);
     else this.buildCity(this.worldGroup);
   }
@@ -1629,6 +1629,7 @@ class Game {
       { id: 'megacity', name: 'MEGAWATT CITY 1', desc: 'Dense grid, live traffic & neon.', art: 'mega' },
       { id: 'rail', name: 'RAIL CITY', desc: 'Ride the monorail · day to night.', art: 'rail' },
       { id: 'desert', name: 'EGYPT DESERT', desc: 'Pyramids, jungle & pharaoh golems.', art: 'desert' },
+      { id: 'jungle', name: 'LOST JUNGLE', desc: 'Dense canopy, ruins & beast patrols.', art: 'jungle' },
       { id: 'japan', name: 'FEUDAL JAPAN', desc: 'Katana, shuriken & bow only.', art: 'japan' }
     ];
     levels.forEach(l => {
@@ -1822,7 +1823,7 @@ class Game {
     this.player.weapons.forEach(w => w.ammo = w.ammo === Infinity ? Infinity : Math.floor(w.maxAmmo * 0.6));
     this.camera.position.set(0, this.player.height, 0);
     if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
-    if (this._desertSpawn && this.level === 'desert') this.camera.position.copy(this._desertSpawn);
+    if (this._desertSpawn && (this.level === 'desert' || this.level === 'jungle')) this.camera.position.copy(this._desertSpawn);
     if (this._japanSpawn && this.level === 'japan') this.camera.position.copy(this._japanSpawn);
     this.player.ridingCar = null; this.player.floorY = this.player.height;
     this.camera.rotation.set(0, 0, 0);
@@ -1933,7 +1934,7 @@ class Game {
 
   spawnEnemy(type, hpScale) {
     const cfg = EnemyFactory.TYPES[type];
-    const mesh = EnemyFactory.build(type, this.level === 'desert' ? 'desert' : 'rock');
+    const mesh = EnemyFactory.build(type, (this.level === 'desert' || this.level === 'jungle') ? 'desert' : 'rock');
     mesh.scale.setScalar(cfg.scale);
 
     let pos = new THREE.Vector3(), ok = false, tries = 0;

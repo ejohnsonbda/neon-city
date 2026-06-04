@@ -35,6 +35,9 @@ export class FPSGame {
     this.input.onWeapon = (index) => this.weapons.switch(index);
     document.getElementById('start-button')?.addEventListener('click', () => this.start());
     document.getElementById('level-select')?.addEventListener('change', (event) => this.loadLevel(event.target.value));
+    document.querySelectorAll('[data-level]').forEach((button) => {
+      button.addEventListener('click', () => this.loadLevel(button.dataset.level));
+    });
     this.loadLevel(this.levelId);
     this.renderer.setAnimationLoop(() => this.animate());
   }
@@ -58,8 +61,18 @@ export class FPSGame {
     this.hud.message('Systems online');
   }
 
+  setLevelSelection(id) {
+    document.getElementById('level-select')?.querySelectorAll('option').forEach((option) => {
+      option.selected = option.value === id;
+    });
+    document.querySelectorAll('[data-level]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.level === id);
+    });
+  }
+
   loadLevel(id) {
     this.levelId = id;
+    this.setLevelSelection(id);
     const level = this.levels.load(id);
     this.player.reset(level.spawn);
     this.enemies.reset(level.enemyTheme);
