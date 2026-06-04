@@ -1996,16 +1996,48 @@ class Game {
   // ---------------- WAVES ----------------
   buildWave(n) {
     const list = [];
+    const hasEnemy = (type) => EnemyFactory && EnemyFactory.TYPES && EnemyFactory.TYPES[type];
+    const addIfAvailable = (type, count) => {
+      if (!hasEnemy(type)) return;
+      for (let i = 0; i < count; i++) list.push(type);
+    };
+    const jungleLevel = this.level === 'jungle';
+
+    if (n % 10 === 0 && hasEnemy('spider')) {
+      list.push('spider');
+      addIfAvailable('dragon', 2 + Math.floor(n / 10));
+      addIfAvailable('bramble', 4 + Math.floor(n / 4));
+      addIfAvailable('sapling', 6 + Math.floor(n / 2));
+      addIfAvailable('shooter', 2 + Math.floor(n / 8));
+      return list;
+    }
+
     if (n % 5 === 0) {
       list.push('boss');
       for (let i = 0; i < 3 + Math.floor(n / 5); i++) list.push('runner');
       for (let i = 0; i < 2; i++) list.push('shooter');
+      addIfAvailable('dragon', n >= 5 ? 1 + Math.floor(n / 10) : 0);
+      if (jungleLevel) {
+        addIfAvailable('bramble', 2 + Math.floor(n / 5));
+        addIfAvailable('sapling', 3 + Math.floor(n / 4));
+      }
       return list;
     }
-    for (let i = 0; i < 3 + Math.floor(n * 0.7); i++) list.push('grunt');
-    for (let i = 0; i < Math.floor(n * 0.6); i++) list.push('runner');
-    if (n >= 2) for (let i = 0; i < 1 + Math.floor(n / 4); i++) list.push('shooter');
-    if (n >= 3) for (let i = 0; i < Math.floor(n / 3); i++) list.push('tank');
+
+    if (jungleLevel) {
+      addIfAvailable('sapling', 4 + Math.floor(n * 0.9));
+      addIfAvailable('bramble', 1 + Math.floor(n * 0.45));
+      if (n >= 3) addIfAvailable('treant', 1 + Math.floor(n / 4));
+      if (n >= 4) addIfAvailable('dragon', Math.max(1, Math.floor(n / 5)));
+      if (list.length < 6) for (let i = 0; i < 4 + Math.floor(n * 0.6); i++) list.push('grunt');
+    } else {
+      for (let i = 0; i < 3 + Math.floor(n * 0.7); i++) list.push('grunt');
+      for (let i = 0; i < Math.floor(n * 0.6); i++) list.push('runner');
+      if (n >= 2) for (let i = 0; i < 1 + Math.floor(n / 4); i++) list.push('shooter');
+      if (n >= 3) for (let i = 0; i < Math.floor(n / 3); i++) list.push('tank');
+      if (n >= 4) addIfAvailable('dragon', Math.max(1, Math.floor(n / 6)));
+    }
+
     // cap for performance
     const targetCount = Math.min(50, 20 + (n - 1) * 10);
     const pattern = list.length ? list.slice() : ['grunt'];
@@ -2059,10 +2091,12 @@ class Game {
       for (const o of this.objects) if (pos.distanceTo(o.position) < 9) { ok = false; break; }
     }
     mesh.position.copy(pos);
+    if (cfg.fly) mesh.position.y = cfg.altitude || 7;
     mesh.userData = Object.assign({}, mesh.userData, {
       type, hp: cfg.hp * hpScale, maxHp: cfg.hp * hpScale,
       speed: cfg.speed, dmg: cfg.dmg, melee: cfg.melee, ranged: cfg.ranged,
       range: cfg.range, projDmg: cfg.projDmg, fireRate: cfg.fireRate, boss: cfg.boss,
+      fly: cfg.fly, altitude: cfg.altitude, hover: cfg.fly || cfg.hover,
       score: cfg.score, animOffset: Math.random() * 10, lastFire: 0, hitFlash: 0
     });
     this.scene.add(mesh);
@@ -2071,7 +2105,8 @@ class Game {
       this.boss = mesh;
       document.getElementById('boss-bar-wrap').classList.remove('hidden');
       this.sound.boss();
-      this.showMessage('⚠ APEX HORROR INBOUND', '#ff2d95');
+      const bossName = type === 'spider' ? 'SUPER APEX SPIDER' : 'APEX HORROR';
+      this.showMessage('⚠ ' + bossName + ' INBOUND', type === 'spider' ? '#8bff36' : '#ff2d95');
     }
   }
 
@@ -2824,7 +2859,8 @@ class Game {
         if (dist2D > desired + 4) e.position.add(dir.multiplyScalar(ud.speed * dt));
         else if (dist2D < desired - 6) e.position.add(dir.multiplyScalar(-ud.speed * dt));
         e.lookAt(this.camera.position.x, e.position.y, this.camera.position.z);
-        if (ud.hover) e.position.y = Math.sin(time) * 0.25;
+        if (ud.fly) e.position.y = (ud.altitude || 7) + Math.sin(time) * 0.45;
+        else if (ud.hover) e.position.y = Math.sin(time) * 0.25;
         // fire
         if (Date.now() - ud.lastFire > ud.fireRate && dist2D < (ud.range || 26) + 12) {
           ud.lastFire = Date.now(); this.enemyFire(e);
@@ -2842,11 +2878,11 @@ class Game {
           e.lookAt(this.camera.position.x, e.position.y, this.camera.position.z);
           // walk animation
           const sw = ud.crawl ? 1.2 : 0.6;
-          ud.parts.legs.forEach((l, k) => l.rotation.x = Math.sin(time * (ud.crawl ? 2 : 1) + (k % 2) * Math.PI) * sw);
-          ud.parts.arms.forEach((a, k) => a.rotation.x = Math.sin(time + (k % 2) * Math.PI) * 0.5);
+          if (ud.parts && ud.parts.legs) ud.parts.legs.forEach((l, k) => l.rotation.x = Math.sin(time * (ud.crawl ? 2 : 1) + (k % 2) * Math.PI) * sw);
+          if (ud.parts && ud.parts.arms) ud.parts.arms.forEach((a, k) => a.rotation.x = Math.sin(time + (k % 2) * Math.PI) * 0.5);
         } else {
           P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD();
-          ud.parts.arms.forEach(a => a.rotation.x = -Math.PI / 2.2);
+          if (ud.parts && ud.parts.arms) ud.parts.arms.forEach(a => a.rotation.x = -Math.PI / 2.2);
           if (P.hp <= 0) this.endGame();
         }
       }
