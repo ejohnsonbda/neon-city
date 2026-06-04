@@ -75,14 +75,29 @@ const GOLEMS = [
   { type: 'shooter', name: 'SHADE-CASTER', role: 'Ranged Attacker', col: '#8a5bff',
     desc: 'Cups a glowing core between its hands and hurls bolts of violet energy from range. It keeps its distance — close the gap or break line of sight.',
     stats: { HP: 0.25, SPD: 0.34, DMG: 0.55 } },
+  { type: 'dragon',  name: 'ROK WYRM', role: 'Flying Fire-Breather', col: '#ff7a2e',
+    desc: 'A winged stone wyrm that circles overhead and rains molten fire bolts. It never lands — track it across the sky and burn it down before it scorches you.',
+    stats: { HP: 0.85, SPD: 0.7, DMG: 0.6 } },
   { type: 'boss',    name: 'APEX HORROR', role: 'Wave Boss · every 5th wave', col: '#ff2d95',
     desc: 'A colossal four-eyed golem crowned in moss. Massive health, devastating melee, and a fan of energy bolts. It arrives with an escort — survive the onslaught.',
-    stats: { HP: 1.0, SPD: 0.3, DMG: 1.0 } }
+    stats: { HP: 1.0, SPD: 0.3, DMG: 1.0 } },
+  { type: 'spider',  name: 'SUPER APEX SPIDER', role: 'Mega Boss · every 10th wave', col: '#8bff36',
+    desc: 'A titanic eight-legged stone arachnid with a cluster of glowing venom eyes and dripping fangs. It scuttles in fast on long jointed legs and bites with crushing force — the deadliest thing in the city.',
+    stats: { HP: 1.0, SPD: 0.45, DMG: 1.0 } },
+  { type: 'sapling', name: 'SAPLING GOBLIN', role: 'Twig Imp · Fast Swarmer', col: '#9be84a',
+    desc: 'A tiny twig-and-leaf imp that sprints in on spindly legs. Barely any health, but they come in packs and nip at your heels — stomp them before they swarm.',
+    stats: { HP: 0.16, SPD: 0.85, DMG: 0.22 } },
+  { type: 'bramble', name: 'BRAMBLE GOBLIN', role: 'Thorny Hunter', col: '#c6f23a',
+    desc: 'A hunched, thorn-backed goblin with clawed branch arms and a glowing jagged maw. Tougher and meaner than a sapling, it closes in and rakes you with twig talons.',
+    stats: { HP: 0.42, SPD: 0.46, DMG: 0.45 } },
+  { type: 'treant',  name: 'ELDER TREANT GOBLIN', role: 'Mossy Seed-Hurler', col: '#6fd83a',
+    desc: 'A lumbering tree-beast crowned with a leafy canopy and a hollow glowing face. It keeps its distance and lobs glowing thorn-seeds, soaking enormous punishment as it advances.',
+    stats: { HP: 0.7, SPD: 0.22, DMG: 0.5 } }
 ];
 
 function makeCard(def) {
   const card = document.createElement('div');
-  card.className = 'card' + (def.type === 'boss' ? ' boss' : '');
+  card.className = 'card' + (def.type === 'boss' || def.type === 'spider' ? ' boss' : '');
   const stage = document.createElement('div'); stage.className = 'stage';
   const tag = document.createElement('div'); tag.className = 'tag';
   tag.textContent = def.role.split('·')[0].trim();
@@ -168,7 +183,7 @@ function setupScene(stage, def) {
 window.addEventListener('load', () => {
   GOLEMS.forEach(def => {
     const stage = makeCard(def);
-    requestAnimationFrame(() => setupScene(stage, def));
+    setTimeout(() => setupScene(stage, def), 0);
   });
 });
 </script>
