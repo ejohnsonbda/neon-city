@@ -59,6 +59,8 @@ class Game {
     this.items = [];        // pickups
     this.particles = [];
     this.tracers = [];
+    this.portals = [];
+    this.portalCooldown = 0;
     this.boss = null;
 
     this.isPaused = false;
@@ -131,7 +133,10 @@ class Game {
     this.megaProps = null;
     this.railProps = null;
     this.desertProps = null;
+    this.jungleProps = null;
     this.japanProps = null;
+    this.portals = [];
+    this.portalCooldown = 0;
     // tune bloom per level: punchy at night, subtle in daylight (avoids white-out)
     if (this.bloom) {
       const day = (level === 'fields' || level === 'desert' || level === 'japan');
@@ -141,12 +146,66 @@ class Game {
     if (level === 'fields') this.buildFields(this.worldGroup);
     else if (level === 'megacity') this.buildMegaCity(this.worldGroup);
     else if (level === 'rail') this.buildRailCity(this.worldGroup);
-    else if (level === 'desert' || level === 'jungle') this.buildDesert(this.worldGroup);
+    else if (level === 'desert') this.buildDesert(this.worldGroup);
+    else if (level === 'jungle') this.buildJungle(this.worldGroup);
     else if (level === 'japan') this.buildJapan(this.worldGroup);
     else this.buildCity(this.worldGroup);
   }
 
-  // ================= EGYPTIAN DESERT + JUNGLE (dual biome) =================
+
+  createPortal(W, position, target, color = 0x19f0ff, label = 'PORTAL') {
+    this.portals ||= [];
+    const group = new THREE.Group();
+    group.name = label;
+    group.position.copy(position);
+    const ringMat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.2, roughness: 0.24, metalness: 0.35 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.75, 0.13, 16, 64), ringMat);
+    ring.rotation.y = Math.PI / 2;
+    group.add(ring);
+    const inner = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.045, 12, 48), ringMat);
+    inner.rotation.y = Math.PI / 2;
+    group.add(inner);
+    const field = new THREE.Mesh(new THREE.CircleGeometry(1.48, 48), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
+    field.rotation.y = Math.PI / 2;
+    group.add(field);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.28, 0.75), ringMat);
+    base.position.y = -1.84;
+    group.add(base);
+    const light = new THREE.PointLight(color, 2.4, 18, 2);
+    group.add(light);
+    W.add(group);
+    const portal = { mesh: group, field, position, target, radius: 2.6, cooldown: 0, label };
+    this.portals.push(portal);
+    return portal;
+  }
+
+  updatePortals(dt) {
+    if (!this.portals || !this.portals.length) return;
+    this.portalCooldown = Math.max(0, (this.portalCooldown || 0) - dt);
+    for (const portal of this.portals) {
+      portal.mesh.rotation.z += dt * 0.9;
+      if (portal.field?.material) portal.field.material.opacity = 0.16 + Math.sin(Date.now() * 0.004) * 0.055;
+      if (this.portalCooldown > 0) continue;
+      const dx = this.camera.position.x - portal.position.x, dz = this.camera.position.z - portal.position.z;
+      if (Math.hypot(dx, dz) < portal.radius && Math.abs(this.camera.position.y - portal.position.y) < 4.0) {
+        this.portalCooldown = 1.5;
+        this.showMessage(portal.label || 'PORTAL', '#19f0ff', 1200);
+        const targetLevel = portal.targetLevel;
+        const target = portal.target.clone();
+        if (targetLevel && targetLevel !== this.level) {
+          this.buildWorld(targetLevel);
+          this.level = targetLevel;
+          this.portalCooldown = 1.5;
+        }
+        this.camera.position.copy(target);
+        this.player.velocity.set(0, 0, 0);
+        this.player.onGround = true;
+        break;
+      }
+    }
+  }
+
+  // ================= EGYPTIAN DESERT =================
   buildDesert(W) {
     const S = 7;
     this.scene.background = null;
@@ -319,8 +378,95 @@ class Game {
     sun.shadow.camera.left = -220; sun.shadow.camera.right = 220; sun.shadow.camera.top = 220; sun.shadow.camera.bottom = -220;
     sun.shadow.camera.far = 600; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
 
+    const desertPortal = this.createPortal(W, new THREE.Vector3(-16 * S, 1.8 * S, 18 * S), new THREE.Vector3(23 * S, this.player.height, -20 * S), 0x78ff65, 'JUNGLE PORTAL');
+    desertPortal.targetLevel = 'jungle';
     this.desertProps = { fireLights, birds, ankhs, sandP, fireflies, span: 50 * S, S };
     this._desertSpawn = new THREE.Vector3(0, this.player.height, 22 * S);
+  }
+
+
+  // ================= LOST JUNGLE (distinct from Egypt) =================
+  buildJungle(W) {
+    const S = 7;
+    this.scene.background = null;
+    this.scene.fog = new THREE.FogExp2(0x17351b, 0.0095);
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 24),
+      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#153d25', '#4d7a49'), side: THREE.BackSide, fog: false }));
+    W.add(sky);
+
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(100 * S, 100 * S),
+      new THREE.MeshStandardMaterial({ color: 0x24451f, roughness: 0.96, metalness: 0.02 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = -0.04; ground.receiveShadow = true; W.add(ground);
+
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x156a8a, emissive: 0x0a3f55, emissiveIntensity: 0.35, roughness: 0.22, metalness: 0.2, transparent: true, opacity: 0.78 });
+    const river = new THREE.Mesh(new THREE.BoxGeometry(10 * S, 0.08 * S, 52 * S), waterMat);
+    river.position.set(-6 * S, 0.02 * S, -6 * S); river.rotation.y = -0.16; W.add(river);
+    const lagoon = new THREE.Mesh(new THREE.CylinderGeometry(5 * S, 6.5 * S, 0.08 * S, 24), waterMat);
+    lagoon.position.set(-13 * S, 0.04 * S, -18 * S); W.add(lagoon);
+    const waterfall = new THREE.Mesh(new THREE.BoxGeometry(2.2 * S, 6.2 * S, 0.38 * S), waterMat);
+    waterfall.position.set(-17 * S, 3.0 * S, -24 * S); W.add(waterfall);
+
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x5b6551, roughness: 0.94, metalness: 0.02 });
+    const mossMat = new THREE.MeshStandardMaterial({ color: 0x33552f, roughness: 1, metalness: 0.02 });
+    const addBlock = (x, y, z, w, h, d, mat, collide = true) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w * S, h * S, d * S), mat || stoneMat);
+      b.position.set(x * S, y * S, z * S); b.castShadow = true; b.receiveShadow = true; W.add(b);
+      if (collide) this.objects.push(b);
+      return b;
+    };
+    addBlock(8, 0.45, -11, 15, 0.9, 4, stoneMat);
+    addBlock(8, 1.55, -15, 11, 2.2, 3, stoneMat);
+    addBlock(8, 3.05, -17.1, 8, 0.75, 2.4, mossMat, false);
+    [[2, -8], [14, -8], [2, -15], [14, -15], [18, 5], [-20, 8], [22, -24]].forEach(([x, z]) => {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.42 * S, 0.62 * S, 3.0 * S, 9), stoneMat);
+      col.position.set(x * S, 1.5 * S, z * S); col.castShadow = true; col.receiveShadow = true; W.add(col); this.objects.push(col);
+    });
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5b351a, roughness: 1 });
+    const leafMats = [0x2f7a2f, 0x3c8c3c, 0x1f5c2b, 0x4f9a3a].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true }));
+    const addTree = (x, z, sc) => {
+      const h = (1.4 + Math.random() * 1.2) * sc * S;
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * sc * S, 0.36 * sc * S, h, 7), trunkMat);
+      tr.position.set(x, h / 2, z); tr.castShadow = true; W.add(tr); this.objects.push(tr);
+      const leaf = new THREE.Mesh(new THREE.ConeGeometry((0.8 + Math.random() * 0.5) * sc * S, (1.4 + Math.random() * 0.6) * sc * S, 7), leafMats[Math.floor(Math.random() * leafMats.length)]);
+      leaf.position.set(x, h + 0.75 * sc * S, z); leaf.castShadow = true; W.add(leaf);
+      if (Math.random() > 0.58) {
+        const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.9 * sc * S, 8, 6), leafMats[Math.floor(Math.random() * leafMats.length)]);
+        canopy.scale.y = 0.55; canopy.position.set(x + (Math.random() - 0.5) * S, h + 1.1 * sc * S, z + (Math.random() - 0.5) * S); canopy.castShadow = true; W.add(canopy);
+      }
+    };
+    for (let i = 0; i < 135; i++) {
+      const x = (Math.random() - 0.5) * 88 * S, z = (Math.random() - 0.5) * 88 * S;
+      if (Math.abs(x) < 8 * S && Math.abs(z - 16 * S) < 7 * S) continue;
+      if (Math.abs(x + 6 * S) < 8 * S && Math.abs(z + 6 * S) < 28 * S) continue;
+      addTree(x, z, 0.75 + Math.random() * 0.7);
+    }
+
+    for (let i = 0; i < 45; i++) {
+      const bush = new THREE.Mesh(new THREE.SphereGeometry((0.28 + Math.random() * 0.34) * S, 7, 5), leafMats[i % leafMats.length]);
+      bush.position.set((Math.random() - 0.5) * 62 * S, 0.24 * S, (Math.random() - 0.5) * 62 * S); bush.scale.y = 0.55; W.add(bush);
+      if (i % 3 === 0) this.objects.push(bush);
+    }
+
+    const vineMat = new THREE.MeshStandardMaterial({ color: 0x3cff65, emissive: 0x0d5f16, emissiveIntensity: 0.45, roughness: 0.8 });
+    for (let i = 0; i < 28; i++) {
+      const v = new THREE.Mesh(new THREE.BoxGeometry(0.04 * S, (0.7 + Math.random() * 0.9) * S, 0.04 * S), vineMat);
+      v.position.set((-20 + Math.random() * 48) * S, (2.2 + Math.random() * 2.4) * S, (-24 + Math.random() * 42) * S); v.rotation.z = (Math.random() - 0.5) * 0.4; W.add(v);
+    }
+    for (let i = 0; i < 35; i++) {
+      const mush = new THREE.Mesh(new THREE.SphereGeometry(0.11 * S, 8, 6), new THREE.MeshStandardMaterial({ color: i % 2 ? 0x78ff65 : 0x35caff, emissive: i % 2 ? 0x78ff65 : 0x35caff, emissiveIntensity: 1.2 }));
+      mush.position.set((-25 + Math.random() * 50) * S, 0.12 * S, (-25 + Math.random() * 50) * S); mush.scale.y = 0.45; W.add(mush);
+    }
+
+    const portal = this.createPortal(W, new THREE.Vector3(23 * S, 1.8 * S, -20 * S), new THREE.Vector3(-16 * S, this.player.height, 18 * S), 0xffd166, 'EGYPT PORTAL');
+    portal.targetLevel = 'desert';
+
+    W.add(new THREE.AmbientLight(0x6ca56c, 0.34));
+    W.add(new THREE.HemisphereLight(0x87d99a, 0x0b220c, 0.44));
+    const sun = new THREE.DirectionalLight(0xb7ffc0, 0.62);
+    sun.position.set(-55, 92, 35); sun.castShadow = true; sun.shadow.camera.left = -220; sun.shadow.camera.right = 220; sun.shadow.camera.top = 220; sun.shadow.camera.bottom = -220; W.add(sun);
+    this.jungleProps = { vines: true, river, lagoon, waterfall };
+    this._jungleSpawn = new THREE.Vector3(0, this.player.height, 24 * S);
   }
 
   // ================= FEUDAL JAPAN =================
@@ -1811,7 +1957,7 @@ class Game {
     if (this.music) { this.music.pause(); this.music.currentTime = 0; }
     // start gameplay music — Desert Raid for desert/egypt, Final Arena Run elsewhere
     this.gameMusic.forEach(m => { m.pause(); m.currentTime = 0; });
-    this.curGameMusic = (this.level === 'desert') ? this.gameMusic[1] : this.gameMusic[0];
+    this.curGameMusic = (this.level === 'desert' || this.level === 'jungle') ? this.gameMusic[1] : this.gameMusic[0];
     if (this.curGameMusic) this.curGameMusic.play().catch(() => {});
     this.buildWorld(this.level || 'city');
     // pick arsenal for the level: all theatres include the neon katana and bow,
@@ -1823,7 +1969,8 @@ class Game {
     this.player.weapons.forEach(w => w.ammo = w.ammo === Infinity ? Infinity : Math.floor(w.maxAmmo * 0.6));
     this.camera.position.set(0, this.player.height, 0);
     if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
-    if (this._desertSpawn && (this.level === 'desert' || this.level === 'jungle')) this.camera.position.copy(this._desertSpawn);
+    if (this._desertSpawn && this.level === 'desert') this.camera.position.copy(this._desertSpawn);
+    if (this._jungleSpawn && this.level === 'jungle') this.camera.position.copy(this._jungleSpawn);
     if (this._japanSpawn && this.level === 'japan') this.camera.position.copy(this._japanSpawn);
     this.player.ridingCar = null; this.player.floorY = this.player.height;
     this.camera.rotation.set(0, 0, 0);
@@ -1896,7 +2043,10 @@ class Game {
     if (n >= 2) for (let i = 0; i < 1 + Math.floor(n / 4); i++) list.push('shooter');
     if (n >= 3) for (let i = 0; i < Math.floor(n / 3); i++) list.push('tank');
     // cap for performance
-    return list.slice(0, 24);
+    const targetCount = Math.min(50, 20 + (n - 1) * 10);
+    const pattern = list.length ? list.slice() : ['grunt'];
+    while (list.length < targetCount) list.push(pattern[list.length % pattern.length]);
+    return list.slice(0, targetCount);
   }
 
   startWaveCountdown(waveNumber) {
@@ -1934,7 +2084,7 @@ class Game {
 
   spawnEnemy(type, hpScale) {
     const cfg = EnemyFactory.TYPES[type];
-    const mesh = EnemyFactory.build(type, (this.level === 'desert' || this.level === 'jungle') ? 'desert' : 'rock');
+    const mesh = EnemyFactory.build(type, this.level === 'desert' ? 'desert' : 'rock');
     mesh.scale.setScalar(cfg.scale);
 
     let pos = new THREE.Vector3(), ok = false, tries = 0;
@@ -2403,6 +2553,8 @@ class Game {
         px0.x += dx * k; px0.z += dz * k;
       }
     }
+
+    this.updatePortals(dt);
 
     // pickups
     for (let i = this.items.length - 1; i >= 0; i--) {

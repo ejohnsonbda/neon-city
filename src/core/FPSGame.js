@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PHYSICS, RENDERING } from '../config/GameConfig.js';
 import { Renderer } from './Renderer.js';
@@ -18,6 +19,7 @@ export class FPSGame {
     this.physicsWorld = new PhysicsWorld();
     this.levelId = 'neon-city';
     this.started = false;
+    this.portalCooldown = 0;
     this.hud = new HUD(hudRoot);
     this.renderer = new Renderer(root, this.scene, this.camera);
     this.input = new InputController(this.camera, this.renderer.renderer.domElement, document.getElementById('message'));
@@ -74,9 +76,43 @@ export class FPSGame {
     this.levelId = id;
     this.setLevelSelection(id);
     const level = this.levels.load(id);
+    this.portalCooldown = 0.75;
     this.player.reset(level.spawn);
     this.enemies.reset(level.enemyTheme);
     this.hud.message(`${level.label} loaded`);
+    return level;
+  }
+
+  activatePortal(portal) {
+    this.portalCooldown = 1.4;
+    let destinationLevel = this.levels.current;
+    if (portal.targetLevel && portal.targetLevel !== this.levelId) {
+      destinationLevel = this.loadLevel(portal.targetLevel);
+    }
+    if (portal.target) this.player.teleport(portal.target);
+    this.portalCooldown = 1.4;
+    this.hud.message(`Portal: ${portal.label || destinationLevel.label}`);
+  }
+
+  updatePortals(delta) {
+    this.portalCooldown = Math.max(0, this.portalCooldown - delta);
+    const portals = this.levels.current?.portals || [];
+    for (const portal of portals) {
+      if (portal.mesh) {
+        portal.mesh.rotation.z += delta * 0.9;
+        const field = portal.mesh.children.find((child) => child.name?.includes('energy-field'));
+        if (field?.material) field.material.opacity = 0.16 + Math.sin(performance.now() * 0.004) * 0.055;
+      }
+      const pos = portal.position || portal.mesh?.position;
+      if (!pos || this.portalCooldown > 0) continue;
+      const dx = this.player.camera.position.x - pos.x;
+      const dz = this.player.camera.position.z - pos.z;
+      const dy = Math.abs(this.player.camera.position.y - pos.y);
+      if (Math.hypot(dx, dz) <= (portal.radius || 2.35) && dy < 3.2) {
+        this.activatePortal(portal);
+        break;
+      }
+    }
   }
 
   animate() {
@@ -85,8 +121,11 @@ export class FPSGame {
     if (this.started) {
       const step = delta / PHYSICS.stepsPerFrame;
       for (let i = 0; i < PHYSICS.stepsPerFrame; i++) this.player.update(step, input);
+      this.updatePortals(delta);
       this.enemies.update(delta);
       this.weapons.update(delta, input, this.player);
+    } else {
+      this.updatePortals(delta);
     }
     this.hud.update(delta, { player: this.player, weaponSystem: this.weapons, enemySystem: this.enemies, levelId: this.levelId });
     this.renderer.render();

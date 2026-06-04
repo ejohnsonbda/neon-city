@@ -1,7 +1,9 @@
+
 import * as THREE from 'three';
 
 const THEMES = {
   street: [{ name: 'Neon Runner', color: 0xff2d95, hp: 70, speed: 3.6, score: 100 }, { name: 'Void Titan', color: 0x7d5cff, hp: 220, speed: 1.8, score: 350 }],
+  desert: [{ name: 'Anubis Guard', color: 0xffd166, hp: 95, speed: 3.2, score: 135 }, { name: 'Scarab Colossus', color: 0xc58b3b, hp: 235, speed: 1.6, score: 330 }],
   samurai: [{ name: 'Ronin Drone', color: 0xff6ec7, hp: 85, speed: 3.3, score: 120 }, { name: 'Oni Brute', color: 0xff3b30, hp: 190, speed: 2.0, score: 260 }],
   jungle: [{ name: 'Jungle Beast', color: 0x78ff65, hp: 120, speed: 3.0, score: 160 }, { name: 'Ancient Treant', color: 0x3c8c3c, hp: 240, speed: 1.4, score: 320 }],
   cleaners: [{ name: 'Cleaner Drone', color: 0xffd166, hp: 90, speed: 3.4, score: 140 }, { name: 'Sanitation Mech', color: 0x6dff69, hp: 210, speed: 1.7, score: 300 }]
@@ -26,16 +28,20 @@ export class EnemySystem {
     this.spawnWave();
   }
 
+  waveSize() {
+    return Math.min(50, 20 + (this.wave - 1) * 10);
+  }
+
   spawnWave() {
     const defs = THEMES[this.theme] || THEMES.street;
-    const count = 4 + this.wave * 2;
+    const count = this.waveSize();
     for (let i = 0; i < count; i++) {
       const def = defs[i % defs.length];
       const angle = (i / count) * Math.PI * 2;
       const radius = 24 + Math.random() * 38;
       this.spawn(def, new THREE.Vector3(Math.cos(angle) * radius, 0.9, Math.sin(angle) * radius));
     }
-    this.hud.message(`Wave ${this.wave}: ${defs[0].name}s inbound`);
+    this.hud.message(`Wave ${this.wave}: ${count} ${defs[0].name}s inbound`);
   }
 
   spawn(def, position) {

@@ -27,10 +27,15 @@ export class PlayerController {
 
   reset(position = new THREE.Vector3(0, 1, 8)) {
     this.spawn.copy(position);
+    this.teleport(position);
+    this.health = this.maxHealth;
+  }
+
+  teleport(position) {
     this.collider.start.set(position.x, position.y - PHYSICS.playerHeight + PHYSICS.playerRadius, position.z);
     this.collider.end.set(position.x, position.y, position.z);
     this.velocity.set(0, 0, 0);
-    this.health = this.maxHealth;
+    this.onFloor = false;
     this.camera.position.copy(this.collider.end);
   }
 

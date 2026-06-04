@@ -21,5 +21,7 @@ export function createNeonCityLevel({ factory }) {
     factory.neonStrip(group, new THREE.Vector3(x, height + 0.12, z), new THREE.Vector3(size.x * 0.8, 0.16, size.z * 0.8), i % 2 ? 0xff2d95 : 0x19f0ff);
     building.material.emissive = new THREE.Color(0x070a15);
   }
-  return { group, spawn: new THREE.Vector3(0, 1.7, 22), fog: new THREE.FogExp2(0x05060c, 0.012), background: 0x05060c, enemyTheme: 'street' };
+
+  const portalMesh = factory.portal(group, { position: new THREE.Vector3(58, 2.4, 0), color: 0xffd166, rotationY: -Math.PI / 2, name: 'neon-underground-portal' });
+  return { group, spawn: new THREE.Vector3(0, 1.7, 22), fog: new THREE.FogExp2(0x05060c, 0.012), background: 0x05060c, enemyTheme: 'street', portals: [{ mesh: portalMesh, position: portalMesh.position, radius: 2.4, targetLevel: 'underground', target: new THREE.Vector3(-56, 1.7, 0), label: 'Underground Cleaners' }] };
 }

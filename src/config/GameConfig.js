@@ -1,3 +1,4 @@
+
 export const PHYSICS = Object.freeze({
   gravity: 30,
   stepsPerFrame: 5,
@@ -27,6 +28,7 @@ export const WEAPONS = Object.freeze([
 
 export const LEVELS = Object.freeze({
   'neon-city': { label: 'Neon City', accent: 0x19f0ff },
+  desert: { label: 'Egypt', accent: 0xffd166 },
   japan: { label: 'Japan', accent: 0xff6ec7 },
   'lost-jungle': { label: 'Lost Jungle', accent: 0x78ff65 },
   underground: { label: 'Underground Cleaners', accent: 0xffd166 }
