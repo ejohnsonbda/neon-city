@@ -66,7 +66,7 @@ const EnemyFactory = {
     m.position.set(x, y, z);
     m.scale.set(sx, sy === undefined ? sx : sy, sz === undefined ? sx : sz);
     m.rotation.set(rx || 0, ry || 0, rz || 0);
-    m.castShadow = true;
+    m.castShadow = !window.__NEON_LOW_MEMORY;
     parent.add(m);
     return m;
   },
@@ -74,6 +74,7 @@ const EnemyFactory = {
   // mossy ridge with sprouts (rock) / pharaoh nemes-stripe headdress (desert)
   _mossCrown(parent, y, z, spread, count) {
     const g = _geos();
+    if (window.__NEON_LOW_MEMORY) count = Math.max(1, Math.ceil(count * 0.45));
     if (this._skin === 'desert') {
       // banded gold+blue nemes headdress cap
       const gold = this._moss(), blue = this._mossDark();

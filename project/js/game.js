@@ -8,22 +8,28 @@ class Game {
     this.container = document.getElementById('game-container');
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0x0a0a1a, 0.012);
+    this.lowMemoryMode = Game.shouldUseLowMemoryMode();
+    window.__NEON_LOW_MEMORY = this.lowMemoryMode;
+    document.documentElement.classList.toggle('low-memory-mode', this.lowMemoryMode);
+    if (this.lowMemoryMode) this.scene.fog.density = 0.018;
 
     this.camera = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, 0.1, 1200);
     this.camera.rotation.order = 'YXZ';
+    this.camera.far = this.lowMemoryMode ? 650 : 1200;
+    this.camera.updateProjectionMatrix();
 
     try {
-      this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
     } catch (err) {
       Game.showFatalStartupError('WebGL could not start. Please enable hardware acceleration or try another browser.', err);
       this.failed = true;
       return;
     }
     this.renderer.setClearColor(0x05060c, 1);
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.lowMemoryMode ? 0.75 : 1.5));
     this.renderer.setSize(innerWidth, innerHeight);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled = !this.lowMemoryMode;
+    this.renderer.shadowMap.type = this.lowMemoryMode ? THREE.BasicShadowMap : THREE.PCFShadowMap;
     this.renderer.outputEncoding = THREE.sRGBEncoding;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.92;
@@ -31,7 +37,7 @@ class Game {
 
     // ---- Post-processing: UnrealBloom energy glow (all emissive elements) ----
     this.composer = null;
-    if (THREE.EffectComposer && THREE.UnrealBloomPass && THREE.RenderPass) {
+    if (!this.lowMemoryMode && THREE.EffectComposer && THREE.UnrealBloomPass && THREE.RenderPass) {
       try {
         this.composer = new THREE.EffectComposer(this.renderer);
         this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
@@ -127,6 +133,146 @@ class Game {
     if (this.isMobile) document.getElementById('mobile-controls').classList.remove('hidden');
   }
 
+
+  static shouldUseLowMemoryMode() {
+    const params = new URLSearchParams(location.search || '');
+    if (params.get('lowmem') === '0') return false;
+    if (params.get('lowmem') === '1') return true;
+    try {
+      const saved = localStorage.getItem('neonLowMemory');
+      if (saved === '1') return true;
+      if (saved === '0') return false;
+    } catch (e) {}
+    const mem = navigator.deviceMemory || 4;
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+    return mem <= 1.5 || (mobile && mem <= 2);
+  }
+
+  disposeMaterial(mat) {
+    if (!mat) return;
+    const mats = Array.isArray(mat) ? mat : [mat];
+    mats.forEach(m => {
+      if (!m) return;
+      ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'aoMap'].forEach(k => {
+        if (m[k] && typeof m[k].dispose === 'function') m[k].dispose();
+      });
+      if (typeof m.dispose === 'function') m.dispose();
+    });
+  }
+
+  disposeObject3D(root) {
+    if (!root) return;
+    root.traverse(obj => {
+      if (obj.geometry && typeof obj.geometry.dispose === 'function') obj.geometry.dispose();
+      if (obj.material) this.disposeMaterial(obj.material);
+    });
+  }
+
+  clearTransientEffects() {
+    const clearMeshList = (list, entryMesh = false) => {
+      if (!Array.isArray(list)) return [];
+      list.forEach(entry => {
+        const mesh = entryMesh ? entry.mesh : entry;
+        if (mesh) {
+          this.scene.remove(mesh);
+          this.disposeObject3D(mesh);
+        }
+      });
+      return [];
+    };
+    this.enemies = clearMeshList(this.enemies);
+    this.items = clearMeshList(this.items);
+    this.particles = clearMeshList(this.particles, true);
+    this.tracers = clearMeshList(this.tracers, true);
+    this.eBullets = clearMeshList(this.eBullets, true);
+    this.pProj = clearMeshList(this.pProj, true);
+    this.tProj = clearMeshList(this.tProj, true);
+    this.rings = clearMeshList(this.rings || [], true);
+    this.boss = null;
+    this.bosses = [];
+    const bossWrap = document.getElementById('boss-bar-wrap');
+    if (bossWrap) bossWrap.classList.add('hidden');
+  }
+
+  applyLowMemoryWorldOptimizations() {
+    if (!this.lowMemoryMode || !this.worldGroup) return;
+    const protectedRoots = new Set([...(this.objects || []), ...(this.portals || []).map(p => p.mesh).filter(Boolean)]);
+    const isProtected = (obj) => {
+      let cur = obj;
+      while (cur) {
+        if (protectedRoots.has(cur)) return true;
+        cur = cur.parent;
+      }
+      return false;
+    };
+    let smallMeshIndex = 0, lightIndex = 0, removed = 0;
+    const toRemove = [];
+    this.worldGroup.traverse(obj => {
+      obj.castShadow = false;
+      obj.receiveShadow = false;
+      if (obj.isLight && !isProtected(obj)) {
+        lightIndex++;
+        if (obj.isPointLight || obj.isSpotLight) {
+          obj.intensity *= lightIndex <= 8 ? 0.55 : 0;
+          if (lightIndex > 8) toRemove.push(obj);
+        }
+      }
+      if (!obj.isMesh || isProtected(obj)) return;
+      if (obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => {
+          if (!m) return;
+          if (m.emissiveIntensity !== undefined) m.emissiveIntensity *= 0.65;
+          if (m.transparent && m.opacity > 0.45) m.opacity *= 0.8;
+        });
+      }
+      if (obj.geometry) {
+        obj.geometry.computeBoundingSphere();
+        const r = obj.geometry.boundingSphere ? obj.geometry.boundingSphere.radius * Math.max(obj.scale.x, obj.scale.y, obj.scale.z) : 99;
+        const transparent = obj.material && (Array.isArray(obj.material) ? obj.material.some(m => m && m.transparent) : obj.material.transparent);
+        if (r < 0.85 || transparent) {
+          smallMeshIndex++;
+          if (smallMeshIndex % 3 !== 0) toRemove.push(obj);
+        }
+      }
+    });
+    toRemove.forEach(obj => {
+      if (!obj.parent || isProtected(obj)) return;
+      obj.parent.remove(obj);
+      this.disposeObject3D(obj);
+      removed++;
+    });
+    this.lowMemoryStats = { removedDecor: removed, retainedColliders: this.objects.length, level: this.level };
+  }
+
+  trimTransientEffects() {
+    if (!this.lowMemoryMode) return;
+    const caps = { particles: 70, tracers: 14, eBullets: 24, pProj: 10, tProj: 16, rings: 8 };
+    const trim = (list, cap, entryMesh = true) => {
+      if (!Array.isArray(list)) return;
+      while (list.length > cap) {
+        const entry = list.shift();
+        const mesh = entryMesh ? entry.mesh : entry;
+        if (mesh) { this.scene.remove(mesh); this.disposeObject3D(mesh); }
+      }
+    };
+    trim(this.particles, caps.particles);
+    trim(this.tracers, caps.tracers);
+    trim(this.eBullets, caps.eBullets);
+    trim(this.pProj, caps.pProj);
+    trim(this.tProj, caps.tProj);
+    trim(this.rings || [], caps.rings);
+  }
+
+  applyLowMemoryEnemy(mesh) {
+    if (!this.lowMemoryMode || !mesh) return;
+    mesh.traverse(obj => {
+      obj.castShadow = false;
+      obj.receiveShadow = false;
+      if (obj.isLight) obj.intensity *= 0.5;
+    });
+  }
+
   // ---------------- WORLD ----------------
   initWorld() {
     // Environment is built per-level on Deploy. Just set up the viewmodel now.
@@ -135,7 +281,11 @@ class Game {
   }
 
   buildWorld(level) {
-    if (this.worldGroup) this.scene.remove(this.worldGroup);
+    if (this.worldGroup) {
+      this.scene.remove(this.worldGroup);
+      this.disposeObject3D(this.worldGroup);
+    }
+    this.clearTransientEffects();
     this.objects = [];
     this.elevatedSupports = [];
     this.worldGroup = new THREE.Group();
@@ -162,6 +312,7 @@ class Game {
     else if (level === 'jungle') this.buildJungle(this.worldGroup);
     else if (level === 'japan') this.buildJapan(this.worldGroup);
     else this.buildCity(this.worldGroup);
+    this.applyLowMemoryWorldOptimizations();
   }
 
 
@@ -2618,7 +2769,7 @@ class Game {
     }
 
     // cap for performance
-    const targetCount = Math.min(50, 20 + (n - 1) * 10);
+    const targetCount = this.lowMemoryMode ? Math.min(24, 8 + (n - 1) * 4) : Math.min(50, 20 + (n - 1) * 10);
     const pattern = list.length ? list.slice() : ['grunt'];
     while (list.length < targetCount) list.push(pattern[list.length % pattern.length]);
     return list.slice(0, targetCount);
@@ -2678,6 +2829,7 @@ class Game {
       fly: cfg.fly, altitude: cfg.altitude, hover: cfg.fly || cfg.hover,
       score: cfg.score, animOffset: Math.random() * 10, lastFire: 0, hitFlash: 0
     });
+    this.applyLowMemoryEnemy(mesh);
     this.scene.add(mesh);
     this.enemies.push(mesh);
     if (cfg.boss) {
@@ -2836,11 +2988,11 @@ class Game {
 
   // PLASMA projectile
   spawnPlasma(pos, dir, w) {
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 14),
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.16, this.lowMemoryMode ? 8 : 14, this.lowMemoryMode ? 8 : 14),
       new THREE.MeshBasicMaterial({ color: w.color }));
     mesh.position.copy(pos);
     const light = new THREE.PointLight(w.color, 2.2, 8); mesh.add(light);
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12),
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.26, this.lowMemoryMode ? 8 : 12, this.lowMemoryMode ? 8 : 12),
       new THREE.MeshBasicMaterial({ color: w.color, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
     mesh.add(halo);
     this.scene.add(mesh);
@@ -2854,20 +3006,19 @@ class Game {
       const d = e.position.distanceTo(pos);
       if (d < splash) this.damageEnemy(e, dmg * (1 - d / splash * 0.5), e.position.clone().setY(e.userData.eyeHeight * 0.6));
     }
-    this.spawnSparks(pos, color, 26);
+    this.spawnSparks(pos, color, this.lowMemoryMode ? 8 : 26);
     // shockwave ring
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.5, 24),
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.5, this.lowMemoryMode ? 12 : 24),
       new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
     ring.position.copy(pos); ring.rotation.x = -Math.PI / 2;
     this.scene.add(ring); this.rings = this.rings || []; this.rings.push({ mesh: ring, life: 0.4, max: splash });
-    const fl = new THREE.PointLight(color, 6, splash * 3); fl.position.copy(pos); this.scene.add(fl);
-    setTimeout(() => this.scene.remove(fl), 90);
+    if (!this.lowMemoryMode) { const fl = new THREE.PointLight(color, 6, splash * 3); fl.position.copy(pos); this.scene.add(fl); setTimeout(() => this.scene.remove(fl), 90); }
     this.sound.kill();
   }
 
   spawnBeam(from, to, color) {
     const dist = from.distanceTo(to);
-    const geo = new THREE.CylinderGeometry(0.05, 0.05, dist, 10);
+    const geo = new THREE.CylinderGeometry(0.05, 0.05, dist, this.lowMemoryMode ? 5 : 10);
     const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
     const m = new THREE.Mesh(geo, mat);
     m.position.copy(from).lerp(to, 0.5); m.lookAt(to); m.rotateX(Math.PI / 2);
@@ -2950,15 +3101,15 @@ class Game {
     const origin = e.position.clone().setY(e.userData.eyeHeight * (e.userData.boss ? 0.85 : 1));
     const target = this.camera.position.clone();
     const baseDir = target.sub(origin).normalize();
-    const shots = e.userData.boss ? 5 : 1;
+      const shots = e.userData.boss ? (this.lowMemoryMode ? 3 : 5) : 1;
     for (let i = 0; i < shots; i++) {
       const dir = baseDir.clone();
       if (shots > 1) { const a = (i - (shots - 1) / 2) * 0.13; dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), a); }
       const col = e.userData.cores[0].color.getHex();
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10),
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, this.lowMemoryMode ? 6 : 10, this.lowMemoryMode ? 6 : 10),
         new THREE.MeshBasicMaterial({ color: col }));
       mesh.position.copy(origin);
-      const light = new THREE.PointLight(col, 1.5, 6); mesh.add(light);
+      if (!this.lowMemoryMode) { const light = new THREE.PointLight(col, 1.5, 6); mesh.add(light); }
       this.scene.add(mesh);
       this.eBullets.push({ mesh, vel: dir.multiplyScalar(34), life: 3, dmg: e.userData.projDmg });
     }
@@ -2968,7 +3119,8 @@ class Game {
   // ---------------- PARTICLES ----------------
   spawnTracer(from, to, color) {
     const dist = from.distanceTo(to);
-    const geo = new THREE.CylinderGeometry(0.018, 0.018, dist, 6);
+    if (this.lowMemoryMode && this.tracers.length > 12) return;
+    const geo = new THREE.CylinderGeometry(0.018, 0.018, dist, this.lowMemoryMode ? 4 : 6);
     const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
     const m = new THREE.Mesh(geo, mat);
     m.position.copy(from).lerp(to, 0.5);
@@ -2978,6 +3130,8 @@ class Game {
   }
 
   spawnSparks(pos, color, count, normal) {
+    count = this.lowMemoryMode ? Math.min(count, 7) : count;
+    if (this.lowMemoryMode && this.particles.length > 64) return;
     for (let i = 0; i < count; i++) {
       const geo = new THREE.BoxGeometry(0.06, 0.06, 0.06);
       const mat = new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -3287,6 +3441,8 @@ class Game {
       pulse.userData.spinV = THREE.MathUtils.lerp(pulse.userData.spinV || 0, 0, dt * 3);
       pulse.userData.spin.rotation.z -= (pulse.userData.spinV || 0) * dt;
     }
+
+    this.trimTransientEffects();
 
     // MEGAWATT CITY live props
     if (this.megaProps) {
