@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upcoming Events | SportCal Bermuda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy:   #061c46;
+      --navy-2: #09265d;
+      --pink:   #ef4f91;
+      --text:   #081b3f;
+      --muted:  #5d6b85;
+      --line:   #dce5f2;
+      --bg:     #eef6fc;
+      --white:  #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 30px 20px;
+      background: var(--bg);
+      font-family: "Inter", Arial, sans-serif;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Widget shell ─────────────────────────────────── */
+    .sports-zone-event-widget {
+      width: min(580px, 100%);
+    }
+
+    /* ── Header row ───────────────────────────────────── */
+    .update-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .update-head .label {
+      color: var(--navy);
+      font-weight: 900;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .view-all {
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .view-all:hover { color: var(--pink); }
+
+    /* ── Carousel viewport ────────────────────────────── */
+    .carousel-viewport {
+      overflow: hidden;
+      border-radius: 13px;
+      position: relative;
+    }
+
+    .carousel-track {
+      display: flex;
+      transition: transform 0.55s cubic-bezier(.4,0,.2,1);
+      will-change: transform;
+    }
+
+    /* ── Individual card ──────────────────────────────── */
+    .feature-card {
+      min-width: 100%;
+      background: var(--white);
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 20px;
+      padding: 18px;
+      box-shadow: 0 12px 28px rgba(8,27,63,.09);
+      border: 1px solid var(--line);
+    }
+
+    .card-img-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 9px;
+      height: 148px;
+      background: var(--line);
+    }
+
+    .card-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Sport badge on image */
+    .sport-badge {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      background: var(--navy);
+      color: var(--white);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .card-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card-body h3 {
+      color: var(--navy);
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .meta {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .meta svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .org-name {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .card-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 10px;
+      color: var(--pink);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .card-link:hover { opacity: .8; }
+
+    /* ── Dot indicators ───────────────────────────────── */
+    .dots {
+      display: flex;
+      justify-content: center;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--line);
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      transition: background .25s, transform .25s;
+    }
+
+    .dot.active {
+      background: var(--navy);
+      transform: scale(1.25);
+    }
+
+    /* ── Progress bar ─────────────────────────────────── */
+    .progress-bar-wrap {
+      height: 3px;
+      background: var(--line);
+      border-radius: 2px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--pink);
+      border-radius: 2px;
+      width: 0%;
+      transition: width linear;
+    }
+
+    /* ── Loading / error states ───────────────────────── */
+    .state-card {
+      background: var(--white);
+      border-radius: 13px;
+      padding: 40px 24px;
+      text-align: center;
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 28px rgba(8,27,63,.06);
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--line);
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 14px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .state-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 520px) {
+      body { padding: 16px 12px; }
+
+      .feature-card {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .card-img-wrap {
+        height: 170px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<section class="sports-zone-event-widget" aria-label="Upcoming Events">
+
+  <!-- Header -->
+  <div class="update-head">
+    <span class="label">Upcoming Events</span>
+    <a class="view-all" href="https://sportcal-6xjon.ondigitalocean.app" target="_blank" rel="noopener">
+      View All Events ›
+    </a>
+  </div>
+
+  <!-- Loading state (shown until data arrives) -->
+  <div id="loading-state" class="state-card">
+    <div class="spinner"></div>
+    <p>Loading upcoming events&hellip;</p>
+  </div>
+
+  <!-- Error state (shown on fetch failure) -->
+  <div id="error-state" class="state-card" style="display:none;">
+    <p style="font-size:28px;margin-bottom:10px;">⚠️</p>
+    <p>Could not load events. Please try again later.</p>
+  </div>
+
+  <!-- Carousel (hidden until data arrives) -->
+  <div id="carousel-wrap" style="display:none;">
+    <div class="carousel-viewport">
+      <div class="carousel-track" id="carousel-track"></div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <div class="dots" id="dots" role="tablist" aria-label="Event slides"></div>
+  </div>
+
+</section>
+
+<script>
+/* ─────────────────────────────────────────────────────────
+   CONFIG — edit these two values to point at any project
+   ───────────────────────────────────────────────────────── */
+const SUPABASE_URL  = 'https://kufokhkvgqgomicnsmpz.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1Zm9raGt2Z3Fnb21pY25zbXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MzUzODUsImV4cCI6MjA2NjMxMTM4NX0.hN86JSRhxPqSYolXJN5gn1cQ-Ibu21l1cHpLIaRY-hY';
+
+/* How long each slide is shown (ms) before auto-advancing */
+const SLIDE_DURATION = 5000;
+
+/* ─────────────────────────────────────────────────────────
+   Sport → fallback image mapping (Unsplash, no key needed)
+   ───────────────────────────────────────────────────────── */
+const SPORT_IMAGES = {
+  'Athletics (Track & Field)': 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=900&q=70',
+  'Basketball':  'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=900&q=70',
+  'Bowling':     'https://images.unsplash.com/photo-1511988617509-a57c8a288659?auto=format&fit=crop&w=900&q=70',
+  'Boxing':      'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=900&q=70',
+  'Cricket':     'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=900&q=70',
+  'Cycling':     'https://images.unsplash.com/photo-1541625602330-2277a4c46182?auto=format&fit=crop&w=900&q=70',
+  'Equestrian':  'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?auto=format&fit=crop&w=900&q=70',
+  'Football (Soccer)': 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=900&q=70',
+  'Golf':        'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?auto=format&fit=crop&w=900&q=70',
+  'Gymnastics':  'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?auto=format&fit=crop&w=900&q=70',
+  'Hockey (Field Hockey)': 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=900&q=70',
+  'Karate':      'https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&w=900&q=70',
+  'Karting':     'https://images.unsplash.com/photo-1504707748692-419802cf939d?auto=format&fit=crop&w=900&q=70',
+  'Motocross':   'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=70',
+  'Netball':     'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=900&q=70',
+  'Archery':     'https://images.unsplash.com/photo-1569517282132-25d22f4573e6?auto=format&fit=crop&w=900&q=70',
+  'Pickleball':  'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=900&q=70',
+  'Rowing':      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=70',
+  'Rugby Union': 'https://images.unsplash.com/photo-1548690312-e3b507d8c110?auto=format&fit=crop&w=900&q=70',
+  'Sailing':     'https://images.unsplash.com/photo-1500514966906-fe245eea9344?auto=format&fit=crop&w=900&q=70',
+  'Sanshou':     'https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&w=900&q=70',
+  'Squash':      'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?auto=format&fit=crop&w=900&q=70',
+  'Swimming':    'https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=900&q=70',
+  'Tennis':      'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?auto=format&fit=crop&w=900&q=70',
+  'Triathlon':   'https://images.unsplash.com/photo-1541625602330-2277a4c46182?auto=format&fit=crop&w=900&q=70',
+  'Volleyball':  'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=900&q=70',
+  'Boccia':      'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=900&q=70',
+  'Other':       'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=70',
+};
+
+const DEFAULT_IMG = 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=70';
+
+/* ─────────────────────────────────────────────────────────
+   Helpers
+   ───────────────────────────────────────────────────────── */
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function getImage(event) {
+  if (event.image_url && event.image_url.trim()) return event.image_url.trim();
+  return SPORT_IMAGES[event.sport] || DEFAULT_IMG;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Fetch top 5 upcoming events from Supabase
+   ───────────────────────────────────────────────────────── */
+async function fetchEvents() {
+  const today = new Date().toISOString().slice(0, 10);
+  const url = `${SUPABASE_URL}/rest/v1/events` +
+    `?select=id,title,date,time,location,sport,organization_name,image_url` +
+    `&is_published=eq.true&archived=eq.false&date=gte.${today}` +
+    `&order=date.asc&limit=5`;
+
+  const resp = await fetch(url, {
+    headers: {
+      'apikey': SUPABASE_ANON,
+      'Authorization': `Bearer ${SUPABASE_ANON}`,
+    }
+  });
+
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+/* ─────────────────────────────────────────────────────────
+   Build carousel HTML
+   ───────────────────────────────────────────────────────── */
+function buildCard(event) {
+  const img   = getImage(event);
+  const sport = escHtml(event.sport || 'Sport');
+  const title = escHtml(event.title || 'Untitled Event');
+  const date  = escHtml(formatDate(event.date));
+  const time  = event.time ? ` · ${escHtml(event.time)}` : '';
+  const loc   = escHtml(event.location || '');
+  const org   = escHtml(event.organization_name || '');
+
+  return `
+    <article class="feature-card" role="tabpanel">
+      <div class="card-img-wrap">
+        <img src="${escHtml(img)}" alt="${title}" loading="lazy"
+             onerror="this.src='${DEFAULT_IMG}'">
+        <span class="sport-badge">${sport}</span>
+      </div>
+      <div class="card-body">
+        <div>
+          <h3>${title}</h3>
+          <div class="meta">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>${date}${time}</span>
+          </div>
+          ${loc ? `<div class="meta">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>${loc}</span>
+          </div>` : ''}
+          ${org ? `<div class="org-name">${org}</div>` : ''}
+        </div>
+        <a class="card-link" href="https://sportcal-6xjon.ondigitalocean.app" target="_blank" rel="noopener">
+          View Event ›
+        </a>
+      </div>
+    </article>`;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Carousel controller
+   ───────────────────────────────────────────────────────── */
+let current   = 0;
+let total     = 0;
+let autoTimer = null;
+let progTimer = null;
+
+const track   = document.getElementById('carousel-track');
+const dotsEl  = document.getElementById('dots');
+const progBar = document.getElementById('progress-bar');
+
+function goTo(index) {
+  current = (index + total) % total;
+  track.style.transform = `translateX(-${current * 100}%)`;
+
+  // Update dots
+  dotsEl.querySelectorAll('.dot').forEach((d, i) => {
+    d.classList.toggle('active', i === current);
+    d.setAttribute('aria-selected', i === current);
+  });
+
+  // Restart progress bar
+  progBar.style.transition = 'none';
+  progBar.style.width = '0%';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      progBar.style.transition = `width ${SLIDE_DURATION}ms linear`;
+      progBar.style.width = '100%';
+    });
+  });
+}
+
+function startAuto() {
+  clearInterval(autoTimer);
+  autoTimer = setInterval(() => goTo(current + 1), SLIDE_DURATION);
+}
+
+function initCarousel(events) {
+  total = events.length;
+
+  // Build slides
+  track.innerHTML = events.map(buildCard).join('');
+
+  // Build dots
+  dotsEl.innerHTML = events.map((_, i) => `
+    <button class="dot${i === 0 ? ' active' : ''}"
+            role="tab"
+            aria-label="Event ${i + 1}"
+            aria-selected="${i === 0}"
+            data-index="${i}"></button>`
+  ).join('');
+
+  dotsEl.addEventListener('click', e => {
+    const btn = e.target.closest('.dot');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.index, 10);
+    goTo(idx);
+    clearInterval(autoTimer);
+    startAuto();
+  });
+
+  // Pause on hover
+  const viewport = document.querySelector('.carousel-viewport');
+  viewport.addEventListener('mouseenter', () => {
+    clearInterval(autoTimer);
+    progBar.style.transition = 'none';
+  });
+  viewport.addEventListener('mouseleave', () => {
+    goTo(current);
+    startAuto();
+  });
+
+  // Touch/swipe support
+  let touchStartX = 0;
+  viewport.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  viewport.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 40) {
+      goTo(dx < 0 ? current + 1 : current - 1);
+      clearInterval(autoTimer);
+      startAuto();
+    }
+  }, { passive: true });
+
+  goTo(0);
+  startAuto();
+}
+
+/* ─────────────────────────────────────────────────────────
+   Bootstrap
+   ───────────────────────────────────────────────────────── */
+(async () => {
+  try {
+    const events = await fetchEvents();
+
+    document.getElementById('loading-state').style.display = 'none';
+
+    if (!events || events.length === 0) {
+      document.getElementById('error-state').style.display = 'block';
+      document.getElementById('error-state').querySelector('p:last-child').textContent =
+        'No upcoming events found. Check back soon!';
+      return;
+    }
+
+    document.getElementById('carousel-wrap').style.display = 'block';
+    initCarousel(events);
+
+  } catch (err) {
+    console.error('Widget error:', err);
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('error-state').style.display = 'block';
+  }
+})();
+</script>
+
+</body>
+</html>
