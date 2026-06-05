@@ -8,6 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <!-- Widget path redirect: serve /widget/ as standalone page -->
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p === '/widget' || p === '/widget/' || p.indexOf('/widget/') === 0) {
+        window.location.replace('/widget/index.html');
+      }
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     /* ═══════════════════════════════════════════════════════════════
