@@ -38,6 +38,12 @@ class Game {
     this.composer = null; // bloom disabled for performance
 
     this.clock = new THREE.Clock();
+    this.framePerf = { avgMs: 16.7, slow: false, pulseSoundStep: 0, minimapAccum: 0 };
+    this._liveAnimAccum = 0;
+    this._effectMats = {};
+    this._effectGeometries = {};
+    this._pulseShotCounter = 0;
+    this.raycastObjects = [];
     this.sound = new SoundManager();
     this.sound.loadSample('shoot', (window.__resources && window.__resources.shootSfx) || 'uploads/chromascension-lazer-gun-one-shot-542393.mp3');
     this.settings = { sensitivity: 0.0022, invertY: false };
@@ -106,6 +112,8 @@ class Game {
       { ...this.japanWeapons[0] },
       { ...this.japanWeapons[2] }
     ];
+    this.applyFramePacingWeaponTuning(this.defaultWeapons);
+    this.applyFramePacingWeaponTuning(this.japanWeapons);
     this.weaponSmooth = { bowDraw: 0, bowRelease: 0 };
 
     this.input = { w: 0, a: 0, s: 0, d: 0, jump: 0, shoot: 0, sprint: 0 };
@@ -144,6 +152,7 @@ class Game {
     const mats = Array.isArray(mat) ? mat : [mat];
     mats.forEach(m => {
       if (!m) return;
+      if (m.userData && m.userData.sharedEffectResource) return;
       ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'aoMap'].forEach(k => {
         if (m[k] && typeof m[k].dispose === 'function') m[k].dispose();
       });
@@ -154,7 +163,7 @@ class Game {
   disposeObject3D(root) {
     if (!root) return;
     root.traverse(obj => {
-      if (obj.geometry && typeof obj.geometry.dispose === 'function') obj.geometry.dispose();
+      if (obj.geometry && typeof obj.geometry.dispose === 'function' && !(obj.geometry.userData && obj.geometry.userData.sharedEffectResource)) obj.geometry.dispose();
       if (obj.material) this.disposeMaterial(obj.material);
     });
   }
@@ -255,6 +264,90 @@ class Game {
     trim(this.rings || [], caps.rings);
   }
 
+  applyFramePacingWeaponTuning(weapons) {
+    if (!Array.isArray(weapons)) return weapons;
+    weapons.forEach(w => {
+      if (!w || w.model !== 'pulse') return;
+      if (w.baseRate === undefined) w.baseRate = w.rate;
+      if (w.baseDmg === undefined) w.baseDmg = w.dmg;
+      if (this.lowMemoryMode) {
+        // The old 40 ms pulse stream created too many raycasts, tracers, spark meshes,
+        // hitmarker timers, and WebAudio nodes per second on 1 GB RAM devices.
+        // Keep the weapon automatic, but pace it like a compact energy SMG.
+        w.rate = Math.max(w.baseRate, 90);
+        w.dmg = Math.max(w.baseDmg, 12);
+        w.fxCadence = 3;
+        w.soundCadence = 3;
+      } else {
+        w.rate = w.baseRate;
+        w.dmg = w.baseDmg;
+        w.fxCadence = 1;
+        w.soundCadence = 1;
+      }
+    });
+    return weapons;
+  }
+
+  effectiveWeaponRate(w) {
+    if (!w) return 999;
+    let rate = w.rate || 100;
+    if (w.model === 'pulse' && this.framePerf && this.framePerf.slow) rate = Math.max(rate, this.lowMemoryMode ? 125 : 75);
+    return rate;
+  }
+
+  shouldEmitPulseVisual(w) {
+    if (!w || w.model !== 'pulse') return true;
+    this._pulseShotCounter = (this._pulseShotCounter || 0) + 1;
+    const cadence = this.lowMemoryMode ? (this.framePerf && this.framePerf.slow ? 4 : (w.fxCadence || 3)) : (this.framePerf && this.framePerf.slow ? 2 : 1);
+    return cadence <= 1 || this._pulseShotCounter % cadence === 0;
+  }
+
+  shouldEmitWeaponSound(w) {
+    if (!w || w.model !== 'pulse') return true;
+    this.framePerf.pulseSoundStep = (this.framePerf.pulseSoundStep || 0) + 1;
+    const cadence = this.lowMemoryMode ? (this.framePerf.slow ? 4 : (w.soundCadence || 3)) : (this.framePerf.slow ? 2 : 1);
+    return cadence <= 1 || this.framePerf.pulseSoundStep % cadence === 0;
+  }
+
+  updateFramePerf(dt) {
+    if (!this.framePerf) return;
+    const ms = Math.max(1, Math.min(120, dt * 1000));
+    this.framePerf.avgMs = this.framePerf.avgMs * 0.92 + ms * 0.08;
+    this.framePerf.slow = this.framePerf.avgMs > (this.lowMemoryMode ? 24 : 30);
+  }
+
+  getEffectMaterial(key, color, opacity = 1) {
+    const k = key + ':' + color.toString(16) + ':' + opacity;
+    if (!this._effectMats[k]) {
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
+      mat.userData.sharedEffectResource = true;
+      this._effectMats[k] = mat;
+    }
+    return this._effectMats[k];
+  }
+
+  getSparkGeometry() {
+    if (!this._effectGeometries.spark) {
+      const geo = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+      geo.userData.sharedEffectResource = true;
+      this._effectGeometries.spark = geo;
+    }
+    return this._effectGeometries.spark;
+  }
+
+  rebuildRaycastCache() {
+    const src = this.objects || [];
+    if (!this.lowMemoryMode) { this.raycastObjects = src; return; }
+    this.raycastObjects = src.filter(obj => {
+      if (!obj) return false;
+      if (obj.userData && obj.userData.isCollider) return true;
+      if (!obj.geometry) return true;
+      obj.geometry.computeBoundingSphere();
+      const r = obj.geometry.boundingSphere ? obj.geometry.boundingSphere.radius * Math.max(obj.scale.x, obj.scale.y, obj.scale.z) : 99;
+      return r > 0.55;
+    });
+  }
+
   applyLowMemoryEnemy(mesh) {
     if (!this.lowMemoryMode || !mesh) return;
     mesh.traverse(obj => {
@@ -304,6 +397,7 @@ class Game {
     else if (level === 'japan') this.buildJapan(this.worldGroup);
     else this.buildCity(this.worldGroup);
     this.applyLowMemoryWorldOptimizations();
+    this.rebuildRaycastCache();
   }
 
 
@@ -2684,7 +2778,7 @@ class Game {
     this.buildWorld(this.level || 'city');
     // pick arsenal for the level: all theatres include the neon katana and bow,
     // while Japan keeps the focused katana / shuriken / bow loadout.
-    this.player.weapons = this.level === 'japan' ? this.japanWeapons : (this.level === 'houseyard' ? this.defaultWeapons.map(w => ({ ...w, ammo: Infinity, maxAmmo: Infinity })) : this.defaultWeapons);
+    this.player.weapons = this.applyFramePacingWeaponTuning(this.level === 'japan' ? this.japanWeapons : (this.level === 'houseyard' ? this.defaultWeapons.map(w => ({ ...w, ammo: Infinity, maxAmmo: Infinity })) : this.defaultWeapons));
     this.player.weaponIdx = this.level === 'japan' ? 0 : (this.startWeaponIdx || 0);
     this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
     this.waveCountdown = null; this.boss = null; this.bosses = [];
@@ -2923,6 +3017,8 @@ class Game {
     const camPos = this.camera.getWorldPosition(new THREE.Vector3());
     const baseDir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
     const muzzlePos = this.muzzleFlash.getWorldPosition(new THREE.Vector3());
+    const isPulse = w.model === 'pulse';
+    const emitPulseVisual = !isPulse || this.shouldEmitPulseVisual(w);
 
     if (w.melee) {
       // KATANA — arc slash hitting all enemies within reach + frontal cone
@@ -2992,22 +3088,28 @@ class Game {
         dir.normalize();
         this.raycaster.set(camPos, dir); this.raycaster.far = 400;
         const eHits = this.raycaster.intersectObjects(this.enemies, true);
-        const wHits = this.raycaster.intersectObjects(this.objects, false);
+        const wallTargets = (isPulse && this.lowMemoryMode && this.raycastObjects && this.raycastObjects.length) ? this.raycastObjects : this.objects;
+        const wHits = this.raycaster.intersectObjects(wallTargets, false);
         const eDist = eHits.length ? eHits[0].distance : Infinity;
         const wDist = wHits.length ? wHits[0].distance : Infinity;
         let endPoint;
         if (eDist < wDist && eHits.length) {
           const root = this.enemyRoot(eHits[0].object);
           endPoint = eHits[0].point;
-          if (root) this.damageEnemy(root, w.dmg, eHits[0].point);
-          this.spawnSparks(eHits[0].point, w.color, 6);
+          if (root) {
+            const prevSuppress = this._suppressNextHitFeedback;
+            this._suppressNextHitFeedback = isPulse && !emitPulseVisual;
+            this.damageEnemy(root, w.dmg, eHits[0].point);
+            this._suppressNextHitFeedback = prevSuppress;
+          }
+          if (emitPulseVisual) this.spawnSparks(eHits[0].point, w.color, isPulse ? 2 : 6);
         } else if (wHits.length) {
           endPoint = wHits[0].point;
-          this.spawnSparks(wHits[0].point, 0xffd089, 4, wHits[0].face ? wHits[0].face.normal : null);
+          if (emitPulseVisual) this.spawnSparks(wHits[0].point, 0xffd089, isPulse ? 1 : 4, wHits[0].face ? wHits[0].face.normal : null);
         } else {
           endPoint = camPos.clone().add(dir.multiplyScalar(400));
         }
-        this.spawnTracer(muzzlePos, endPoint, w.color);
+        if (emitPulseVisual) this.spawnTracer(muzzlePos, endPoint, w.color);
       }
     }
 
@@ -3015,11 +3117,13 @@ class Game {
     this.gunGroup.position.z = -0.42 - (w.kick || 0.01) * 3;
     this.gunGroup.rotation.x = 0.06 + (w.kick || 0.01) * 2.5;
     this.camera.rotation.x += w.kick || 0.012;
-    this.muzzleFlash.material.opacity = 1;
-    this.muzzleFlash.rotation.z = Math.random() * Math.PI;
-    this.muzzleFlash.scale.setScalar(w.pellets ? 1.6 : (w.pierce ? 1.8 : (w.projectile ? 1.4 : 1)));
-    this.muzzleLight.intensity = w.pierce ? 5 : 3;
-    if (this.gunModels.pulse.userData.spin && w.model === 'pulse') this.gunModels.pulse.userData.spinV = 26;
+    if (!isPulse || emitPulseVisual) {
+      this.muzzleFlash.material.opacity = isPulse && this.lowMemoryMode ? 0.45 : 1;
+      this.muzzleFlash.rotation.z = Math.random() * Math.PI;
+      this.muzzleFlash.scale.setScalar(w.pellets ? 1.6 : (w.pierce ? 1.8 : (w.projectile ? 1.4 : 1)));
+      this.muzzleLight.intensity = this.lowMemoryMode && isPulse ? 0.4 : (w.pierce ? 5 : 3);
+    }
+    if (this.gunModels.pulse.userData.spin && w.model === 'pulse' && emitPulseVisual) this.gunModels.pulse.userData.spinV = this.lowMemoryMode ? 10 : 26;
   }
 
   // PLASMA projectile
@@ -3102,8 +3206,10 @@ class Game {
   damageEnemy(e, dmg, point) {
     e.userData.hp -= dmg;
     e.userData.hitFlash = 1;
-    this.sound.hit();
-    this.showHitmarker(false);
+    if (!this._suppressNextHitFeedback) {
+      this.sound.hit();
+      this.showHitmarker(false);
+    }
     if (e.userData.hp <= 0) {
       this.killEnemy(e, point);
     }
@@ -3157,7 +3263,7 @@ class Game {
     const dist = from.distanceTo(to);
     if (this.lowMemoryMode && this.tracers.length > 12) return;
     const geo = new THREE.CylinderGeometry(0.018, 0.018, dist, this.lowMemoryMode ? 4 : 6);
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+    const mat = this.lowMemoryMode ? this.getEffectMaterial('tracer', color, 0.9) : new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
     const m = new THREE.Mesh(geo, mat);
     m.position.copy(from).lerp(to, 0.5);
     m.lookAt(to); m.rotateX(Math.PI / 2);
@@ -3166,11 +3272,13 @@ class Game {
   }
 
   spawnSparks(pos, color, count, normal) {
-    count = this.lowMemoryMode ? Math.min(count, 7) : count;
-    if (this.lowMemoryMode && this.particles.length > 64) return;
+    count = this.lowMemoryMode ? Math.min(count, 5) : count;
+    if (this.lowMemoryMode && this.particles.length > 48) return;
+    const sharedGeo = this.lowMemoryMode ? this.getSparkGeometry() : null;
+    const sharedMat = this.lowMemoryMode ? this.getEffectMaterial('spark', color, 1) : null;
     for (let i = 0; i < count; i++) {
-      const geo = new THREE.BoxGeometry(0.06, 0.06, 0.06);
-      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+      const geo = sharedGeo || new THREE.BoxGeometry(0.06, 0.06, 0.06);
+      const mat = sharedMat || new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
       const m = new THREE.Mesh(geo, mat); m.position.copy(pos);
       let v = new THREE.Vector3((Math.random() - 0.5), Math.random() * 0.8 + 0.2, (Math.random() - 0.5));
       if (normal) v.add(normal.clone().multiplyScalar(0.8));
@@ -3221,6 +3329,7 @@ class Game {
   // ---------------- UPDATE ----------------
   update(dt) {
     if (this.isPaused || !this.gameStarted) return;
+    this.updateFramePerf(dt);
     const P = this.player;
 
     // movement
@@ -3357,19 +3466,20 @@ class Game {
         if (it.userData.health) { P.hp = Math.min(P.maxHp, P.hp + 35); this.showMessage('+ HEALTH', '#ff3355'); }
         else { P.weapons.forEach(w => { if (w.name !== 'PISTOL') w.ammo = this.level === 'houseyard' ? Infinity : Math.min(w.maxAmmo, w.ammo + 30); }); this.showMessage(this.level === 'houseyard' ? 'AMMO ALREADY UNLIMITED' : '+ AMMO', '#39ff14'); }
         this.updateHUD();
-        this.scene.remove(it); this.items.splice(i, 1);
+        this.scene.remove(it); this.disposeObject3D(it); this.items.splice(i, 1);
       }
     }
 
     // shooting
     const w = P.weapons[P.weaponIdx];
     const now = Date.now();
-    if (this.input.shoot && w.ammo > 0 && !this.gunGroup.userData.reloading && now - (w.lastShot || 0) > w.rate) {
+    const fireRate = this.effectiveWeaponRate(w);
+    if (this.input.shoot && w.ammo > 0 && !this.gunGroup.userData.reloading && now - (w.lastShot || 0) > fireRate) {
       if (this.level !== 'houseyard') w.ammo--;
       else w.ammo = Infinity;
       w.lastShot = now;
       this.fireWeapon(w);
-      this.sound.shoot(w.name.toLowerCase());
+      if (this.shouldEmitWeaponSound(w)) this.sound.shoot(w.name.toLowerCase());
       this.updateHUD();
     }
     // gun sway/return (ADS pulls weapon toward centre)
@@ -3395,7 +3505,7 @@ class Game {
     for (let i = this.tracers.length - 1; i >= 0; i--) {
       const t = this.tracers[i]; const mx = t.max || 0.07; t.life -= dt;
       t.mesh.material.opacity = Math.max(0, t.life / mx) * 0.95;
-      if (t.life <= 0) { this.scene.remove(t.mesh); this.tracers.splice(i, 1); }
+      if (t.life <= 0) { this.scene.remove(t.mesh); this.disposeObject3D(t.mesh); this.tracers.splice(i, 1); }
     }
     // plasma projectiles
     for (let i = this.pProj.length - 1; i >= 0; i--) {
@@ -3412,7 +3522,7 @@ class Game {
       if (b.mesh.position.y < 0.2) hit = b.mesh.position.clone().setY(0.2);
       if (hit || b.life <= 0) {
         if (hit) this.explodePlasma(hit, b.color, b.splash, b.splashDmg);
-        this.scene.remove(b.mesh); this.pProj.splice(i, 1);
+        this.scene.remove(b.mesh); this.disposeObject3D(b.mesh); this.pProj.splice(i, 1);
       }
     }
     // shockwave rings
@@ -3424,7 +3534,7 @@ class Game {
         const s = (1 - r.life / 0.4) * r.max * 2 + 0.2;
         r.mesh.scale.set(s, s, s); r.mesh.material.opacity = Math.max(0, r.life / 0.4) * 0.8;
       }
-      if (r.life <= 0) { this.scene.remove(r.mesh); this.rings.splice(i, 1); }
+      if (r.life <= 0) { this.scene.remove(r.mesh); this.disposeObject3D(r.mesh); this.rings.splice(i, 1); }
     }
     // thrown projectiles (shuriken / arrows)
     for (let i = this.tProj.length - 1; i >= 0; i--) {
@@ -3449,7 +3559,7 @@ class Game {
         }
       }
       if (b.mesh.position.y < 0.15) consumed = true;
-      if (consumed || b.life <= 0) { this.scene.remove(b.mesh); this.tProj.splice(i, 1); }
+      if (consumed || b.life <= 0) { this.scene.remove(b.mesh); this.disposeObject3D(b.mesh); this.tProj.splice(i, 1); }
     }
     // katana swing animation
     if (this.swing) {
@@ -3474,38 +3584,46 @@ class Game {
     // pulse cannon barrel spin
     const pulse = this.gunModels && this.gunModels.pulse;
     if (pulse && pulse.userData.spin) {
-      pulse.userData.spinV = THREE.MathUtils.lerp(pulse.userData.spinV || 0, 0, dt * 3);
-      pulse.userData.spin.rotation.z -= (pulse.userData.spinV || 0) * dt;
+      const spinDt = this.lowMemoryMode ? Math.min(dt, 1 / 30) : dt;
+      pulse.userData.spinV = THREE.MathUtils.lerp(pulse.userData.spinV || 0, 0, spinDt * (this.lowMemoryMode ? 5 : 3));
+      pulse.userData.spin.rotation.z -= (pulse.userData.spinV || 0) * spinDt;
     }
 
     this.trimTransientEffects();
 
+    this._liveAnimAccum = (this._liveAnimAccum || 0) + dt;
+    const liveAnimStep = this.lowMemoryMode ? (this.framePerf && this.framePerf.slow ? 1 / 12 : 1 / 18) : 0;
+    const runLiveAnimations = !liveAnimStep || this._liveAnimAccum >= liveAnimStep;
+    const animDt = runLiveAnimations ? (liveAnimStep ? this._liveAnimAccum : dt) : 0;
+    if (runLiveAnimations) this._liveAnimAccum = 0;
+
     // MEGAWATT CITY live props
+    if (runLiveAnimations) {
     if (this.megaProps) {
       const mp = this.megaProps, t = performance.now() * 0.001;
       mp.vehicles.forEach(v => {
-        v.pos += v.dir * v.speed * dt;
+        v.pos += v.dir * v.speed * animDt;
         if (v.pos > mp.span) v.pos = -mp.span; else if (v.pos < -mp.span) v.pos = mp.span;
         if (v.lane.axis === 'x') v.mesh.position.x = v.pos; else v.mesh.position.z = v.pos;
       });
       mp.orbs.forEach((o, i) => {
-        o.userData.angle += dt * o.userData.speed;
+        o.userData.angle += animDt * o.userData.speed;
         o.position.x = Math.cos(o.userData.angle + i) * o.userData.radius;
         o.position.z = Math.sin(o.userData.angle * 0.7 + i) * o.userData.radius;
         o.position.y = o.userData.yOff + Math.sin(t * 1.8 + i) * 0.4 * mp.S;
       });
-      mp.ring.rotation.y += dt * 0.6;
+      mp.ring.rotation.y += animDt * 0.6;
       mp.ring.rotation.x = Math.sin(t * 0.5) * 0.2;
-      mp.orb.rotation.y += dt * 0.5;
+      mp.orb.rotation.y += animDt * 0.5;
       mp.orbLight.intensity = 2.2 + Math.sin(t * 1.2) * 0.6;
-      mp.dust.rotation.y += dt * 0.02;
+      mp.dust.rotation.y += animDt * 0.02;
     }
 
     // RAIL CITY live props (rideable train + day/night cycle)
     if (this.railProps) {
       const rp = this.railProps, t = performance.now() * 0.001;
       // move train along the loop; position each car and record movement delta for carrying
-      rp.progress = (rp.progress + dt * 0.018) % 1;
+      rp.progress = (rp.progress + animDt * 0.018) % 1;
       const up = new THREE.Vector3(0, 1, 0);
       rp.cars.forEach((car, i) => {
         let p = (rp.progress - i * rp.carSpacing) % 1; if (p < 0) p += 1;
@@ -3519,33 +3637,33 @@ class Game {
       });
       // traffic
       rp.vehicles.forEach(v => {
-        v.pos += v.dir * v.speed * dt;
+        v.pos += v.dir * v.speed * animDt;
         if (v.pos > rp.span) v.pos = -rp.span; else if (v.pos < -rp.span) v.pos = rp.span;
         if (v.lane.axis === 'x') v.mesh.position.x = v.pos; else v.mesh.position.z = v.pos;
       });
       // birds
       rp.birds.forEach(b => {
-        b.userData.x += b.userData.vx * dt; b.userData.z += b.userData.vz * dt;
+        b.userData.x += b.userData.vx * animDt; b.userData.z += b.userData.vz * animDt;
         if (Math.abs(b.userData.x) > 50 * rp.S * 0.6) b.userData.vx *= -1;
         if (Math.abs(b.userData.z) > 50 * rp.S * 0.6) b.userData.vz *= -1;
         b.position.set(b.userData.x, b.userData.y + Math.sin(t * 3.5 + b.userData.x) * 1.2, b.userData.z);
-        b.userData.flap += dt * 8; b.rotation.z = Math.sin(b.userData.flap) * 0.55;
+        b.userData.flap += animDt * 8; b.rotation.z = Math.sin(b.userData.flap) * 0.55;
         b.rotation.y = Math.atan2(b.userData.vx, b.userData.vz);
       });
       // clouds
       rp.clouds.forEach(c => {
-        c.position.x += c.userData.sx * dt; c.position.z += c.userData.sz * dt;
+        c.position.x += c.userData.sx * animDt; c.position.z += c.userData.sz * animDt;
         if (Math.abs(c.position.x) > 56 * rp.S * 0.6) c.userData.sx *= -1;
         if (Math.abs(c.position.z) > 56 * rp.S * 0.6) c.userData.sz *= -1;
       });
-      rp.monOrb.rotation.y += dt * 0.5;
-      if (rp.orbRing) { rp.orbRing.rotation.y += dt * 0.55; rp.orbRing.rotation.z = Math.sin(t * 0.7) * 0.22; }
+      rp.monOrb.rotation.y += animDt * 0.5;
+      if (rp.orbRing) { rp.orbRing.rotation.y += animDt * 0.55; rp.orbRing.rotation.z = Math.sin(t * 0.7) * 0.22; }
       if (rp.lightProps) rp.lightProps.forEach((mesh, i) => { if (mesh.material && mesh.material.emissiveIntensity !== undefined) mesh.material.emissiveIntensity = (mesh.material.userData && mesh.material.userData.baseGlow) || (0.72 + Math.sin(t * 2.2 + i) * 0.18); });
       if (rp.gantries) rp.gantries.forEach((g, i) => { g.rotation.y += Math.sin(t * 0.22 + i) * 0.0009; });
-      if (rp.haze) rp.haze.forEach((h, i) => { h.position.y += Math.sin(t * 0.35 + i) * dt * 0.18; h.material.opacity = 0.045 + Math.sin(t * 0.5 + i) * 0.018; });
+      if (rp.haze) rp.haze.forEach((h, i) => { h.position.y += Math.sin(t * 0.35 + i) * animDt * 0.18; h.material.opacity = 0.045 + Math.sin(t * 0.5 + i) * 0.018; });
 
       // day↔night cycle (~90s full loop)
-      rp.cycle = (rp.cycle + dt / 90) % 1;
+      rp.cycle = (rp.cycle + animDt / 90) % 1;
       const ph = rp.cycle; // 0=dawn .. .5=dusk .. 1=dawn
       // daylight factor: 1 at noon (0.25), 0 at midnight (0.75)
       const day = Math.max(0, Math.cos((ph - 0.25) * Math.PI * 2)) ; // peaks at noon
@@ -3586,17 +3704,17 @@ class Game {
         f.light.intensity = f.base + Math.sin(t * 9 + f.ph) * 0.7 + Math.random() * 0.2;
         f.fire.scale.setScalar(1 + Math.sin(t * 11 + f.ph) * 0.16);
       });
-      dp.ankhs.forEach((a, i) => a.rotation.y += dt * (i % 2 ? -0.6 : 0.6));
+      dp.ankhs.forEach((a, i) => a.rotation.y += animDt * (i % 2 ? -0.6 : 0.6));
       dp.birds.forEach(b => {
-        b.userData.x += b.userData.vx * dt; b.userData.z += b.userData.vz * dt;
+        b.userData.x += b.userData.vx * animDt; b.userData.z += b.userData.vz * animDt;
         if (Math.abs(b.userData.x) > 40 * dp.S * 0.6) b.userData.vx *= -1;
         if (Math.abs(b.userData.z) > 38 * dp.S * 0.6) b.userData.vz *= -1;
         b.position.set(b.userData.x, b.userData.y + Math.sin(t * 2.5 + b.userData.x) * 1.0, b.userData.z);
         b.rotation.y = Math.atan2(b.userData.vx, b.userData.vz);
         b.rotation.z = Math.sin(t * 5 + b.userData.x) * 0.4;
       });
-      dp.sandP.rotation.y += dt * 0.012;
-      dp.fireflies.rotation.y += dt * 0.04;
+      dp.sandP.rotation.y += animDt * 0.012;
+      dp.fireflies.rotation.y += animDt * 0.04;
     }
 
     // JAPAN live props — falling cherry petals + lantern flicker
@@ -3604,8 +3722,8 @@ class Game {
       const jp = this.japanProps, t = performance.now() * 0.001;
       const arr = jp.petals.geometry.attributes.position.array;
       for (let i = 0; i < arr.length; i += 3) {
-        arr[i + 1] -= dt * 1.4;                       // fall
-        arr[i] += Math.sin(t * 1.5 + i) * dt * 0.5;   // sway
+        arr[i + 1] -= animDt * 1.4;                       // fall
+        arr[i] += Math.sin(t * 1.5 + i) * animDt * 0.5;   // sway
         if (arr[i + 1] < 0) { arr[i + 1] = 28 + Math.random() * 4; }
       }
       jp.petals.geometry.attributes.position.needsUpdate = true;
@@ -3617,6 +3735,7 @@ class Game {
         if (l.mesh) l.mesh.position.y += Math.sin(t * 2 + l.ph) * 0.0006;
       });
     }
+    }
     // particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i]; p.life -= dt;
@@ -3624,7 +3743,7 @@ class Game {
       p.mesh.position.add(p.vel.clone().multiplyScalar(dt));
       p.mesh.material.opacity = Math.max(0, p.life * 2);
       p.mesh.scale.multiplyScalar(1 - dt * 1.5);
-      if (p.life <= 0) { this.scene.remove(p.mesh); this.particles.splice(i, 1); }
+      if (p.life <= 0) { this.scene.remove(p.mesh); this.disposeObject3D(p.mesh); this.particles.splice(i, 1); }
     }
     // enemy projectiles
     for (let i = this.eBullets.length - 1; i >= 0; i--) {
@@ -3632,11 +3751,11 @@ class Game {
       b.mesh.position.add(b.vel.clone().multiplyScalar(dt)); b.life -= dt;
       if (this.camera.position.distanceTo(b.mesh.position) < 1.1) {
         P.hp -= b.dmg; this.damageFlash(); this.sound.damage(); this.updateHUD();
-        this.scene.remove(b.mesh); this.eBullets.splice(i, 1);
+        this.scene.remove(b.mesh); this.disposeObject3D(b.mesh); this.eBullets.splice(i, 1);
         if (P.hp <= 0) this.endGame();
         continue;
       }
-      if (b.life <= 0) { this.scene.remove(b.mesh); this.eBullets.splice(i, 1); }
+      if (b.life <= 0) { this.scene.remove(b.mesh); this.disposeObject3D(b.mesh); this.eBullets.splice(i, 1); }
     }
 
     // enemies
