@@ -23,11 +23,11 @@ class SoundManager {
   }
   resume() { if (this.enabled && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); }
   loadSample(name, url) {
-    if (!this.enabled || !url) return;
-    fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
+    if (!this.enabled || !url) return Promise.resolve(null);
+    return fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
       .then(a => this.ctx.decodeAudioData(a))
-      .then(buf => { this.buffers[name] = buf; })
-      .catch(err => console.warn(`[SoundManager] Sample '${name}' unavailable; using procedural fallback.`, err));
+      .then(buf => { this.buffers[name] = buf; return buf; })
+      .catch(err => { console.warn(`[SoundManager] Sample '${name}' unavailable; using procedural fallback.`, err); return null; });
   }
   playSample(name, vol = 1, rate = 1) {
     const buf = this.buffers[name];

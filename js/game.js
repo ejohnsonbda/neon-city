@@ -42,10 +42,12 @@ class Game {
     this._liveAnimAccum = 0;
     this._effectMats = {};
     this._effectGeometries = {};
+    this._emojiTextures = {};
     this._pulseShotCounter = 0;
+    this.preloadReady = false;
     this.raycastObjects = [];
     this.sound = new SoundManager();
-    this.sound.loadSample('shoot', (window.__resources && window.__resources.shootSfx) || 'uploads/chromascension-lazer-gun-one-shot-542393.mp3');
+    this.shootSamplePromise = this.sound.loadSample('shoot', (window.__resources && window.__resources.shootSfx) || 'uploads/chromascension-lazer-gun-one-shot-542393.mp3');
     this.settings = { sensitivity: 0.0022, invertY: false };
     this.baseFOV = 78;
     this.aiming = false;
@@ -124,6 +126,7 @@ class Game {
     this.initWorld();
     this.initUI();
     this.setupInputs();
+    this.beginPreloadWarmup();
     this.animate();
 
     this.mmCanvas = document.getElementById('minimap-canvas');
@@ -132,6 +135,151 @@ class Game {
     if (this.isMobile) document.getElementById('mobile-controls').classList.remove('hidden');
   }
 
+
+
+
+  static nextPreloadFrame() {
+    return new Promise(resolve => requestAnimationFrame(resolve));
+  }
+
+  setPreloadStatus(label, progress, detail) {
+    Game.updateBootStatus(label, progress, detail);
+  }
+
+  async beginPreloadWarmup() {
+    if (this._preloadStarted) return;
+    this._preloadStarted = true;
+    const runStage = async (label, progress, detail, fn) => {
+      this.setPreloadStatus(label, progress, detail);
+      await Game.nextPreloadFrame();
+      try { if (typeof fn === 'function') await fn(); }
+      catch (err) { console.warn('[Preload]', label, err); }
+      await Game.nextPreloadFrame();
+    };
+
+    try {
+      const low = !!this.lowMemoryMode;
+      if (low) document.documentElement.classList.add('preload-lite');
+      await runStage('EFFECT CACHE', 28, low ? 'Low-memory mode: warming only shared combat resources.' : 'Preparing reusable muzzle, pulse, plasma, and rail effects.', () => this.preloadEffectResources());
+      await runStage('PICKUP SPRITES', 46, 'Rendering first-use health and ammo pickup glyphs.', () => this.preloadPickupSprites());
+      await runStage('AUDIO DECODE', 62, 'Decoding weapon audio early when the browser allows it.', () => this.preloadAudioResources());
+      if (!low) {
+        await runStage('TEXTURE PATHS', 74, 'Touching common procedural terrain and sky texture builders.', () => this.preloadTextureBuilders());
+        await runStage('ENEMY TEMPLATES', 84, 'Building and releasing common enemy mesh templates.', () => this.preloadEnemyTemplates());
+      } else {
+        await runStage('LITE TEXTURES', 74, 'Skipping heavy warm-up to protect 1 GB devices.', null);
+      }
+      await runStage('SHADER WARM-UP', 94, 'Compiling the first frame before deployment.', () => this.preloadRendererShaders());
+      this.preloadReady = true;
+      window.__NEON_PRELOAD_DONE = true;
+      this.setPreloadStatus('READY', 100, 'Select a theatre and deploy.');
+    } finally {
+      setTimeout(() => Game.hideBootOverlay(), 420);
+    }
+  }
+
+  preloadEffectResources() {
+    const colors = [
+      ['muzzle', 0xffffff, 0.95],
+      ['pistol', 0x19f0ff, 0.8],
+      ['shotgun', 0xff2d95, 0.72],
+      ['rail', 0x39ff14, 0.86],
+      ['plasma', 0x9b5cff, 0.78],
+      ['pulse', 0xff7a18, this.lowMemoryMode ? 0.55 : 0.78]
+    ];
+    colors.forEach(([key, color, opacity]) => this.getEffectMaterial(key, color, opacity));
+    this.getSparkGeometry();
+  }
+
+  getEmojiTexture(emoji) {
+    this._emojiTextures ||= {};
+    if (!this._emojiTextures[emoji]) {
+      const size = this.lowMemoryMode ? 96 : 128;
+      const c = document.createElement('canvas'); c.width = c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.font = Math.round(size * 0.72) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(emoji, size / 2, size * 0.55);
+      const tex = new THREE.CanvasTexture(c);
+      tex.generateMipmaps = false;
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.userData = tex.userData || {};
+      tex.userData.sharedEffectResource = true;
+      this._emojiTextures[emoji] = tex;
+    }
+    return this._emojiTextures[emoji];
+  }
+
+  preloadPickupSprites() {
+    ['🔋', '❤️', '💊'].forEach(e => this.getEmojiTexture(e));
+  }
+
+  async preloadAudioResources() {
+    if (this.sound && typeof this.sound.resume === 'function') {
+      try { this.sound.resume(); } catch (e) {}
+    }
+    if (this.shootSamplePromise && typeof this.shootSamplePromise.then === 'function') {
+      await Promise.race([
+        this.shootSamplePromise.catch(() => {}),
+        new Promise(resolve => setTimeout(resolve, 900))
+      ]);
+    }
+  }
+
+  preloadTextureBuilders() {
+    if (this.lowMemoryMode || typeof TextureGen === 'undefined') return;
+    const tex = [];
+    const safe = fn => { try { const t = fn(); if (t) tex.push(t); } catch (e) { console.warn('[Preload] texture builder skipped', e); } };
+    safe(() => TextureGen.createAsphalt());
+    safe(() => TextureGen.createGrass(false));
+    safe(() => TextureGen.createSand());
+    safe(() => TextureGen.createSky());
+    safe(() => TextureGen.createDaySky('#153d25', '#4d7a49'));
+    tex.forEach(t => { if (t && typeof t.dispose === 'function') t.dispose(); });
+  }
+
+  preloadEnemyTemplates() {
+    if (this.lowMemoryMode || typeof EnemyFactory === 'undefined' || !EnemyFactory.build) return;
+    const types = ['grunt', 'runner', 'shooter', 'boss'];
+    this._preloadEnemyMeshes = [];
+    types.forEach(type => {
+      try {
+        if (!EnemyFactory.TYPES || !EnemyFactory.TYPES[type]) return;
+        const mesh = EnemyFactory.build(type, 'rock');
+        mesh.position.set((this._preloadEnemyMeshes.length - 1.5) * 2.4, -1000, -6);
+        this._preloadEnemyMeshes.push(mesh);
+      } catch (err) { console.warn('[Preload] enemy template skipped', type, err); }
+    });
+  }
+
+  preloadRendererShaders() {
+    if (!this.renderer || !this.camera) return;
+    const warmScene = new THREE.Scene();
+    const warmCam = new THREE.PerspectiveCamera(60, 1, 0.1, 20);
+    warmCam.position.set(0, 1.5, 5);
+    warmCam.lookAt(0, 0, 0);
+    warmScene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const key = new THREE.DirectionalLight(0x9bdcff, 1.0);
+    key.position.set(2, 4, 3); warmScene.add(key);
+    const standard = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x19f0ff, emissive: 0x052a36, roughness: 0.62, metalness: 0.18 }));
+    const additive = new THREE.Mesh(new THREE.SphereGeometry(0.45, this.lowMemoryMode ? 8 : 16, this.lowMemoryMode ? 6 : 12), this.getEffectMaterial('shaderWarm', 0xff7a18, 0.72));
+    additive.position.set(1.25, 0, 0);
+    warmScene.add(standard, additive);
+    (this._preloadEnemyMeshes || []).forEach((mesh, i) => { mesh.position.set(-2.5 + i * 1.6, 0, -2.5); warmScene.add(mesh); });
+    try {
+      if (typeof this.renderer.compile === 'function') this.renderer.compile(warmScene, warmCam);
+      this.renderer.render(warmScene, warmCam);
+      if (typeof this.renderer.compile === 'function') this.renderer.compile(this.scene, this.camera);
+      this.renderer.render(this.scene, this.camera);
+    } finally {
+      (this._preloadEnemyMeshes || []).forEach(mesh => { warmScene.remove(mesh); this.disposeObject3D(mesh); });
+      this._preloadEnemyMeshes = [];
+      warmScene.remove(standard, additive);
+      standard.geometry.dispose(); standard.material.dispose();
+      additive.geometry.dispose();
+    }
+  }
 
   static shouldUseLowMemoryMode() {
     const params = new URLSearchParams(location.search || '');
@@ -2975,12 +3123,7 @@ class Game {
 
   // emoji billboard sprite (always faces camera)
   _emojiSprite(emoji) {
-    const c = document.createElement('canvas'); c.width = c.height = 128;
-    const ctx = c.getContext('2d');
-    ctx.font = '92px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, 64, 70);
-    const tex = new THREE.CanvasTexture(c);
+    const tex = this.getEmojiTexture(emoji);
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
     spr.scale.set(0.9, 0.9, 0.9);
     return spr;
@@ -3911,10 +4054,46 @@ Game.showFatalStartupError = function(message, err) {
   overlay.appendChild(panel);
 };
 
-window.onload = () => TextureGen.load(() => {
-  try { window.game = new Game(); }
-  catch (err) { Game.showFatalStartupError('The game failed to initialize. Check the browser console for details.', err); }
-});
+
+Game.setupBootOverlay = function() {
+  const overlay = document.getElementById('preload-overlay');
+  const dismiss = document.getElementById('preload-dismiss');
+  if (dismiss && overlay && !dismiss.dataset.bound) {
+    dismiss.dataset.bound = '1';
+    dismiss.addEventListener('click', () => Game.hideBootOverlay(true));
+  }
+};
+
+Game.updateBootStatus = function(label, progress, detail) {
+  Game.setupBootOverlay();
+  const overlay = document.getElementById('preload-overlay');
+  const status = document.getElementById('preload-status');
+  const desc = document.getElementById('preload-detail');
+  const bar = document.getElementById('preload-bar');
+  if (!overlay) return;
+  overlay.classList.remove('done');
+  overlay.hidden = false;
+  if (status) status.textContent = label || 'WARMING UP';
+  if (desc) desc.textContent = detail || '';
+  if (bar) bar.style.width = Math.max(0, Math.min(100, progress || 0)) + '%';
+};
+
+Game.hideBootOverlay = function(manual) {
+  const overlay = document.getElementById('preload-overlay');
+  if (!overlay) return;
+  overlay.classList.add('done');
+  if (manual) overlay.dataset.dismissed = '1';
+  setTimeout(() => { overlay.hidden = true; }, 520);
+};
+
+window.onload = () => {
+  Game.updateBootStatus('LOADING TEXTURES', 8, 'Loading photo textures and procedural fallbacks.');
+  TextureGen.load(() => {
+  Game.updateBootStatus('STARTING ENGINE', 18, 'Creating renderer, controls, weapons, and menu systems.');
+    try { window.game = new Game(); }
+    catch (err) { Game.showFatalStartupError('The game failed to initialize. Check the browser console for details.', err); }
+  });
+};
 addEventListener('resize', () => {
   if (window.game && game.camera && game.renderer) {
     game.camera.aspect = innerWidth / innerHeight;

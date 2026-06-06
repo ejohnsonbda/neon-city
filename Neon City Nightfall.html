@@ -26,6 +26,21 @@
   #game-container{position:fixed;inset:0;}
   #ui-layer{position:fixed;inset:0;pointer-events:none;z-index:10;}
   .hidden{display:none !important;}
+  /* ---------- Startup preload overlay ---------- */
+  #preload-overlay{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;pointer-events:auto;
+    background:radial-gradient(circle at 50% 42%,rgba(25,240,255,.16),transparent 55%),linear-gradient(rgba(6,8,16,.72),rgba(6,8,16,.94)),#05060c;
+    transition:opacity .42s ease,visibility .42s ease;}
+  #preload-overlay.done{opacity:0;visibility:hidden;pointer-events:none;}
+  .preload-card{width:min(520px,calc(100vw - 38px));padding:24px 26px 22px;background:rgba(8,12,22,.88);border:1px solid rgba(25,240,255,.38);
+    clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px);box-shadow:0 0 42px rgba(25,240,255,.22),inset 0 0 28px rgba(255,45,149,.08);}
+  .preload-kicker{font:700 11px 'Rajdhani';letter-spacing:.42em;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:8px;}
+  #preload-status{font:900 24px 'Orbitron';letter-spacing:.18em;color:var(--cyan);text-shadow:0 0 18px rgba(25,240,255,.55);}
+  #preload-detail{min-height:22px;margin:10px 0 16px;font:600 15px 'Rajdhani';letter-spacing:.05em;color:rgba(255,255,255,.68);}
+  .preload-track{height:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);overflow:hidden;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);}
+  #preload-bar{height:100%;width:6%;background:linear-gradient(90deg,var(--cyan),var(--mag));box-shadow:0 0 18px rgba(255,45,149,.6);transition:width .22s ease;}
+  #preload-dismiss{margin-top:16px;padding:8px 13px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:rgba(255,255,255,.62);font:700 11px 'Orbitron';letter-spacing:.16em;cursor:pointer;}
+  #preload-dismiss:hover{color:#fff;border-color:rgba(25,240,255,.52);}
+
   .orb{font-family:'Orbitron',sans-serif;}
 
   /* ---------- Crosshair ---------- */
@@ -251,6 +266,18 @@
 <div id="game-container"></div>
 <div id="dmg-vignette"></div>
 <div id="scope-overlay"></div>
+
+<!-- STARTUP PRELOAD -->
+<div id="preload-overlay" role="status" aria-live="polite">
+  <div class="preload-card">
+    <div class="preload-kicker">Nightfall Protocol</div>
+    <div id="preload-status">LOADING TEXTURES</div>
+    <div id="preload-detail">Preparing renderer, textures, audio, and first-use effects.</div>
+    <div class="preload-track"><div id="preload-bar"></div></div>
+    <button id="preload-dismiss" type="button">CONTINUE IN BACKGROUND</button>
+  </div>
+</div>
+
 
 <!-- HUD -->
 <div id="ui-layer">
