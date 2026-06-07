@@ -1986,146 +1986,150 @@ class Game {
 
   // ================= NIGHT CITY =================
   buildCity(W) {
-    this.scene.background = null;
-    this.scene.fog = new THREE.FogExp2(0x0a0a1a, 0.012);
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 24),
-      new THREE.MeshBasicMaterial({ map: TextureGen.createSky(), side: THREE.BackSide, fog: false }));
+    // The default Neon City theatre now follows the official Three.js FPS example's readable
+    // blue-grid arena language: orthogonal blocks, obvious collision walls, stair-stepped
+    // vertical routes, sky-blue fog, and a clean open combat floor.
+    this.scene.background = new THREE.Color(0x88aeda);
+    this.scene.fog = new THREE.Fog(0x88aeda, 48, 235);
+    if (this.bloom) { this.bloom.strength = 0.38; this.bloom.threshold = 0.74; this.bloom.radius = 0.42; }
+
+    const makeFpsGridTexture = (major = '#79b8ff', minor = 'rgba(255,255,255,0.34)', fill = '#477eb8') => {
+      const size = this.lowMemoryMode ? 256 : 512;
+      const c = document.createElement('canvas'); c.width = size; c.height = size;
+      const ctx = c.getContext('2d');
+      const bg = ctx.createLinearGradient(0, 0, size, size);
+      bg.addColorStop(0, fill);
+      bg.addColorStop(1, '#2b5f99');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size);
+      const step = size / 8;
+      ctx.strokeStyle = minor; ctx.lineWidth = Math.max(1, size / 256);
+      for (let i = 0; i <= 8; i++) {
+        const p = Math.round(i * step) + 0.5;
+        ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, size); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(size, p); ctx.stroke();
+      }
+      ctx.strokeStyle = major; ctx.lineWidth = Math.max(2, size / 128);
+      ctx.strokeRect(2, 2, size - 4, size - 4);
+      ctx.beginPath(); ctx.moveTo(size / 2, 0); ctx.lineTo(size / 2, size); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, size / 2); ctx.lineTo(size, size / 2); ctx.stroke();
+      const t = new THREE.CanvasTexture(c);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(1, 1);
+      t.needsUpdate = true;
+      if (this.lowMemoryMode) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; }
+      if ('encoding' in t && THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
+      if ('colorSpace' in t && THREE.SRGBColorSpace) t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    };
+
+    const materialFromGrid = (repeatX, repeatY, color = 0xffffff, emissive = 0x0a294d, intensity = 0.08) => {
+      const tex = makeFpsGridTexture();
+      tex.repeat.set(repeatX, repeatY);
+      return new THREE.MeshStandardMaterial({
+        map: tex,
+        color,
+        emissive,
+        emissiveIntensity: intensity,
+        roughness: 0.74,
+        metalness: 0.04
+      });
+    };
+
+    const floorMat = materialFromGrid(46, 46, 0xd7ecff, 0x0f3d72, 0.05);
+    const wallMat = materialFromGrid(3, 2, 0xbfdfff, 0x123a62, 0.12);
+    const platformMat = materialFromGrid(4, 2, 0xc8e6ff, 0x0c3760, 0.1);
+    const darkGridMat = materialFromGrid(2, 2, 0x7aa7d7, 0x071a33, 0.04);
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x244a72, emissive: 0x0f4d85, emissiveIntensity: 0.18, roughness: 0.55, metalness: 0.18 });
+    const neonCyan = new THREE.MeshBasicMaterial({ color: 0x49d7ff, transparent: true, opacity: 0.78, blending: THREE.AdditiveBlending, depthWrite: false });
+    const neonAmber = new THREE.MeshBasicMaterial({ color: 0xffd166, transparent: true, opacity: 0.72, blending: THREE.AdditiveBlending, depthWrite: false });
+
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(760, this.lowMemoryMode ? 20 : 32, this.lowMemoryMode ? 12 : 20),
+      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#7fb7f5', '#d8f1ff'), side: THREE.BackSide, fog: false }));
     W.add(sky);
 
-    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 60, 60);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.48, metalness: 0.55, color: 0x48505e }));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), floorMat);
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
 
-    // NEON CITY street detail: sidewalks, grass strips, and readable street signs
-    const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x8a8f9b, roughness: 0.72, metalness: 0.12 });
-    const curbMat = new THREE.MeshStandardMaterial({ color: 0xd7dbe4, roughness: 0.5, metalness: 0.18 });
-    const grassTex = TextureGen.createGrass(true); grassTex.repeat.set(18, 18);
-    const cityGrassMat = new THREE.MeshStandardMaterial({ map: grassTex, color: 0x1f6f35, roughness: 0.95, metalness: 0.02 });
-    const signPostMat = new THREE.MeshStandardMaterial({ color: 0xb9c9d8, roughness: 0.35, metalness: 0.75 });
-    const signFaceMat = new THREE.MeshBasicMaterial({ color: 0x10263c });
-    const signGlowMat = new THREE.MeshBasicMaterial({ color: 0x19f0ff, transparent: true, opacity: 0.18 });
-    const addCitySlab = (w, d, x, z, mat, y = 0.045, h = 0.09) => {
-      const slab = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-      slab.position.set(x, y, z); slab.receiveShadow = true; slab.castShadow = true; W.add(slab);
-      return slab;
+    const addSolid = (w, h, d, x, y, z, mat = wallMat) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; W.add(m); this.objects.push(m);
+      return m;
     };
-    // Raised sidewalks around the main neon avenue cross.
-    [[-11.5, 0, 4.6, 310], [11.5, 0, 4.6, 310], [0, -11.5, 310, 4.6], [0, 11.5, 310, 4.6]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, sidewalkMat, 0.075, 0.15));
-    // Thin bright curbs make the sidewalks easy to read while moving at speed.
-    [[-6.7, 0, 0.42, 310], [6.7, 0, 0.42, 310], [-16.3, 0, 0.34, 310], [16.3, 0, 0.34, 310],
-     [0, -6.7, 310, 0.42], [0, 6.7, 310, 0.42], [0, -16.3, 310, 0.34], [0, 16.3, 310, 0.34]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, curbMat, 0.16, 0.06));
-    // Grass pockets and median strips break up the asphalt without blocking gameplay.
-    [[-23, 0, 5.0, 300], [23, 0, 5.0, 300], [0, -23, 300, 5.0], [0, 23, 300, 5.0],
-     [-23, -23, 20, 20], [23, -23, 20, 20], [-23, 23, 20, 20], [23, 23, 20, 20]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, cityGrassMat, 0.035, 0.045));
-
-    const makeStreetSignTexture = (label) => {
-      const c = document.createElement('canvas'); c.width = 256; c.height = 96;
-      const ctx = c.getContext('2d');
-      ctx.fillStyle = '#061321'; ctx.fillRect(0, 0, c.width, c.height);
-      ctx.strokeStyle = '#19f0ff'; ctx.lineWidth = 6; ctx.strokeRect(6, 6, c.width - 12, c.height - 12);
-      ctx.fillStyle = '#19f0ff'; ctx.font = 'bold 30px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.shadowColor = '#19f0ff'; ctx.shadowBlur = 12; ctx.fillText(label, c.width / 2, c.height / 2);
-      const tex = new THREE.CanvasTexture(c); tex.needsUpdate = true;
-      if ('encoding' in tex && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
-      if ('colorSpace' in tex && THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
-      return tex;
+    const addSupport = (w, h, d, x, y, z, mat = platformMat) => this.structureBox(W, w, h, d, x, y, z, mat, false, true);
+    const addVisualPanel = (w, h, x, y, z, rot = 0, mat = neonCyan) => {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+      p.position.set(x, y, z); p.rotation.y = rot; W.add(p); return p;
     };
-    const addStreetSign = (x, z, label, rot = 0) => {
-      const g = new THREE.Group();
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.2, 8), signPostMat);
-      post.position.y = 1.6; post.castShadow = true; g.add(post);
-      const panel = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.78, 0.09), signFaceMat);
-      panel.position.set(0, 3.1, 0); panel.castShadow = true; g.add(panel);
-      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.52, 0.58), new THREE.MeshBasicMaterial({ map: makeStreetSignTexture(label), transparent: true }));
-      face.position.set(0, 3.1, 0.055); g.add(face);
-      const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 0.92), signGlowMat);
-      glow.position.set(0, 3.1, 0.062); g.add(glow);
-      g.position.set(x, 0, z); g.rotation.y = rot; W.add(g);
-      const light = new THREE.PointLight(0x19f0ff, 0.55, 8, 2.4);
-      light.position.set(x, 3.05, z); W.add(light);
+
+    // Arena shell: four tall grid-textured walls like the reference collision world.
+    const bounds = 82;
+    addSolid(168, 12, 2.4, 0, 6, -bounds);
+    addSolid(168, 12, 2.4, 0, 6, bounds);
+    addSolid(2.4, 12, 168, -bounds, 6, 0);
+    addSolid(2.4, 12, 168, bounds, 6, 0);
+
+    // Orthogonal maze blocks and cover. Wide corridors keep wave combat clear while preserving the example's blocky world feel.
+    [
+      [-44, -32, 18, 5.4, 9], [-12, -32, 24, 5.4, 9], [32, -32, 18, 5.4, 9],
+      [-56, 0, 5.4, 34, 8], [-22, 10, 5.4, 30, 7], [22, -10, 5.4, 30, 7], [56, 0, 5.4, 34, 8],
+      [-34, 38, 30, 5.4, 8], [22, 38, 34, 5.4, 8], [0, -58, 42, 5.4, 8],
+      [-58, 52, 18, 5.4, 7], [58, -52, 18, 5.4, 7]
+    ].forEach(([x, z, w, d, h]) => addSolid(w, h, d, x, h / 2, z, wallMat));
+
+    // Low cover blocks arranged as FPS lanes rather than random city clutter.
+    [
+      [-38, -8, 7, 2.2, 7], [-8, -18, 10, 2.2, 5], [34, 14, 9, 2.2, 6], [8, 24, 7, 2.2, 7],
+      [-44, 28, 5, 1.7, 12], [44, -28, 5, 1.7, 12], [0, 54, 13, 1.9, 5], [0, -6, 8, 1.5, 8]
+    ].forEach(([x, z, w, h, d]) => addSolid(w, h, d, x, h / 2, z, darkGridMat));
+
+    // Example-inspired vertical traversal: two walkable upper decks, a central bridge, and individual stair treads.
+    const deckA = addSupport(24, 0.24, 18, -42, 4.2, 48, platformMat);
+    const deckB = addSupport(24, 0.24, 18, 42, 4.2, -48, platformMat);
+    const midDeck = addSupport(26, 0.24, 16, 0, 3.25, 0, platformMat);
+    const bridge = addSupport(48, 0.18, 5.4, 0, 4.28, 48, platformMat);
+    this.buildPlayableStairs(W, -42, 33.8, 20, 4.2, 4.2, 12, platformMat, 'z', 1);
+    this.buildPlayableStairs(W, 42, -33.8, 20, 4.2, 4.2, 12, platformMat, 'z', -1);
+    this.buildPlayableStairs(W, -12.5, 0, 16, 3.4, 3.25, 10, platformMat, 'x', 1);
+    this.buildPlayableStairs(W, 12.5, 0, 16, 3.4, 3.25, 10, platformMat, 'x', -1);
+
+    [[deckA, -42, 5.05, 39.0, 23, 'x'], [deckA, -54, 5.05, 48, 18, 'z'], [deckA, -30, 5.05, 48, 18, 'z'],
+     [deckB, 42, 5.05, -39.0, 23, 'x'], [deckB, 54, 5.05, -48, 18, 'z'], [deckB, 30, 5.05, -48, 18, 'z'],
+     [midDeck, 0, 4.1, -8.2, 24, 'x'], [midDeck, 0, 4.1, 8.2, 24, 'x'], [bridge, 0, 5.12, 45.0, 46, 'x'], [bridge, 0, 5.12, 51.0, 46, 'x']]
+      .forEach(([, x, y, z, len, axis]) => this.buildStructureRail(W, x, y, z, len, axis, railMat));
+
+    // Blue translucent panels and glowing lane labels echo the clean debug-aesthetic of the Three.js FPS demo.
+    addVisualPanel(18, 4.5, 0, 4.4, -80.75, 0, neonCyan);
+    addVisualPanel(18, 4.5, 0, 4.4, 80.75, Math.PI, neonCyan);
+    addVisualPanel(12, 3.2, -80.75, 4.0, 0, Math.PI / 2, neonAmber);
+    addVisualPanel(12, 3.2, 80.75, 4.0, 0, -Math.PI / 2, neonAmber);
+
+    const addPad = (x, z, color) => {
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 0.09, this.lowMemoryMode ? 20 : 36),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending }));
+      pad.position.set(x, 0.055, z); pad.rotation.x = Math.PI / 2; W.add(pad);
+      const light = new THREE.PointLight(color, 1.4, 18, 2.0); light.position.set(x, 2.1, z); W.add(light);
     };
-    [[-17, -17, 'NEON AVE', Math.PI / 4], [17, -17, 'NIGHTFALL', -Math.PI / 4], [-17, 17, 'CYBER ST', Math.PI * 0.75], [17, 17, 'DOWNTOWN', -Math.PI * 0.75],
-     [0, -31, 'MAIN ST', 0], [0, 31, 'PLAZA', Math.PI], [-31, 0, 'MARKET', Math.PI / 2], [31, 0, 'SKYWAY', -Math.PI / 2]].forEach(s => addStreetSign(s[0], s[1], s[2], s[3]));
+    [[0, 0, 0x49d7ff], [-42, 48, 0xffd166], [42, -48, 0xff2d95], [0, -58, 0x39ff14]].forEach(p => addPad(p[0], p[1], p[2]));
 
-    const variants = [];
-    for (let i = 0; i < 5; i++) {
-      const t = TextureGen.createBuilding();
-      t.map.wrapS = t.map.wrapT = THREE.RepeatWrapping;
-      t.emissive.wrapS = t.emissive.wrapT = THREE.RepeatWrapping;
-      t.map.repeat.set(1, 12); t.emissive.repeat.set(1, 12); t.map.encoding = THREE.sRGBEncoding;
-      variants.push(new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.emissive, emissive: 0xffffff,
-        emissiveIntensity: 1.6, roughness: 0.28, metalness: 0.6 }));
-    }
-    const bldgGeo = new THREE.BoxGeometry(10, 1, 10);
-    const billboards = []; const blockSize = 26;
-    for (let x = -9; x <= 9; x++) for (let z = -9; z <= 9; z++) {
-      if (Math.abs(x) < 3 && Math.abs(z) < 3) continue; // play plaza for enterable bldgs
-      if (Math.random() > 0.24) {
-        const h = 22 + Math.random() * 55;
-        const m = new THREE.Mesh(bldgGeo, variants[(Math.random() * variants.length) | 0]);
-        m.position.set(x * blockSize + (Math.random() - 0.5) * 6, h / 2, z * blockSize + (Math.random() - 0.5) * 6);
-        m.scale.set(0.8 + Math.random() * 0.7, h, 0.8 + Math.random() * 0.7);
-        m.castShadow = true; m.receiveShadow = true; W.add(m); this.objects.push(m);
-        if (Math.random() > 0.7) billboards.push(m);
-      }
-    }
-    billboards.slice(0, 26).forEach(b => {
-      const bw = 6 + Math.random() * 5, bh = bw * 0.55;
-      const bm = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh),
-        new THREE.MeshBasicMaterial({ map: TextureGen.createBillboard(), transparent: true, fog: true }));
-      const face = (Math.random() * 4) | 0; const half = (b.scale.x * 10) / 2 + 0.3;
-      const y = 6 + Math.random() * (b.scale.y - 14);
-      if (face === 0) bm.position.set(b.position.x, y, b.position.z + half);
-      else if (face === 1) { bm.position.set(b.position.x, y, b.position.z - half); bm.rotation.y = Math.PI; }
-      else if (face === 2) { bm.position.set(b.position.x + half, y, b.position.z); bm.rotation.y = -Math.PI / 2; }
-      else { bm.position.set(b.position.x - half, y, b.position.z); bm.rotation.y = Math.PI / 2; }
-      W.add(bm);
-    });
+    // Distant simplified skyline keeps the Neon City identity without blocking the FPS reference arena readability.
+    const skylineMat = new THREE.MeshStandardMaterial({ color: 0x2b4261, emissive: 0x071d34, emissiveIntensity: 0.24, roughness: 0.7, metalness: 0.12 });
+    [[-112, -112, 13], [-94, -112, 18], [-76, -112, 10], [112, -110, 16], [94, -112, 11], [76, -112, 20],
+     [-112, 112, 15], [-94, 112, 10], [112, 112, 18], [94, 112, 12], [-112, 72, 11], [112, -72, 13]]
+      .forEach(([x, z, h], i) => {
+        const tower = new THREE.Mesh(new THREE.BoxGeometry(10 + (i % 3) * 3, h, 10), skylineMat);
+        tower.position.set(x, h / 2, z); tower.castShadow = true; tower.receiveShadow = true; W.add(tower);
+      });
 
-    // enterable neon storefronts you can run inside
-    const cityStyle = () => ({
-      wall: new THREE.MeshStandardMaterial({ color: 0x20242e, roughness: 0.7, metalness: 0.3 }),
-      floor: new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.6, metalness: 0.4 }),
-      roof: new THREE.MeshStandardMaterial({ color: 0x16181f, roughness: 0.8 }),
-      win: new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0x19f0ff : 0xff2d95, side: THREE.DoubleSide }),
-      lamp: 0x19f0ff
-    });
-    const spots = [[-22, 18], [24, 16], [-26, -20], [20, -24], [0, 30], [38, -4], [-40, 2]];
-    spots.forEach(([sx, sz]) => this.buildEnterable(W, sx, sz, 9 + Math.random() * 3, 9 + Math.random() * 3, cityStyle()));
-    // Concept-sheet downtown lobby/shop towers with stair access, balconies, and a skybridge combat lane.
-    this.addCityPlayableStructures(W);
+    // Lighting matches the official example's brighter sky/fog while retaining subtle neon accents.
+    W.add(new THREE.HemisphereLight(0xb9dbff, 0x3a5674, 1.05));
+    W.add(new THREE.AmbientLight(0x91b8df, 0.55));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.15);
+    sun.position.set(-48, 96, 36); sun.castShadow = true; sun.shadow.bias = -0.00025;
+    sun.shadow.camera.left = -120; sun.shadow.camera.right = 120; sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
+    sun.shadow.camera.far = 260; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
 
-    const crateGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
-    const crateMat = new THREE.MeshStandardMaterial({ color: 0x2a2620, roughness: 0.8 });
-    for (let i = 0; i < 40; i++) {
-      const m = new THREE.Mesh(crateGeo, crateMat);
-      m.position.set((Math.random() - 0.5) * 300, 0.8, (Math.random() - 0.5) * 300);
-      m.rotation.y = Math.random() * Math.PI; m.castShadow = true; m.receiveShadow = true;
-      let ok = m.position.length() > 6;
-      for (const b of this.objects) if (ok && m.position.distanceTo(b.position) < 8) { ok = false; break; }
-      if (ok) {
-        const strip = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.08, 1.62),
-          new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0x19f0ff : 0xff2d95 }));
-        strip.position.y = 0.82; m.add(strip); W.add(m); this.objects.push(m);
-      }
-    }
-    const hues = [0x19f0ff, 0xff2d95, 0x9b5cff, 0xffb347, 0x39ff14];
-    for (let i = 0; i < 18; i++) {
-      const hue = hues[(Math.random() * hues.length) | 0];
-      const pl = new THREE.PointLight(hue, 3.0, 24, 1.6);
-      pl.position.set((Math.random() - 0.5) * 280, 2.4 + Math.random() * 1.8, (Math.random() - 0.5) * 280);
-      W.add(pl);
-      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), new THREE.MeshBasicMaterial({ color: hue }));
-      bulb.position.copy(pl.position); W.add(bulb);
-    }
-    // lights
-    W.add(new THREE.AmbientLight(0x3a4a60, 0.7));
-    W.add(new THREE.HemisphereLight(0x2040a0, 0x101018, 0.55));
-    const moon = new THREE.DirectionalLight(0x8899cc, 0.75);
-    moon.position.set(120, 180, -80); moon.castShadow = true; moon.shadow.bias = -0.0002;
-    moon.shadow.camera.left = -180; moon.shadow.camera.right = 180; moon.shadow.camera.top = 180; moon.shadow.camera.bottom = -180;
-    moon.shadow.camera.far = 500; moon.shadow.mapSize.set(1024, 1024); W.add(moon);
+    this._citySpawn = new THREE.Vector3(0, this.player.height, 20);
+    this.cityArenaProps = { bounds, respawn: this._citySpawn.clone(), decks: [deckA, deckB, midDeck, bridge] };
   }
 
   // ================= COLORFUL HOUSE YARD BOSS ARENA =================
@@ -2775,7 +2779,7 @@ class Game {
   initUI() {
     const levelSelect = document.getElementById('level-select');
     const levels = [
-      { id: 'city',   name: 'NEON CITY',   desc: 'Rain-slick streets at midnight.', art: 'city' },
+      { id: 'city',   name: 'NEON CITY',   desc: 'Three.js-style blue-grid FPS arena.', art: 'city' },
       { id: 'fields', name: 'COUNTRYSIDE', desc: 'Sunlit fields, hills & houses.',   art: 'fields' },
       { id: 'megacity', name: 'MEGAWATT CITY 1', desc: 'Dense grid, live traffic & neon.', art: 'mega' },
       { id: 'rail', name: 'RAIL CITY', desc: 'Ride the monorail · day to night.', art: 'rail' },
@@ -2968,6 +2972,7 @@ class Game {
     this.waveCountdown = null; this.boss = null; this.bosses = [];
     this.player.weapons.forEach(w => w.ammo = (this.level === 'houseyard' || w.ammo === Infinity) ? Infinity : Math.floor(w.maxAmmo * 0.6));
     this.camera.position.set(0, this.player.height, 0);
+    if (this._citySpawn && this.level === 'city') this.camera.position.copy(this._citySpawn);
     if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
     if (this._desertSpawn && this.level === 'desert') this.camera.position.copy(this._desertSpawn);
     if (this._jungleSpawn && this.level === 'jungle') this.camera.position.copy(this._jungleSpawn);
