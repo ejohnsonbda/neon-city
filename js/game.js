@@ -117,6 +117,9 @@ class Game {
     this.applyFramePacingWeaponTuning(this.defaultWeapons);
     this.applyFramePacingWeaponTuning(this.japanWeapons);
     this.weaponSmooth = { bowDraw: 0, bowRelease: 0 };
+    this.dualWield = false;
+    this.lastPistolTap = 0;
+    this.dualWieldTapMs = 340;
 
     this.input = { w: 0, a: 0, s: 0, d: 0, jump: 0, shoot: 0, sprint: 0 };
     this.touchState = { moveX: 0, moveY: 0 };
@@ -532,7 +535,7 @@ class Game {
     this.portalCooldown = 0;
     // tune bloom per level: punchy at night, subtle in daylight (avoids white-out)
     if (this.bloom) {
-      const day = (level === 'fields' || level === 'desert' || level === 'japan' || level === 'houseyard');
+      const day = (level === 'fields' || level === 'desert' || level === 'houseyard');
       if (day) { this.bloom.strength = 0.22; this.bloom.threshold = 0.92; this.bloom.radius = 0.35; }
       else { this.bloom.strength = 0.95; this.bloom.threshold = 0.52; this.bloom.radius = 0.75; }
     }
@@ -542,7 +545,6 @@ class Game {
     else if (level === 'rail') this.buildRailCity(this.worldGroup);
     else if (level === 'desert') this.buildDesert(this.worldGroup);
     else if (level === 'jungle') this.buildJungle(this.worldGroup);
-    else if (level === 'japan') this.buildJapan(this.worldGroup);
     else this.buildCity(this.worldGroup);
     this.applyLowMemoryWorldOptimizations();
     this.rebuildRaycastCache();
@@ -1709,7 +1711,7 @@ class Game {
     add(dg, H * 0.3, t, x, H - H * 0.15, z + d / 2); // lintel over door
     // interior floor
     const fl = new THREE.Mesh(new THREE.BoxGeometry(w - 0.1, 0.1, d - 0.1), style.floor);
-    fl.position.set(x, 0.06, z); fl.receiveShadow = true; W.add(fl);
+    fl.position.set(x, 0.06, z); fl.receiveShadow = true; W.add(fl); this.objects.push(fl);
     // roof (collider so you can't see in from above / shaded interior)
     const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, t, d + 0.4), style.roof || style.wall);
     roof.position.set(x, H + t / 2, z); roof.castShadow = true; W.add(roof); this.objects.push(roof);
@@ -2428,6 +2430,7 @@ class Game {
 
     this.gunModels = {
       pistol:  this._buildPistol(0x19f0ff),
+      dualpistol: this._buildDualPistol(0x19f0ff),
       smg:     this._buildSMG(0xffd166),
       shotgun: this._buildShotgun(0xff2d95),
       railgun: this._buildRailgun(0x39ff14),
@@ -2542,6 +2545,23 @@ class Game {
     this._part(g, new THREE.BoxGeometry(0.08, 0.18, 0.1), this._matDark, 0, -0.15, 0.07, 0.28);
     this._part(g, new THREE.BoxGeometry(0.11, 0.015, 0.2), this._accent(c), 0, 0.02, 0.02);
     g.userData.muzzle = new THREE.Vector3(0, 0.03, -0.45);
+    return g;
+  }
+
+  // ---- DUAL PISTOLS: double-tap 1 sidearm mode ----
+  _buildDualPistol(c) {
+    const g = new THREE.Group();
+    const left = this._buildPistol(c);
+    const right = this._buildPistol(c);
+    left.position.set(-0.18, -0.015, -0.015);
+    right.position.set(0.18, 0.015, 0.015);
+    left.rotation.y = 0.08;
+    right.rotation.y = -0.08;
+    left.rotation.z = 0.035;
+    right.rotation.z = -0.035;
+    g.add(left, right);
+    g.userData.muzzle = new THREE.Vector3(0.18, 0.045, -0.48);
+    g.userData.altMuzzle = new THREE.Vector3(-0.18, 0.015, -0.50);
     return g;
   }
 
@@ -2714,7 +2734,8 @@ class Game {
   }
 
   updateWeaponModel(name) {
-    const key = (name || 'PISTOL').toLowerCase();
+    const baseKey = (name || 'PISTOL').toLowerCase();
+    const key = (this.dualWield && baseKey === 'pistol' && this.gunModels.dualpistol) ? 'dualpistol' : baseKey;
     Object.entries(this.gunModels).forEach(([k, m]) => m.visible = (k === key));
     if (this.weaponSmooth) { this.weaponSmooth.bowDraw = 0; this.weaponSmooth.bowRelease = 0; }
     this.swing = null;
@@ -2739,7 +2760,6 @@ class Game {
       { id: 'rail', name: 'RAIL CITY', desc: 'Ride the monorail · day to night.', art: 'rail' },
       { id: 'desert', name: 'EGYPT DESERT', desc: 'Pyramids, jungle & pharaoh golems.', art: 'desert' },
       { id: 'jungle', name: 'LOST JUNGLE', desc: 'Dense canopy, ruins & beast patrols.', art: 'jungle' },
-      { id: 'japan', name: 'FEUDAL JAPAN', desc: 'Katana, shuriken & bow only.', art: 'japan' },
       { id: 'houseyard', name: 'BOSS HOUSE YARD', desc: 'Colorful yard arena · five bosses per wave · unlimited ammo.', art: 'houseyard' }
     ];
     levels.forEach(l => {
@@ -2789,11 +2809,6 @@ class Game {
       { name:'PLASMA',  type:'SEMI', dmg:95,  rateMs:760,  ammo:'60',  trait:'SPLASH DAMAGE',  col:'#9b5cff', idx:4 },
       { name:'PULSE',   type:'AUTO', dmg:8,   rateMs:40,   ammo:'700', trait:'HIGH CAPACITY',  col:'#ff7a18', idx:5 },
     ];
-    const japanDefs = [
-      { name:'KATANA',   type:'MELEE',  dmg:90,  rateMs:360, ammo:'∞',   trait:'SILENT KILL',  col:'#cfe8ff' },
-      { name:'SHURIKEN', type:'THROWN', dmg:34,  rateMs:240, ammo:'180', trait:'FAST THROW',   col:'#c8d2dc' },
-      { name:'BOW',      type:'RANGED', dmg:120, rateMs:720, ammo:'80',  trait:'HIGH DAMAGE',  col:'#9a6b3a' },
-    ];
     const buildWepCard = (w, container, selectable) => {
       const rateBar = Math.round((1 - w.rateMs / 1050) * 100);
       const dmgBar  = Math.round((w.dmg / 135) * 100);
@@ -2819,9 +2834,7 @@ class Game {
       container.appendChild(card);
     };
     const armoryGrid  = document.getElementById('armory-grid');
-    const armoryJapan = document.getElementById('armory-japan');
     wepDefs.forEach(w  => buildWepCard(w, armoryGrid,  true));
-    japanDefs.forEach(w => buildWepCard(w, armoryJapan, false));
   }
 
   selectChar(t) {
@@ -2856,7 +2869,7 @@ class Game {
       if (code === 'ShiftLeft') this.input.sprint = down;
       if (code === 'Escape' && down) this.togglePause();
       const digit = /^Digit([1-9])$/.exec(code);
-      if (digit && down) this.switchWeapon(parseInt(digit[1], 10) - 1);
+      if (digit && down) this.handleWeaponSlot(parseInt(digit[1], 10) - 1);
       if (code === 'KeyR' && down) this.reload();
     };
     addEventListener('keydown', e => onKey(e.code, true));
@@ -2924,10 +2937,10 @@ class Game {
     this.curGameMusic = (this.level === 'desert' || this.level === 'jungle' || this.level === 'houseyard') ? this.gameMusic[1] : this.gameMusic[0];
     if (this.curGameMusic) this.curGameMusic.play().catch(() => {});
     this.buildWorld(this.level || 'city');
-    // pick arsenal for the level: all theatres include the neon katana and bow,
-    // while Japan keeps the focused katana / shuriken / bow loadout.
-    this.player.weapons = this.applyFramePacingWeaponTuning(this.level === 'japan' ? this.japanWeapons : (this.level === 'houseyard' ? this.defaultWeapons.map(w => ({ ...w, ammo: Infinity, maxAmmo: Infinity })) : this.defaultWeapons));
-    this.player.weaponIdx = this.level === 'japan' ? 0 : (this.startWeaponIdx || 0);
+    // pick arsenal for the level: all remaining theatres include the neon katana and bow.
+    this.player.weapons = this.applyFramePacingWeaponTuning(this.level === 'houseyard' ? this.defaultWeapons.map(w => ({ ...w, ammo: Infinity, maxAmmo: Infinity })) : this.defaultWeapons);
+    this.player.weaponIdx = this.startWeaponIdx || 0;
+    this.setDualWield(false);
     this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
     this.waveCountdown = null; this.boss = null; this.bosses = [];
     this.player.weapons.forEach(w => w.ammo = (this.level === 'houseyard' || w.ammo === Infinity) ? Infinity : Math.floor(w.maxAmmo * 0.6));
@@ -2935,7 +2948,6 @@ class Game {
     if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
     if (this._desertSpawn && this.level === 'desert') this.camera.position.copy(this._desertSpawn);
     if (this._jungleSpawn && this.level === 'jungle') this.camera.position.copy(this._jungleSpawn);
-    if (this._japanSpawn && this.level === 'japan') this.camera.position.copy(this._japanSpawn);
     if (this._houseYardSpawn && this.level === 'houseyard') this.camera.position.copy(this._houseYardSpawn);
     this.player.ridingCar = null; this.player.floorY = this.player.height;
     this.camera.rotation.set(0, 0, 0);
@@ -2977,11 +2989,40 @@ class Game {
 
   jump() { if (this.player.onGround && this.gameStarted && !this.isPaused) { this.player.velocity.y = this.player.jumpForce; this.player.onGround = false; } }
 
-  switchWeapon(idx) {
+  handleWeaponSlot(idx) {
+    if (idx === 0) {
+      const now = performance.now();
+      const doubleTap = now - (this.lastPistolTap || 0) <= this.dualWieldTapMs;
+      this.lastPistolTap = now;
+      if (doubleTap) {
+        if (this.player.weaponIdx !== 0) this.switchWeapon(0, { preserveDual: true });
+        this.setDualWield(!this.dualWield);
+        this.lastPistolTap = 0;
+        return;
+      }
+    } else {
+      this.lastPistolTap = 0;
+    }
+    this.switchWeapon(idx);
+  }
+
+  setDualWield(enabled) {
+    enabled = !!enabled;
+    if (this.dualWield === enabled) return;
+    this.dualWield = enabled;
+    if (this.player && this.player.weaponIdx === 0 && this.player.weapons[0]) {
+      this.updateWeaponModel(this.player.weapons[0].name);
+      this.showMessage(enabled ? 'DUAL WIELD READY' : 'SINGLE PISTOL', enabled ? '#19f0ff' : '#ffd166', 900);
+    }
+    this.updateHUD();
+  }
+
+  switchWeapon(idx, opts = {}) {
     if (idx === undefined) idx = (this.player.weaponIdx + 1) % this.player.weapons.length;
     if (idx >= this.player.weapons.length) return;
     if (this.aiming) this.setAim(false);
     this.player.weaponIdx = idx;
+    if (idx !== 0 && !opts.preserveDual) this.setDualWield(false);
     this.gunGroup.rotation.x = Math.PI * 2;
     this.updateWeaponModel(this.player.weapons[idx].name);
     this.updateHUD();
@@ -3160,6 +3201,10 @@ class Game {
     const camPos = this.camera.getWorldPosition(new THREE.Vector3());
     const baseDir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
     const muzzlePos = this.muzzleFlash.getWorldPosition(new THREE.Vector3());
+    const dualPistol = this.dualWield && w.model === 'pistol';
+    const dualMuzzlePos = dualPistol && this.gunModels && this.gunModels.dualpistol
+      ? this.gunGroup.localToWorld((this.gunModels.dualpistol.userData.altMuzzle || new THREE.Vector3(-0.18, 0.02, -0.5)).clone())
+      : null;
     const isPulse = w.model === 'pulse';
     const emitPulseVisual = !isPulse || this.shouldEmitPulseVisual(w);
 
@@ -3223,6 +3268,8 @@ class Game {
       // HITSCAN — pistol / smg / shotgun / pulse
       const pellets = w.pellets || 1;
       const spread = w.spread * (this.aiming ? 0.25 : 1);
+      const muzzleOrigins = dualPistol ? [muzzlePos, dualMuzzlePos || muzzlePos] : [muzzlePos];
+      for (const shotMuzzle of muzzleOrigins) {
       for (let p = 0; p < pellets; p++) {
         const dir = baseDir.clone();
         dir.x += (Math.random() - 0.5) * spread;
@@ -3252,7 +3299,8 @@ class Game {
         } else {
           endPoint = camPos.clone().add(dir.multiplyScalar(400));
         }
-        if (emitPulseVisual) this.spawnTracer(muzzlePos, endPoint, w.color);
+        if (emitPulseVisual) this.spawnTracer(shotMuzzle, endPoint, w.color);
+      }
       }
     }
 
@@ -3382,8 +3430,32 @@ class Game {
     this.updateHUD();
   }
 
+  worldBlocksSegment(from, to, inset = 0.05) {
+    if (!from || !to) return false;
+    const delta = to.clone().sub(from);
+    const dist = delta.length();
+    if (dist <= 0.001) return false;
+    const dir = delta.multiplyScalar(1 / dist);
+    this.raycaster.set(from, dir);
+    this.raycaster.far = Math.max(0, dist - inset);
+    const targets = (this.raycastObjects && this.raycastObjects.length) ? this.raycastObjects : this.objects;
+    const hits = this.raycaster.intersectObjects(targets || [], true);
+    return hits.length > 0;
+  }
+
+  canEnemyDamagePlayer(e, melee = false) {
+    if (!e || !this.camera) return false;
+    const origin = e.position.clone().setY(e.position.y + (e.userData.eyeHeight || 1.5) * (e.userData.boss ? 0.85 : 1));
+    const target = this.camera.position.clone().add(new THREE.Vector3(0, -0.15, 0));
+    const horizontal = Math.hypot(target.x - origin.x, target.z - origin.z);
+    const verticalGap = Math.abs(target.y - origin.y);
+    if (melee && verticalGap > 1.65 && horizontal < 5.5) return false;
+    return !this.worldBlocksSegment(origin, target, 0.22);
+  }
+
   enemyFire(e) {
-    const origin = e.position.clone().setY(e.userData.eyeHeight * (e.userData.boss ? 0.85 : 1));
+    if (!this.canEnemyDamagePlayer(e, false)) return;
+    const origin = e.position.clone().setY(e.position.y + e.userData.eyeHeight * (e.userData.boss ? 0.85 : 1));
     const target = this.camera.position.clone();
     const baseDir = target.sub(origin).normalize();
       const shots = e.userData.boss ? (this.lowMemoryMode ? 3 : 5) : 1;
@@ -3616,7 +3688,7 @@ class Game {
     // shooting
     const w = P.weapons[P.weaponIdx];
     const now = Date.now();
-    const fireRate = this.effectiveWeaponRate(w);
+    const fireRate = (this.dualWield && w.model === 'pistol') ? Math.max(120, this.effectiveWeaponRate(w) * 0.68) : this.effectiveWeaponRate(w);
     if (this.input.shoot && w.ammo > 0 && !this.gunGroup.userData.reloading && now - (w.lastShot || 0) > fireRate) {
       if (this.level !== 'houseyard') w.ammo--;
       else w.ammo = Infinity;
@@ -3627,7 +3699,7 @@ class Game {
     }
     // gun sway/return (ADS pulls weapon toward centre)
     const w0 = this.player.weapons[this.player.weaponIdx];
-    const adsX = this.aiming ? 0.0 : 0.32, adsY = this.aiming ? -0.18 : -0.3, adsZ = this.aiming ? -0.46 : -0.6;
+    const adsX = this.aiming ? 0.0 : (this.dualWield && w0.model === 'pistol' ? 0.18 : 0.32), adsY = this.aiming ? -0.18 : -0.3, adsZ = this.aiming ? -0.46 : -0.6;
     this.gunGroup.position.z = THREE.MathUtils.lerp(this.gunGroup.position.z, adsZ, dt * 9);
     this.gunGroup.position.x = THREE.MathUtils.lerp(this.gunGroup.position.x, adsX, dt * 12);
     this.gunGroup.position.y = THREE.MathUtils.lerp(this.gunGroup.position.y, adsY, dt * 12);
@@ -3891,8 +3963,14 @@ class Game {
     // enemy projectiles
     for (let i = this.eBullets.length - 1; i >= 0; i--) {
       const b = this.eBullets[i];
+      const prevBulletPos = b.mesh.position.clone();
       b.mesh.position.add(b.vel.clone().multiplyScalar(dt)); b.life -= dt;
-      if (this.camera.position.distanceTo(b.mesh.position) < 1.1) {
+      if (this.worldBlocksSegment(prevBulletPos, b.mesh.position, 0.02)) {
+        this.spawnSparks(b.mesh.position.clone(), 0xffd089, 4);
+        this.scene.remove(b.mesh); this.disposeObject3D(b.mesh); this.eBullets.splice(i, 1);
+        continue;
+      }
+      if (this.camera.position.distanceTo(b.mesh.position) < 1.1 && !this.worldBlocksSegment(b.mesh.position, this.camera.position.clone(), 0.12)) {
         P.hp -= b.dmg; this.damageFlash(); this.sound.damage(); this.updateHUD();
         this.scene.remove(b.mesh); this.disposeObject3D(b.mesh); this.eBullets.splice(i, 1);
         if (P.hp <= 0) this.endGame();
@@ -3931,7 +4009,7 @@ class Game {
         }
         if (ud.parts && ud.parts.orb) ud.parts.orb.scale.lerp(new THREE.Vector3(1, 1, 1), dt * 4);
         // boss also melees if close
-        if (ud.boss && dist2D < 3.5) { P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD(); if (P.hp <= 0) this.endGame(); }
+        if (ud.boss && dist2D < 3.5 && this.canEnemyDamagePlayer(e, true)) { P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD(); if (P.hp <= 0) this.endGame(); }
       } else {
         // melee chaser
         const atkRange = ud.boss ? 3.5 : 1.6 + (ud.type === 'tank' ? 0.6 : 0);
@@ -3943,7 +4021,7 @@ class Game {
           const sw = ud.crawl ? 1.2 : 0.6;
           if (ud.parts && ud.parts.legs) ud.parts.legs.forEach((l, k) => l.rotation.x = Math.sin(time * (ud.crawl ? 2 : 1) + (k % 2) * Math.PI) * sw);
           if (ud.parts && ud.parts.arms) ud.parts.arms.forEach((a, k) => a.rotation.x = Math.sin(time + (k % 2) * Math.PI) * 0.5);
-        } else {
+        } else if (this.canEnemyDamagePlayer(e, true)) {
           P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD();
           if (ud.parts && ud.parts.arms) ud.parts.arms.forEach(a => a.rotation.x = -Math.PI / 2.2);
           if (P.hp <= 0) this.endGame();
@@ -4013,7 +4091,7 @@ class Game {
     document.getElementById('health-bar').style.width = hpPct + '%';
     document.getElementById('hp-num').innerText = Math.max(0, Math.ceil(this.player.hp));
     const w = this.player.weapons[this.player.weaponIdx];
-    document.getElementById('weapon-name').innerText = w.name;
+    document.getElementById('weapon-name').innerText = (this.dualWield && w.model === 'pistol') ? 'DUAL PISTOLS' : w.name;
     document.getElementById('ammo-display').innerText = w.ammo === Infinity ? '∞' : w.ammo;
     document.getElementById('max-ammo-display').innerText = w.maxAmmo === Infinity ? '∞' : w.maxAmmo;
     const cont = document.getElementById('wep-icon-container');

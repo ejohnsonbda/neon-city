@@ -4,14 +4,12 @@ import { LEVELS } from '../config/GameConfig.js';
 import { GeometryFactory } from '../utils/GeometryFactory.js';
 import { createNeonCityLevel } from './levels/NeonCityLevel.js';
 import { createEgyptLevel } from './levels/EgyptLevel.js';
-import { createJapanLevel } from './levels/JapanLevel.js';
 import { createLostJungleLevel } from './levels/LostJungleLevel.js';
 import { createUndergroundLevel } from './levels/UndergroundLevel.js';
 
 const LEVEL_BUILDERS = {
   'neon-city': createNeonCityLevel,
   desert: createEgyptLevel,
-  japan: createJapanLevel,
   'lost-jungle': createLostJungleLevel,
   underground: createUndergroundLevel
 };

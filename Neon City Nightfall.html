@@ -170,7 +170,6 @@
   .lvl-art.rail{background:radial-gradient(circle at 35% 20%,#19f0ff 0 9%,transparent 10%),radial-gradient(circle at 70% 70%,#ff2d95 0 12%,transparent 13%),linear-gradient(160deg,#090d22,#1a2450 45%,#f2914e 78%,#0a1030);}
   .lvl-art.desert{background:linear-gradient(160deg,#e7c98c,#cda063 45%,#2f5e26);}
   .lvl-art.jungle{background:radial-gradient(circle at 70% 22%,#a7ff72,transparent 18%),linear-gradient(160deg,#06190b,#1f5f2b 46%,#68d05a 72%,#102712);}
-  .lvl-art.japan{background:linear-gradient(160deg,#7fb4e0,#ffc6e0 50%,#b5341f);}
   .lvl-art.houseyard{background:radial-gradient(circle at 50% 48%,#f9b43a 0 13%,transparent 14%),radial-gradient(circle at 36% 34%,#4ecdc4 0 7%,transparent 8%),radial-gradient(circle at 64% 34%,#ff6f61 0 7%,transparent 8%),linear-gradient(160deg,#87ceeb 0%,#ffe2a4 37%,#6da55a 72%,#dd4a4a 100%);}
   .lvl-body{padding:11px 16px 15px;}
   .lvl-name{font:900 18px 'Orbitron';margin-bottom:2px;}
@@ -208,7 +207,7 @@
   .tab-panel.active{display:flex;}
 
   /* ---------- Armory weapon cards ---------- */
-  #armory-grid,#armory-japan{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;}
+  #armory-grid{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;}
   .wep-card{width:196px;padding:16px 14px;background:rgba(10,14,26,.85);border:1px solid rgba(255,255,255,.12);
     clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
     font-family:'Rajdhani';cursor:pointer;pointer-events:auto;transition:.18s;}
@@ -221,7 +220,6 @@
   .wep-bar-fill{height:100%;border-radius:2px;}
   .wep-ammo{font:700 11px 'Rajdhani';letter-spacing:.1em;color:rgba(255,255,255,.45);margin-top:9px;}
   .wep-badge{font:700 9px 'Rajdhani';letter-spacing:.18em;padding:3px 7px;margin-top:8px;display:inline-block;}
-  .japan-note{font:700 10px 'Rajdhani';letter-spacing:.25em;color:rgba(255,255,255,.25);margin-bottom:20px;text-align:center;}
 
   /* Pause / settings */
   .panel{width:380px;background:rgba(10,14,26,.95);border:1px solid rgba(25,240,255,.25);padding:26px;
@@ -348,9 +346,6 @@
   <div id="tab-armory" class="tab-panel">
     <div class="pick-label" style="margin-top:12px">SELECT STARTING WEAPON</div>
     <div id="armory-grid"></div>
-    <div class="pick-label" style="opacity:.4">FEUDAL JAPAN EXCLUSIVE</div>
-    <div id="armory-japan" style="opacity:.38;pointer-events:none;"></div>
-    <div class="japan-note">UNLOCKED AUTOMATICALLY ON FEUDAL JAPAN</div>
   </div>
 
   <div class="menu-actions">
