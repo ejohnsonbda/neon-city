@@ -2874,8 +2874,8 @@ class Game {
     this.aiming = on;
     const scope = document.getElementById('scope-overlay');
     const w = this.player.weapons[this.player.weaponIdx];
-    const isSniper = w.pierce || w.scope; // railgun and sniper use precision scope
-    if (scope) scope.style.opacity = (on && isSniper) ? 1 : 0;
+    const showScopeOverlay = !!w.pierce; // railgun keeps the overlay; sniper zoom stays clean.
+    if (scope) scope.style.opacity = (on && showScopeOverlay) ? 1 : 0;
     if (on) document.getElementById('crosshair').classList.add('aiming');
     else document.getElementById('crosshair').classList.remove('aiming');
   }
