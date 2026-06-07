@@ -2844,7 +2844,7 @@ class Game {
     this.aiming = on;
     const scope = document.getElementById('scope-overlay');
     const w = this.player.weapons[this.player.weaponIdx];
-    const showScopeOverlay = !!w.pierce; // railgun keeps the overlay; sniper zoom stays clean.
+    const showScopeOverlay = !!(w.pierce || w.scope); // railgun and sniper share scoped overlay behavior.
     if (scope) scope.style.opacity = (on && showScopeOverlay) ? 1 : 0;
     if (on) document.getElementById('crosshair').classList.add('aiming');
     else document.getElementById('crosshair').classList.remove('aiming');
@@ -3697,8 +3697,8 @@ class Game {
     this.gunGroup.position.x = THREE.MathUtils.lerp(this.gunGroup.position.x, adsX, dt * 12);
     this.gunGroup.position.y = THREE.MathUtils.lerp(this.gunGroup.position.y, adsY, dt * 12);
     // zoom FOV toward aim target
-    const isSniper = w0.pierce;
-    const targetFOV = this.aiming ? this.baseFOV * (isSniper ? 0.32 : 0.62) : this.baseFOV;
+    const isScopedWeapon = !!(w0.pierce || w0.scope);
+    const targetFOV = this.aiming ? this.baseFOV * (isScopedWeapon ? 0.32 : 0.62) : this.baseFOV;
     if (Math.abs(this.camera.fov - targetFOV) > 0.1) {
       this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFOV, dt * 12);
       this.camera.updateProjectionMatrix();
