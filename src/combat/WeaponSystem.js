@@ -105,6 +105,7 @@ export class WeaponSystem {
     this.models.set('pistol', this.buildPistol());
     this.models.set('pulse', this.buildPulseSMG());
     this.models.set('cleaner', this.buildCleanerRail());
+    this.models.set('sniper', this.buildSniperRifle());
     this.muzzleFlash = this.mesh(new THREE.ConeGeometry(0.07, 0.18, 7), this.materials.flash, [0, 0, -0.55], [Math.PI / 2, 0, 0]);
     this.muzzleFlash.name = 'MuzzleFlash';
     this.viewLight = new THREE.PointLight(0xfff1a8, 0, 1.5);
@@ -160,6 +161,24 @@ export class WeaponSystem {
       this.box([0.13, 0.32, 0.16], this.materials.dark, [-0.01, -0.15, -0.25], [-0.35, 0, 0]),
       this.box([0.23, 0.04, 0.12], this.materials.green, [0.02, 0.02, -0.74]),
       this.box([0.27, 0.05, 0.16], this.materials.black, [0.02, 0.245, -0.62])
+    );
+    return g;
+  }
+
+  buildSniperRifle() {
+    const g = new THREE.Group();
+    g.name = 'SniperRifleViewModel';
+    g.userData.muzzle = new THREE.Vector3(0.02, 0.16, -1.02);
+    g.add(
+      this.box([0.16, 0.16, 0.86], this.materials.dark, [0.02, 0.05, -0.46], [0.018, 0, 0]),
+      this.box([0.10, 0.10, 1.12], this.materials.body, [0.02, 0.13, -0.64]),
+      this.barrel(0.019, 1.08, this.materials.black, [0.02, 0.155, -0.94]),
+      this.barrel(0.030, 0.18, this.materials.black, [0.02, 0.155, -1.46]),
+      this.box([0.32, 0.055, 0.14], this.materials.black, [0.02, 0.235, -0.53]),
+      this.barrel(0.050, 0.34, this.materials.glass, [0.02, 0.30, -0.52], [0, 0, Math.PI / 2]),
+      this.box([0.12, 0.34, 0.15], this.materials.dark, [-0.01, -0.16, -0.28], [-0.35, 0, 0]),
+      this.glowStrip([0.024, 0.022, 0.54], this.materials.cyan, [0.10, 0.17, -0.65]),
+      this.glowStrip([0.024, 0.022, 0.54], this.materials.cyan, [-0.06, 0.17, -0.65])
     );
     return g;
   }
@@ -238,7 +257,8 @@ export class WeaponSystem {
       const hit = intersections[0];
       end.copy(hit.point);
       const enemy = this.enemySystem.findByObject(hit.object);
-      if (enemy && this.enemySystem.damage(enemy, weapon.damage)) player.score += enemy.score;
+      const damage = weapon.oneHit && enemy ? enemy.hp + 9999 : weapon.damage;
+      if (enemy && this.enemySystem.damage(enemy, damage)) player.score += enemy.score;
     }
     this.triggerMuzzle(weapon);
     this.tracer(this.muzzleWorldPosition(), end, weapon.color);
@@ -253,8 +273,8 @@ export class WeaponSystem {
   }
 
   triggerMuzzle(weapon) {
-    this.recoil = Math.min(1, this.recoil + (weapon.id === 'cleaner' ? 0.58 : weapon.id === 'pulse' ? 0.17 : 0.30));
-    this.flashLife = weapon.id === 'cleaner' ? 1 : 0.78;
+    this.recoil = Math.min(1, this.recoil + (weapon.id === 'sniper' ? 0.68 : weapon.id === 'cleaner' ? 0.58 : weapon.id === 'pulse' ? 0.17 : 0.30));
+    this.flashLife = (weapon.id === 'cleaner' || weapon.id === 'sniper') ? 1 : 0.78;
     const color = new THREE.Color(weapon.color);
     this.muzzleFlash.material.color.copy(color);
     this.viewLight.color.copy(color);

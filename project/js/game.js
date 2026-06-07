@@ -106,7 +106,8 @@ class Game {
         { name: 'SHOTGUN', type: 'semi', rate: 700, dmg: 11,  pellets: 9, color: 0xff2d95, ammo: 36,  maxAmmo: 96,  spread: 0.11, model: 'shotgun', kick: 0.05 },
         { name: 'RAILGUN', type: 'semi', rate: 1050, dmg: 135, color: 0x39ff14, ammo: 18, maxAmmo: 48, spread: 0, pierce: true, model: 'railgun', kick: 0.06 },
         { name: 'PLASMA',  type: 'semi', rate: 760, dmg: 40, splash: 5.5, splashDmg: 55, color: 0x9b5cff, ammo: 24, maxAmmo: 60, spread: 0.004, projectile: true, model: 'plasma', kick: 0.03 },
-        { name: 'PULSE',   type: 'auto', rate: 40,  dmg: 8,   color: 0xff7a18, ammo: 320, maxAmmo: 700, spread: 0.055, model: 'pulse', kick: 0.006 }
+        { name: 'PULSE',   type: 'auto', rate: 40,  dmg: 8,   color: 0xff7a18, ammo: 320, maxAmmo: 700, spread: 0.055, model: 'pulse', kick: 0.006 },
+        { name: 'SNIPER',  type: 'semi', rate: 1200, dmg: 9999, color: 0x00e5ff, ammo: 16, maxAmmo: 48, spread: 0, model: 'sniper', kick: 0.075, scope: true, oneHit: true }
       ]
     };
 
@@ -2444,6 +2445,7 @@ class Game {
       railgun: this._buildRailgun(0x39ff14),
       plasma:  this._buildPlasma(0x9b5cff),
       pulse:   this._buildPulse(0xff7a18),
+      sniper:  this._buildSniper(0x00e5ff),
       katana:  this._buildKatana(),
       shuriken: this._buildShuriken(),
       bow:     this._buildBow()
@@ -2650,6 +2652,25 @@ class Game {
     return g;
   }
 
+  // ---- SNIPER: precision rifle with long barrel and scope ----
+  _buildSniper(c) {
+    const g = new THREE.Group();
+    this._part(g, new THREE.BoxGeometry(0.11, 0.12, 0.7), this._matDark, 0, 0, -0.16);
+    this._part(g, new THREE.BoxGeometry(0.09, 0.08, 0.48), this._matPoly, 0, -0.02, 0.12);
+    const barrel = this._part(g, new THREE.CylinderGeometry(0.018, 0.018, 0.95, 16), this._matMetal, 0, 0.035, -0.62); barrel.rotation.x = Math.PI / 2;
+    const suppressor = this._part(g, new THREE.CylinderGeometry(0.032, 0.032, 0.22, 16), this._matDark, 0, 0.035, -1.08); suppressor.rotation.x = Math.PI / 2;
+    const scope = this._part(g, new THREE.CylinderGeometry(0.045, 0.045, 0.34, 16), this._matMetal, 0, 0.16, -0.18); scope.rotation.x = Math.PI / 2;
+    this._part(g, new THREE.BoxGeometry(0.07, 0.03, 0.08), this._matPoly, 0, 0.105, -0.18);
+    this._part(g, new THREE.BoxGeometry(0.08, 0.2, 0.1), this._matDark, 0, -0.16, 0.12, 0.28);
+    this._part(g, new THREE.BoxGeometry(0.07, 0.16, 0.08), this._matMetal, 0, -0.15, -0.16, -0.08);
+    this._part(g, new THREE.BoxGeometry(0.05, 0.07, 0.28), this._matPoly, 0, -0.02, 0.44);
+    this._part(g, new THREE.BoxGeometry(0.02, 0.17, 0.04), this._matPoly, 0, -0.02, 0.60);
+    this._part(g, new THREE.BoxGeometry(0.13, 0.014, 0.64), this._accent(c), 0, 0.075, -0.2);
+    this._part(g, new THREE.BoxGeometry(0.05, 0.014, 0.16), this._glow(c, 1.8), 0, 0.18, -0.18);
+    g.userData.muzzle = new THREE.Vector3(0, 0.035, -1.20);
+    return g;
+  }
+
   // ---- KATANA: held forward, long curved blade ----
   _buildKatana() {
     const g = new THREE.Group();
@@ -2823,7 +2844,7 @@ class Game {
     this.aiming = on;
     const scope = document.getElementById('scope-overlay');
     const w = this.player.weapons[this.player.weaponIdx];
-    const isSniper = w.pierce; // railgun = true sniper scope
+    const isSniper = w.pierce || w.scope; // railgun and sniper use precision scope
     if (scope) scope.style.opacity = (on && isSniper) ? 1 : 0;
     if (on) document.getElementById('crosshair').classList.add('aiming');
     else document.getElementById('crosshair').classList.remove('aiming');
@@ -2859,7 +2880,8 @@ class Game {
     addEventListener('mousemove', e => {
       if (this.isPaused || !this.gameStarted) return;
       if (document.pointerLockElement === this.container) {
-        const s = this.settings.sensitivity * (this.aiming ? (this.player.weapons[this.player.weaponIdx].pierce ? 0.32 : 0.6) : 1);
+        const activeWeapon = this.player.weapons[this.player.weaponIdx];
+        const s = this.settings.sensitivity * (this.aiming ? ((activeWeapon.pierce || activeWeapon.scope) ? 0.32 : 0.6) : 1);
         this.camera.rotation.y -= e.movementX * s;
         const d = this.settings.invertY ? -1 : 1;
         this.camera.rotation.x -= e.movementY * s * d;
@@ -3235,7 +3257,7 @@ class Game {
       if (wHits.length && wDist <= 400) this.spawnSparks(wHits[0].point, w.color, 8, wHits[0].face ? wHits[0].face.normal : null);
       this.spawnBeam(muzzlePos, end, w.color);
     } else {
-      // HITSCAN — pistol / smg / shotgun / pulse
+      // HITSCAN — pistol / smg / shotgun / pulse / sniper
       const pellets = w.pellets || 1;
       const spread = w.spread * (this.aiming ? 0.25 : 1);
       const muzzleOrigins = dualPistol ? [muzzlePos, dualMuzzlePos || muzzlePos] : [muzzlePos];
@@ -3259,7 +3281,8 @@ class Game {
           if (root) {
             const prevSuppress = this._suppressNextHitFeedback;
             this._suppressNextHitFeedback = isPulse && !emitPulseVisual;
-            this.damageEnemy(root, w.dmg, eHits[0].point);
+            const hitDamage = w.oneHit ? (root.userData.hp + 9999) : w.dmg;
+            this.damageEnemy(root, hitDamage, eHits[0].point);
             this._suppressNextHitFeedback = prevSuppress;
           }
           if (emitPulseVisual) this.spawnSparks(eHits[0].point, w.color, isPulse ? 2 : 6);

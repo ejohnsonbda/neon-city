@@ -36,6 +36,7 @@ export class InputController {
     if (event.code === 'Digit1') this.onWeapon(0);
     if (event.code === 'Digit2') this.onWeapon(1);
     if (event.code === 'Digit3') this.onWeapon(2);
+    if (event.code === 'Digit7') this.onWeapon(3);
   }
 
   look(event) {
