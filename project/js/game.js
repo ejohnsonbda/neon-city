@@ -26,7 +26,9 @@ class Game {
       return;
     }
     this.renderer.setClearColor(0x05060c, 1);
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.lowMemoryMode ? 0.75 : 1.5));
+    this.renderPixelRatio = this.getTargetPixelRatio();
+    window.__NEON_RENDER_SCALE = this.renderPixelRatio;
+    this.renderer.setPixelRatio(this.renderPixelRatio);
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.shadowMap.enabled = !this.lowMemoryMode;
     this.renderer.shadowMap.type = this.lowMemoryMode ? THREE.BasicShadowMap : THREE.PCFShadowMap;
@@ -292,6 +294,20 @@ class Game {
       standard.geometry.dispose(); standard.material.dispose();
       additive.geometry.dispose();
     }
+  }
+
+  getTargetPixelRatio() {
+    const dpr = Math.max(0.5, window.devicePixelRatio || 1);
+    // Fixed lower render scale: keeps the canvas at full UI size while rendering fewer pixels for faster gameplay.
+    return Math.min(dpr, this.lowMemoryMode ? 0.58 : 0.85);
+  }
+
+  applyRenderResolution() {
+    if (!this.renderer) return 1;
+    this.renderPixelRatio = this.getTargetPixelRatio();
+    window.__NEON_RENDER_SCALE = this.renderPixelRatio;
+    this.renderer.setPixelRatio(this.renderPixelRatio);
+    return this.renderPixelRatio;
   }
 
   static shouldUseLowMemoryMode() {
@@ -2031,6 +2047,96 @@ class Game {
       return t;
     };
 
+    const finishCanvasTexture = (canvas, repeatX = 1, repeatY = 1) => {
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeatX, repeatY);
+      tex.needsUpdate = true;
+      if (this.lowMemoryMode) { tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; }
+      if ('encoding' in tex && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+      if ('colorSpace' in tex && THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+
+    const makeCityWallTexture = () => {
+      const size = this.lowMemoryMode ? 256 : 384;
+      const c = document.createElement('canvas'); c.width = c.height = size;
+      const ctx = c.getContext('2d');
+      const bg = ctx.createLinearGradient(0, 0, size, size);
+      bg.addColorStop(0, '#9dcfff');
+      bg.addColorStop(0.55, '#4c86bf');
+      bg.addColorStop(1, '#214d78');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.34)'; ctx.lineWidth = Math.max(1, size / 220);
+      for (let i = 0; i <= 6; i++) {
+        const p = Math.round(i * size / 6) + 0.5;
+        ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, size); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(size, p); ctx.stroke();
+      }
+
+      ctx.fillStyle = 'rgba(9,24,47,0.28)';
+      for (let i = 0; i < 13; i++) {
+        const x = (i * 43) % size;
+        const y = (i * 71) % size;
+        ctx.fillRect(x, y, size * 0.09, size * 0.025);
+      }
+
+      const neon = ['#49d7ff', '#ff2d95', '#ffd166'];
+      for (let tower = 0; tower < 8; tower++) {
+        const tw = size * (0.055 + (tower % 3) * 0.018);
+        const th = size * (0.32 + ((tower * 37) % 35) / 100);
+        const tx = (tower * size / 8) + size * 0.018;
+        const ty = size - th;
+        ctx.fillStyle = tower % 2 ? 'rgba(17,35,62,0.74)' : 'rgba(25,54,86,0.7)';
+        ctx.fillRect(tx, ty, tw, th);
+        ctx.fillStyle = neon[tower % neon.length];
+        for (let wy = ty + size * 0.035; wy < size - size * 0.03; wy += size * 0.09) {
+          ctx.globalAlpha = 0.58;
+          ctx.fillRect(tx + tw * 0.22, wy, tw * 0.16, size * 0.016);
+          ctx.fillRect(tx + tw * 0.58, wy, tw * 0.16, size * 0.016);
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.strokeStyle = 'rgba(73,215,255,0.7)'; ctx.lineWidth = Math.max(2, size / 128);
+      ctx.strokeRect(2, 2, size - 4, size - 4);
+      return finishCanvasTexture(c);
+    };
+
+    const makeCityscapeTexture = () => {
+      const w = this.lowMemoryMode ? 512 : 768, h = this.lowMemoryMode ? 192 : 256;
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+      skyGrad.addColorStop(0, '#9fd3ff');
+      skyGrad.addColorStop(0.62, '#5f99d2');
+      skyGrad.addColorStop(1, '#19304f');
+      ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, w, h);
+      const colors = ['#142844', '#1e3b5b', '#244b70', '#10223b'];
+      for (let x = -12, i = 0; x < w + 20; i++) {
+        const bw = 24 + (i * 17) % 42;
+        const bh = 64 + (i * 31) % 128;
+        const y = h - bh;
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillRect(x, y, bw, bh);
+        ctx.fillStyle = i % 3 === 0 ? '#49d7ff' : (i % 3 === 1 ? '#ff2d95' : '#ffd166');
+        ctx.globalAlpha = 0.72;
+        for (let wy = y + 12; wy < h - 10; wy += 18) {
+          for (let wx = x + 6; wx < x + bw - 5; wx += 13) {
+            if (((wx + wy + i) % 4) !== 0) ctx.fillRect(wx, wy, 4, 3);
+          }
+        }
+        ctx.globalAlpha = 1;
+        if (i % 4 === 0) {
+          ctx.strokeStyle = '#49d7ff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(x + bw * 0.5, y); ctx.lineTo(x + bw * 0.5, y - 22); ctx.stroke();
+        }
+        x += bw + 8;
+      }
+      return finishCanvasTexture(c);
+    };
+
     const materialFromGrid = (repeatX, repeatY, color = 0xffffff, emissive = 0x0a294d, intensity = 0.08) => {
       const tex = makeFpsGridTexture();
       tex.repeat.set(repeatX, repeatY);
@@ -2044,10 +2150,18 @@ class Game {
       });
     };
 
+    const materialFromCanvas = (builder, repeatX, repeatY, color = 0xffffff, emissive = 0x0a294d, intensity = 0.1, roughness = 0.68, metalness = 0.08) => {
+      const tex = builder();
+      tex.repeat.set(repeatX, repeatY);
+      return new THREE.MeshStandardMaterial({ map: tex, color, emissive, emissiveIntensity: intensity, roughness, metalness });
+    };
+
     const floorMat = materialFromGrid(46, 46, 0xd7ecff, 0x0f3d72, 0.05);
-    const wallMat = materialFromGrid(3, 2, 0xbfdfff, 0x123a62, 0.12);
+    const wallMat = materialFromCanvas(makeCityWallTexture, 3.2, 1.45, 0xd7ecff, 0x123a62, 0.18, 0.66, 0.08);
     const platformMat = materialFromGrid(4, 2, 0xc8e6ff, 0x0c3760, 0.1);
-    const darkGridMat = materialFromGrid(2, 2, 0x7aa7d7, 0x071a33, 0.04);
+    const darkGridMat = materialFromCanvas(makeCityWallTexture, 1.6, 1.0, 0x8dbde8, 0x071a33, 0.08, 0.72, 0.1);
+    const cityscapeMat = materialFromCanvas(makeCityscapeTexture, 1.0, 1.0, 0xffffff, 0x0b2848, 0.18, 0.86, 0.02);
+    cityscapeMat.side = THREE.DoubleSide;
     const railMat = new THREE.MeshStandardMaterial({ color: 0x244a72, emissive: 0x0f4d85, emissiveIntensity: 0.18, roughness: 0.55, metalness: 0.18 });
     const neonCyan = new THREE.MeshBasicMaterial({ color: 0x49d7ff, transparent: true, opacity: 0.78, blending: THREE.AdditiveBlending, depthWrite: false });
     const neonAmber = new THREE.MeshBasicMaterial({ color: 0xffd166, transparent: true, opacity: 0.72, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -2070,12 +2184,22 @@ class Game {
       p.position.set(x, y, z); p.rotation.y = rot; W.add(p); return p;
     };
 
-    // Arena shell: four tall grid-textured walls like the reference collision world.
+    // Arena shell: four tall textured walls with skyline murals, preserving the readable FPS collision world.
     const bounds = 82;
     addSolid(168, 12, 2.4, 0, 6, -bounds);
     addSolid(168, 12, 2.4, 0, 6, bounds);
     addSolid(2.4, 12, 168, -bounds, 6, 0);
     addSolid(2.4, 12, 168, bounds, 6, 0);
+
+    const addCityscapePanel = (w, h, x, y, z, rot = 0) => {
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(w, h), cityscapeMat);
+      panel.position.set(x, y, z); panel.rotation.y = rot; panel.renderOrder = 2; W.add(panel);
+      return panel;
+    };
+    addCityscapePanel(152, 18, 0, 10, -bounds + 1.26, 0);
+    addCityscapePanel(152, 18, 0, 10, bounds - 1.26, Math.PI);
+    addCityscapePanel(152, 18, -bounds + 1.26, 10, 0, Math.PI / 2);
+    addCityscapePanel(152, 18, bounds - 1.26, 10, 0, -Math.PI / 2);
 
     // Orthogonal maze blocks and cover. Wide corridors keep wave combat clear while preserving the example's blocky world feel.
     [
@@ -2120,13 +2244,18 @@ class Game {
     };
     [[0, 0, 0x49d7ff], [-42, 48, 0xffd166], [42, -48, 0xff2d95], [0, -58, 0x39ff14]].forEach(p => addPad(p[0], p[1], p[2]));
 
-    // Distant simplified skyline keeps the Neon City identity without blocking the FPS reference arena readability.
-    const skylineMat = new THREE.MeshStandardMaterial({ color: 0x2b4261, emissive: 0x071d34, emissiveIntensity: 0.24, roughness: 0.7, metalness: 0.12 });
+    // Distant textured skyline keeps the Neon City identity without reintroducing expensive dense-building clutter.
+    const skylineMat = materialFromCanvas(makeCityWallTexture, 1.0, 2.4, 0x91bbe0, 0x071d34, 0.22, 0.7, 0.12);
     [[-112, -112, 13], [-94, -112, 18], [-76, -112, 10], [112, -110, 16], [94, -112, 11], [76, -112, 20],
-     [-112, 112, 15], [-94, 112, 10], [112, 112, 18], [94, 112, 12], [-112, 72, 11], [112, -72, 13]]
+     [-112, 112, 15], [-94, 112, 10], [112, 112, 18], [94, 112, 12], [-112, 72, 11], [112, -72, 13],
+     [-132, -40, 16], [132, 44, 18], [-126, 38, 12], [126, -34, 14]]
       .forEach(([x, z, h], i) => {
         const tower = new THREE.Mesh(new THREE.BoxGeometry(10 + (i % 3) * 3, h, 10), skylineMat);
-        tower.position.set(x, h / 2, z); tower.castShadow = true; tower.receiveShadow = true; W.add(tower);
+        tower.position.set(x, h / 2, z); tower.castShadow = false; tower.receiveShadow = true; W.add(tower);
+        if (!this.lowMemoryMode && i % 4 === 0) {
+          const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 6), railMat);
+          mast.position.set(x, h + 2.5, z); W.add(mast);
+        }
       });
 
     // Lighting matches the official example's brighter sky/fog while retaining subtle neon accents.
@@ -4174,6 +4303,7 @@ addEventListener('resize', () => {
   if (window.game && game.camera && game.renderer) {
     game.camera.aspect = innerWidth / innerHeight;
     game.camera.updateProjectionMatrix();
+    if (typeof game.applyRenderResolution === 'function') game.applyRenderResolution();
     game.renderer.setSize(innerWidth, innerHeight);
     if (game.composer) game.composer.setSize(innerWidth, innerHeight);
   }
