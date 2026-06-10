@@ -4210,7 +4210,7 @@ class Game {
   // ---------------- MINIMAP ----------------
   drawMinimap() {
     const ctx = this.mmCtx;
-    const size = this.mmCanvas ? this.mmCanvas.width : 190;
+    const size = this.mmCanvas ? this.mmCanvas.width : 238;
     const cx = size * 0.5, cy = size * 0.5, range = 175, scale = size / (range * 2);
     ctx.clearRect(0, 0, size, size);
     ctx.fillStyle = 'rgba(6,10,20,0.72)'; ctx.fillRect(0, 0, size, size);
