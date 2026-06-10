@@ -4209,9 +4209,11 @@ class Game {
 
   // ---------------- MINIMAP ----------------
   drawMinimap() {
-    const ctx = this.mmCtx, cx = 75, cy = 75, scale = 0.42;
-    ctx.clearRect(0, 0, 150, 150);
-    ctx.fillStyle = 'rgba(6,10,20,0.7)'; ctx.fillRect(0, 0, 150, 150);
+    const ctx = this.mmCtx;
+    const size = this.mmCanvas ? this.mmCanvas.width : 190;
+    const cx = size * 0.5, cy = size * 0.5, range = 175, scale = size / (range * 2);
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = 'rgba(6,10,20,0.72)'; ctx.fillRect(0, 0, size, size);
     const rot = this.camera.rotation.y;
     const cosR = Math.cos(rot), sinR = Math.sin(rot);
     ctx.fillStyle = '#2a3550';
@@ -4219,24 +4221,24 @@ class Game {
       if (o.scale.y > 4) {
         const dx = o.position.x - this.camera.position.x, dz = o.position.z - this.camera.position.z;
         const rx = dx * cosR - dz * sinR, ry = dx * sinR + dz * cosR;
-        if (Math.abs(rx) < 150 && Math.abs(ry) < 150) ctx.fillRect(cx + rx * scale - 3, cy + ry * scale - 3, 6, 6);
+        if (Math.abs(rx) < range && Math.abs(ry) < range) ctx.fillRect(cx + rx * scale - 4, cy + ry * scale - 4, 8, 8);
       }
     }
     for (const e of this.enemies) {
       const dx = e.position.x - this.camera.position.x, dz = e.position.z - this.camera.position.z;
       const rx = dx * cosR - dz * sinR, ry = dx * sinR + dz * cosR;
-      if (Math.abs(rx) < 150 && Math.abs(ry) < 150) {
+      if (Math.abs(rx) < range && Math.abs(ry) < range) {
         ctx.fillStyle = e.userData.boss ? '#ff2d95' : (e.userData.ranged ? '#9b5cff' : '#ff5555');
-        ctx.beginPath(); ctx.arc(cx + rx * scale, cy + ry * scale, e.userData.boss ? 5 : 3, 0, 6.28); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + rx * scale, cy + ry * scale, e.userData.boss ? 7 : 4, 0, 6.28); ctx.fill();
       }
     }
     for (const it of this.items) {
       const dx = it.position.x - this.camera.position.x, dz = it.position.z - this.camera.position.z;
       const rx = dx * cosR - dz * sinR, ry = dx * sinR + dz * cosR;
-      if (Math.abs(rx) < 150 && Math.abs(ry) < 150) { ctx.fillStyle = it.userData.health ? '#ff3355' : '#39ff14'; ctx.fillRect(cx + rx * scale - 2, cy + ry * scale - 2, 4, 4); }
+      if (Math.abs(rx) < range && Math.abs(ry) < range) { ctx.fillStyle = it.userData.health ? '#ff3355' : '#39ff14'; ctx.fillRect(cx + rx * scale - 3, cy + ry * scale - 3, 6, 6); }
     }
     ctx.fillStyle = '#19f0ff';
-    ctx.beginPath(); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx - 4, cy + 5); ctx.lineTo(cx + 4, cy + 5); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx, cy - 8); ctx.lineTo(cx - 6, cy + 7); ctx.lineTo(cx + 6, cy + 7); ctx.fill();
   }
 
   // ---------------- HUD ----------------
