@@ -132,6 +132,7 @@ class Game {
     else if (level === 'megacity') this.buildMegaCity(this.worldGroup);
     else if (level === 'rail') this.buildRailCity(this.worldGroup);
     else if (level === 'desert') this.buildDesert(this.worldGroup);
+    else if (level === 'range') this.buildRange(this.worldGroup);
     else this.buildCity(this.worldGroup);
   }
 
@@ -1388,7 +1389,8 @@ class Game {
       { id: 'fields', name: 'COUNTRYSIDE', desc: 'Sunlit fields, hills & houses.',   art: 'fields' },
       { id: 'megacity', name: 'MEGAWATT CITY 1', desc: 'Dense grid, live traffic & neon.', art: 'mega' },
       { id: 'rail', name: 'RAIL CITY', desc: 'Ride the monorail · day to night.', art: 'rail' },
-      { id: 'desert', name: 'EGYPT DESERT', desc: 'Pyramids, jungle & pharaoh golems.', art: 'desert' }
+      { id: 'desert', name: 'EGYPT DESERT', desc: 'Pyramids, jungle & pharaoh golems.', art: 'desert' },
+      { id: 'range', name: 'TEST RANGE', desc: 'Firing range · no hostiles · T resets.', art: 'range' }
     ];
     levels.forEach(l => {
       const c = document.createElement('div');
@@ -1517,6 +1519,7 @@ class Game {
         if (idx === 0) this._lastPistolTap = now;
       }
       if (code === 'KeyR' && down) this.reload();
+      if (code === 'KeyT' && down && this.level === 'range') this.layoutRangeTargets();
     };
     addEventListener('keydown', e => onKey(e.code, true));
     addEventListener('keyup', e => onKey(e.code, false));
@@ -1591,6 +1594,7 @@ class Game {
     this.camera.position.set(0, this.player.height, 0);
     if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
     if (this._desertSpawn && this.level === 'desert') this.camera.position.copy(this._desertSpawn);
+    if (this._rangeSpawn && this.level === 'range') this.camera.position.copy(this._rangeSpawn);
     this.player.ridingCar = null; this.player.floorY = this.player.height;
     this.camera.rotation.set(0, 0, 0);
     // time-of-day chip only on rail level
@@ -1612,7 +1616,12 @@ class Game {
     document.getElementById('boss-bar-wrap').classList.add('hidden');
     this.updateHUD();
     this.updateWeaponModel(this.player.weapons[0].name);
-    this.startWaveCountdown(1);
+    if (this.level === 'range') {
+      this.layoutRangeTargets();
+      this.showMessage('WEAPON TEST RANGE — PRESS T TO RESET TARGETS', '#19f0ff');
+    } else {
+      this.startWaveCountdown(1);
+    }
   }
 
   togglePause() {
@@ -1711,6 +1720,94 @@ class Game {
     list.forEach(type => this.spawnEnemy(type, hpScale));
   }
 
+  // ================= WEAPON TEST RANGE =================
+  // Indoor firing range: distance-marked lanes, neon posts, golem target
+  // dummies that don't fight back and respawn after 2s. T re-racks targets.
+  buildRange(W) {
+    this.scene.background = new THREE.Color(0x070a14);
+    this.scene.fog = new THREE.FogExp2(0x070a14, 0.018);
+
+    // speckled concrete floor
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const x = c.getContext('2d');
+    x.fillStyle = '#0c0f17'; x.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 2600; i++) {
+      x.fillStyle = Math.random() > 0.5 ? 'rgba(120,140,170,.04)' : 'rgba(0,0,0,.4)';
+      x.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+    }
+    const floorTex = new THREE.CanvasTexture(c);
+    floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(30, 30);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200),
+      new THREE.MeshStandardMaterial({ map: floorTex, color: 0x6878a0, roughness: 0.6, metalness: 0.4 }));
+    floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
+    const grid = new THREE.GridHelper(200, 100, 0x1c3a5a, 0x0e1d30);
+    grid.position.y = 0.01; W.add(grid);
+
+    // distance posts with neon caps + lane lines every 10 units
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x10141c, roughness: 0.7 });
+    const stripMat = new THREE.MeshBasicMaterial({ color: 0x19f0ff });
+    for (let d = 10; d <= 70; d += 10) {
+      [-1, 1].forEach(s => {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 0.3), postMat);
+        post.position.set(s * 18, 1.5, -d); post.castShadow = true; W.add(post);
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.3, 0.34), stripMat);
+        strip.position.set(s * 18, 2.9, -d); W.add(strip);
+      });
+      const ln = new THREE.Mesh(new THREE.PlaneGeometry(36, 0.18),
+        new THREE.MeshBasicMaterial({ color: 0x19f0ff, transparent: true, opacity: 0.25 }));
+      ln.rotation.x = -Math.PI / 2; ln.position.set(0, 0.02, -d); W.add(ln);
+    }
+
+    // back wall + side walls (colliders)
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x0c1018, roughness: 0.8, metalness: 0.3 });
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(44, 16, 1), wallMat);
+    wall.position.set(0, 8, -78); wall.receiveShadow = true; W.add(wall); this.objects.push(wall);
+    [-1, 1].forEach(s => {
+      const sw = new THREE.Mesh(new THREE.BoxGeometry(1, 16, 90), wallMat);
+      sw.position.set(s * 22, 8, -33); W.add(sw); this.objects.push(sw);
+    });
+    // neon strips on the back wall
+    [-7, 0, 7].forEach((sx, i) => {
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.2, 9, 0.2),
+        new THREE.MeshBasicMaterial({ color: i === 1 ? 0x19f0ff : 0x2a6fff }));
+      strip.position.set(sx, 5, -77.4); W.add(strip);
+    });
+
+    // lights (static counts only)
+    W.add(new THREE.AmbientLight(0x3c4a68, 1.0));
+    W.add(new THREE.HemisphereLight(0x32468a, 0x141420, 0.8));
+    const key = new THREE.DirectionalLight(0xaab8ff, 1.2);
+    key.position.set(6, 14, 8); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+    key.shadow.camera.far = 120;
+    key.shadow.camera.left = -40; key.shadow.camera.right = 40; key.shadow.camera.top = 40; key.shadow.camera.bottom = -40;
+    W.add(key);
+
+    this._rangeSpawn = new THREE.Vector3(0, this.player.height, 14);
+  }
+
+  spawnDummy(x, z) {
+    const mesh = EnemyFactory.build('grunt', 'rock');
+    mesh.scale.setScalar(EnemyFactory.TYPES.grunt.scale);
+    mesh.position.set(x, 0, z);
+    mesh.userData = Object.assign({}, mesh.userData, {
+      type: 'grunt', dummy: true, home: new THREE.Vector3(x, 0, z),
+      hp: 200, maxHp: 200, speed: 0, dmg: 0, score: 10,
+      animOffset: Math.random() * 10, lastFire: 0, hitFlash: 0,
+    });
+    mesh.lookAt(0, 0, 14); // face the firing line
+    this.scene.add(mesh);
+    this.enemies.push(mesh);
+  }
+
+  layoutRangeTargets() {
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      if (this.enemies[i].userData.dummy) { this.scene.remove(this.enemies[i]); this.enemies.splice(i, 1); }
+    }
+    const rows = [{ z: -14, n: 5, sp: 4 }, { z: -26, n: 5, sp: 5 }, { z: -40, n: 4, sp: 6 }, { z: -56, n: 3, sp: 7 }, { z: -70, n: 2, sp: 9 }];
+    rows.forEach(r => { for (let i = 0; i < r.n; i++) this.spawnDummy((i - (r.n - 1) / 2) * r.sp, r.z); });
+    this.updateHUD();
+  }
+
   spawnEnemy(type, hpScale) {
     const cfg = EnemyFactory.TYPES[type];
     const mesh = EnemyFactory.build(type, this.level === 'desert' ? 'desert' : 'rock');
@@ -1753,16 +1850,20 @@ class Game {
     return spr;
   }
 
+  _pickupGlow(color) {
+    return new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 10),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }));
+  }
   spawnAmmo(pos) {
     const spr = this._emojiSprite('🔋');
     spr.position.copy(pos); spr.position.y = 0.7;
-    const halo = new THREE.PointLight(0x39ff14, 1.2, 6); spr.add(halo);
+    spr.add(this._pickupGlow(0x39ff14));
     this.scene.add(spr); this.items.push(spr);
   }
   spawnHealth(pos) {
     const spr = this._emojiSprite(Math.random() > 0.5 ? '❤️' : '💊');
     spr.position.copy(pos); spr.position.y = 0.7; spr.userData.health = true;
-    const halo = new THREE.PointLight(0xff3355, 1.3, 6); spr.add(halo);
+    spr.add(this._pickupGlow(0xff3355));
     this.scene.add(spr); this.items.push(spr);
   }
 
@@ -1824,11 +1925,6 @@ class Game {
         if (alive) requestAnimationFrame(animateWaves);
       };
       animateWaves();
-
-      // burst light
-      const bl = new THREE.PointLight(0x19f0ff, 4 + power * 5, 16, 2);
-      bl.position.copy(origin).addScaledVector(dir, 1.2); this.scene.add(bl);
-      setTimeout(() => this.scene.remove(bl), 130);
 
       // screen flash
       const sf = document.getElementById('fp-flash');
@@ -1969,7 +2065,6 @@ class Game {
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 14),
       new THREE.MeshBasicMaterial({ color: w.color }));
     mesh.position.copy(pos);
-    const light = new THREE.PointLight(w.color, 2.2, 8); mesh.add(light);
     const halo = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12),
       new THREE.MeshBasicMaterial({ color: w.color, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
     mesh.add(halo);
@@ -1990,7 +2085,10 @@ class Game {
       new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
     ring.position.copy(pos); ring.rotation.x = -Math.PI / 2;
     this.scene.add(ring); this.rings = this.rings || []; this.rings.push({ mesh: ring, life: 0.4, max: splash });
-    const fl = new THREE.PointLight(color, 6, splash * 3); fl.position.copy(pos); this.scene.add(fl);
+    // additive flash sphere instead of a temp PointLight (avoids shader recompiles)
+    const fl = new THREE.Mesh(new THREE.SphereGeometry(splash * 0.35, 12, 12),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+    fl.position.copy(pos); this.scene.add(fl);
     setTimeout(() => this.scene.remove(fl), 90);
     this.sound.kill();
   }
@@ -2055,6 +2153,17 @@ class Game {
   killEnemy(e, point) {
     const idx = this.enemies.indexOf(e);
     if (idx === -1) return;
+    if (e.userData.dummy) {
+      // range target: sparks, small score, respawn at home after 2s — no drops
+      this.score += e.userData.score;
+      this.showHitmarker(true); this.sound.kill();
+      this.spawnSparks(point || e.position.clone().setY(1.2), 0x19f0ff, 14);
+      this.scene.remove(e); this.enemies.splice(idx, 1);
+      this.updateHUD();
+      const h = e.userData.home;
+      setTimeout(() => { if (this.gameStarted && this.level === 'range') this.spawnDummy(h.x, h.z); }, 2000);
+      return;
+    }
     this.score += e.userData.score;
     this.showHitmarker(true);
     this.sound.kill();
@@ -2083,7 +2192,11 @@ class Game {
       const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10),
         new THREE.MeshBasicMaterial({ color: col }));
       mesh.position.copy(origin);
-      const light = new THREE.PointLight(col, 1.5, 6); mesh.add(light);
+      // additive halo instead of a PointLight — adding/removing lights forces a
+      // full shader recompile of every material (this was the boss-fight lag)
+      const halo = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 10),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false }));
+      mesh.add(halo);
       this.scene.add(mesh);
       this.eBullets.push({ mesh, vel: dir.multiplyScalar(34), life: 3, dmg: e.userData.projDmg });
     }
@@ -2553,6 +2666,8 @@ class Game {
         e.children.forEach(c => { if (c.material && c.material.emissive && ud.cores.indexOf(c.material) === -1) { /* shell */ } });
       }
 
+      if (ud.dummy) continue; // range targets don't move or attack
+
       if (ud.ranged) {
         // keep at range, strafe a bit
         const desired = ud.range || 26;
@@ -2595,7 +2710,7 @@ class Game {
 
     // next wave
     this.updateWaveCountdown(dt);
-    if (this.enemies.length === 0 && !this.waveCountdown) {
+    if (this.level !== 'range' && this.enemies.length === 0 && !this.waveCountdown) {
       this.startWaveCountdown(this.wave + 1);
     }
   }
@@ -2665,10 +2780,34 @@ class Game {
     document.getElementById('final-wave').innerText = this.wave;
   }
 
+  // Auto quality scaler: if the frame rate stays low, step down pixel ratio,
+  // then disable shadows — keeps the game playable on the weakest GPUs.
+  autoQuality(dt) {
+    this._fpsAvg = this._fpsAvg === undefined ? 60 : this._fpsAvg * 0.95 + (1 / Math.max(dt, 1e-4)) * 0.05;
+    this._qualT = (this._qualT || 0) + dt;
+    if (this._qualT < 3) return; // evaluate every 3 seconds
+    this._qualT = 0;
+    this._qualTier = this._qualTier || 0;
+    if (this._fpsAvg < 28 && this._qualTier < 3) {
+      this._qualTier++;
+      if (this._qualTier === 1) this.renderer.setPixelRatio(1);
+      else if (this._qualTier === 2) this.renderer.setPixelRatio(0.75);
+      else if (this._qualTier === 3) {
+        this.renderer.shadowMap.enabled = false;
+        this.scene.traverse(o => { if (o.isLight) o.castShadow = false; });
+        this.scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+      }
+      this.renderer.setSize(innerWidth, innerHeight);
+      this._fpsAvg = 60; // reset so the next tier is judged fresh
+      console.info('[autoQuality] low fps — stepping down to tier', this._qualTier);
+    }
+  }
+
   animate() {
     requestAnimationFrame(() => this.animate());
     const dt = Math.min(this.clock.getDelta(), 0.05);
     this.update(dt);
+    this.autoQuality(dt);
     if (this.gameStarted && !this.isPaused) this.drawMinimap();
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
   }
