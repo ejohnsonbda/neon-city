@@ -1569,7 +1569,7 @@ class Game {
       { id: 'megacity', name: 'MEGAWATT CITY 1', desc: 'Dense grid, live traffic & neon.', art: 'mega' },
       { id: 'rail', name: 'RAIL CITY', desc: 'Ride the monorail · day to night.', art: 'rail' },
       { id: 'desert', name: 'EGYPT DESERT', desc: 'Pyramids, jungle & pharaoh golems.', art: 'desert' },
-      { id: 'japan', name: 'FEUDAL JAPAN', desc: 'Katana, shuriken & bow only.', art: 'japan' }
+      { id: 'japan', name: 'FEUDAL JAPAN', desc: 'Temples, torii gates & shuriken.', art: 'japan' }
     ];
     levels.forEach(l => {
       const c = document.createElement('div');
