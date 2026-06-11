@@ -108,6 +108,19 @@
   #game-message{position:absolute;top:30%;left:50%;transform:translateX(-50%);font:900 40px 'Orbitron';
     letter-spacing:.12em;opacity:0;transition:opacity .4s;text-shadow:0 0 30px currentColor;text-align:center;white-space:nowrap;}
 
+  /* ---------- Force Push gauntlet: charge bar + blast flash ---------- */
+  #fp-flash{position:fixed;inset:0;pointer-events:none;z-index:19;opacity:0;
+    background:radial-gradient(circle at 50% 58%,rgba(120,210,255,.55),transparent 60%);}
+  #fp-charge-wrap{position:fixed;left:50%;bottom:130px;transform:translateX(-50%);width:min(300px,56vw);
+    pointer-events:none;z-index:11;opacity:0;transition:opacity .2s;}
+  #fp-charge-label{display:flex;justify-content:space-between;font:700 10px 'Rajdhani';
+    letter-spacing:.28em;color:rgba(255,255,255,.55);margin-bottom:5px;}
+  #fp-charge-val{font-family:'Orbitron';color:var(--cyan);}
+  #fp-charge-track{height:9px;background:rgba(10,16,28,.85);border:1px solid rgba(25,240,255,.3);
+    clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%);overflow:hidden;}
+  #fp-charge-bar{height:100%;width:0%;background:linear-gradient(90deg,#2a6fff,var(--cyan));
+    box-shadow:0 0 14px rgba(25,240,255,.7);transition:width .05s linear;}
+
   /* ---------- Damage vignette ---------- */
   #dmg-vignette{position:fixed;inset:0;pointer-events:none;z-index:20;opacity:0;
     box-shadow:inset 0 0 160px rgba(255,30,60,.9);transition:opacity .25s;}
@@ -263,6 +276,11 @@
 <div id="game-container"></div>
 <div id="dmg-vignette"></div>
 <div id="scope-overlay"></div>
+<div id="fp-flash"></div>
+<div id="fp-charge-wrap">
+  <div id="fp-charge-label"><span>KINETIC CHARGE</span><span id="fp-charge-val">READY</span></div>
+  <div id="fp-charge-track"><div id="fp-charge-bar"></div></div>
+</div>
 
 <!-- STARTUP PRELOAD -->
 <div id="preload-overlay" role="status" aria-live="polite">

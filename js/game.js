@@ -1180,32 +1180,152 @@ class Game {
 
   // ---- FORCE PUSH: glowing gauntlet ----
   buildForcePush() {
+    // MK-IV Force Push Gauntlet — ported from the standalone prototype:
+    // armored forearm, open palm w/ 5 splayed fingers, palm emitter core,
+    // spinning energy rings + orbiting motes. Animated in updateForcePushFX().
     const g = new THREE.Group();
-    // Glowing hand/gauntlet
-    const palm = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.06, 0.18),
-      new THREE.MeshStandardMaterial({ color:0x2a3040, emissive:0x19f0ff, emissiveIntensity:0.8, metalness:0.7, roughness:0.3 })
-    );
-    g.add(palm);
-    // Fingers
-    for (let i = 0; i < 4; i++) {
-      const f = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, 0.016, 0.07),
-        new THREE.MeshStandardMaterial({ color:0x2a3040, emissive:0x19f0ff, emissiveIntensity:1.2, metalness:0.8, roughness:0.2 })
-      );
-      f.position.set(-0.028 + i * 0.019, 0, -0.12);
-      g.add(f);
-    }
-    // Energy ring on wrist
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.055, 0.007, 6, 18),
-      new THREE.MeshBasicMaterial({ color:0x19f0ff })
-    );
-    ring.rotation.y = Math.PI / 2; ring.position.set(0, 0, 0.06);
-    g.add(ring);
-    g.userData.muzzle = new THREE.Vector3(0, 0, -0.22);
-    g.userData.energyRing = ring;
+    const core = new THREE.Group();
+    core.scale.setScalar(0.42);
+    core.position.set(0, 0.02, 0.08);
+    g.add(core);
+
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.35, metalness: 0.85 });
+    const plateMat2 = new THREE.MeshStandardMaterial({ color: 0x2c3a52, roughness: 0.3, metalness: 0.9 });
+    const knuckleMat = new THREE.MeshStandardMaterial({ color: 0x3a4a66, roughness: 0.25, metalness: 0.95 });
+    const energyMat = new THREE.MeshBasicMaterial({ color: 0x19f0ff });
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xdffaff });
+    const energyCores = [];
+    const part = (parent, geo, mat, x, y, z, rx, ry, rz) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); parent.add(m); return m;
+    };
+
+    // forearm + armor plates + wrist energy band
+    part(core, new THREE.CylinderGeometry(0.2, 0.24, 0.7, 12), plateMat, 0, 0, 0.5, Math.PI / 2, 0, 0);
+    for (let i = 0; i < 3; i++) part(core, new THREE.BoxGeometry(0.42, 0.08, 0.16), plateMat2, 0, 0.16, 0.3 + i * 0.18, 0, 0, 0);
+    energyCores.push(part(core, new THREE.TorusGeometry(0.23, 0.04, 10, 24), energyMat, 0, 0, 0.2, Math.PI / 2, 0, 0));
+
+    // open hand — palm slab + back plate + heel
+    const fist = new THREE.Group();
+    fist.position.set(0, 0, -0.08);
+    core.add(fist);
+    part(fist, new THREE.BoxGeometry(0.46, 0.44, 0.14), plateMat2, 0, 0.04, -0.22);
+    part(fist, new THREE.BoxGeometry(0.4, 0.38, 0.06), plateMat, 0, 0.05, -0.15);
+    part(fist, new THREE.BoxGeometry(0.42, 0.14, 0.16), plateMat, 0, -0.16, -0.2);
+
+    // splayed fingers with glowing tips (4 fingers + thumb)
+    const buildFinger = (rootX, rootY, splay, tiltX, len) => {
+      const f = new THREE.Group();
+      f.position.set(rootX, rootY, -0.24);
+      f.rotation.set(tiltX, 0, splay);
+      fist.add(f);
+      part(f, new THREE.BoxGeometry(0.082, len, 0.085), plateMat, 0, len / 2, 0);
+      part(f, new THREE.SphereGeometry(0.05, 8, 8), knuckleMat, 0, len, 0);
+      const tip = new THREE.Group(); tip.position.set(0, len, 0); tip.rotation.x = -0.25; f.add(tip);
+      part(tip, new THREE.BoxGeometry(0.072, len * 0.72, 0.078), plateMat, 0, len * 0.36, 0);
+      energyCores.push(part(tip, new THREE.SphereGeometry(0.035, 8, 8), energyMat, 0, len * 0.72, 0));
+    };
+    buildFinger(-0.17, 0.22, 0.34, -0.18, 0.2);
+    buildFinger(-0.06, 0.25, 0.12, -0.1, 0.23);
+    buildFinger(0.06, 0.25, -0.1, -0.1, 0.21);
+    buildFinger(0.17, 0.22, -0.34, -0.18, 0.17);
+    buildFinger(0.24, -0.04, -1.15, -0.35, 0.17); // thumb
+
+    // palm emitter — the force-push core
+    const emitter = new THREE.Group();
+    emitter.position.set(0, 0.02, -0.32);
+    fist.add(emitter);
+    const emitterCore = part(emitter, new THREE.SphereGeometry(0.13, 16, 16), coreMat, 0, 0, 0);
+    energyCores.push(emitterCore);
+    energyCores.push(part(emitter, new THREE.TorusGeometry(0.18, 0.024, 10, 28), energyMat, 0, 0, 0.02));
+    const emitterLight = new THREE.PointLight(0x19f0ff, 1.4, 3, 2);
+    emitter.add(emitterLight);
+
+    // spinning orbit rings + energy motes circling the fist
+    const orbit = new THREE.Group();
+    fist.add(orbit);
+    const ringA = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.012, 8, 36),
+      new THREE.MeshBasicMaterial({ color: 0x19f0ff, transparent: true, opacity: 0.85 }));
+    ringA.rotation.set(Math.PI / 2.2, 0.3, 0); orbit.add(ringA);
+    const ringB = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.01, 8, 36),
+      new THREE.MeshBasicMaterial({ color: 0x9b5cff, transparent: true, opacity: 0.7 }));
+    ringB.rotation.set(0.4, Math.PI / 2.4, 0.5); orbit.add(ringB);
+    const MOTES = 14;
+    const moteGeo = new THREE.BufferGeometry();
+    moteGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MOTES * 3), 3));
+    const moteData = [];
+    for (let i = 0; i < MOTES; i++) moteData.push({
+      r: 0.32 + Math.random() * 0.22, a: Math.random() * Math.PI * 2,
+      speed: 1.4 + Math.random() * 2.4, tilt: Math.random() * Math.PI, y: (Math.random() - 0.5) * 0.5,
+    });
+    const moteMat = new THREE.PointsMaterial({ color: 0x19f0ff, size: 0.06, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+    orbit.add(new THREE.Points(moteGeo, moteMat));
+
+    g.userData.muzzle = new THREE.Vector3(0, 0.03, -0.5);
+    g.userData.fp = { energyCores, emitterCore, emitterLight, orbit, ringA, ringB, moteGeo, moteData, moteMat, coreColors: { cyan: 0x19f0ff, white: 0xdffaff } };
     return g;
+  }
+
+  // per-frame gauntlet energy: pulsing cores, spinning rings, orbiting motes,
+  // charge tremble + the in-HUD charge bar
+  updateForcePushFX(dt) {
+    const g = this.gunModels && this.gunModels.forcepush;
+    const bar = document.getElementById('fp-charge-wrap');
+    if (!g || !g.visible || !g.userData.fp) {
+      if (bar) bar.style.opacity = '0';
+      return;
+    }
+    const fp = g.userData.fp;
+    const t = performance.now() * 0.001;
+    const charge = this.fpCharge || 0;
+    this._fpFlare = Math.max(0, (this._fpFlare || 0) - dt * 4);
+    const flare = this._fpFlare;
+
+    const pulse = 0.5 + Math.sin(t * 4) * 0.5;
+    fp.energyCores.forEach((m, i) => {
+      const p = 0.6 + Math.sin(t * (5 + i) + i) * 0.4;
+      m.scale.setScalar(1 + p * 0.18 * (1 + charge) + flare * 0.6);
+    });
+    fp.emitterCore.material.color.setHex(charge > 0.5 || flare > 0.1 ? fp.coreColors.white : fp.coreColors.cyan);
+    fp.emitterLight.intensity = 1.2 + pulse * 0.6 + charge * 3 + flare * 6;
+    fp.emitterLight.distance = 3 + charge * 3;
+
+    // orbit spins faster while charging; motes contract inward as energy gathers
+    fp.orbit.rotation.z += dt * (0.6 + charge * 4 + flare * 6);
+    fp.ringA.rotation.z += dt * (1 + charge * 3);
+    fp.ringB.rotation.x -= dt * (0.8 + charge * 2.5);
+    fp.ringA.material.opacity = 0.5 + pulse * 0.4 + charge * 0.2;
+    fp.ringB.material.opacity = 0.4 + pulse * 0.3 + charge * 0.2;
+    const gather = 1 - charge * 0.4;
+    const arr = fp.moteGeo.attributes.position.array;
+    fp.moteData.forEach((d, i) => {
+      d.a += dt * d.speed * (1 + charge * 1.5);
+      const r = d.r * gather;
+      const x = Math.cos(d.a) * r, z = Math.sin(d.a) * r;
+      const y = d.y + Math.sin(t * 2 + i) * 0.05;
+      arr[i * 3] = x;
+      arr[i * 3 + 1] = y * Math.cos(d.tilt) - z * Math.sin(d.tilt);
+      arr[i * 3 + 2] = y * Math.sin(d.tilt) + z * Math.cos(d.tilt);
+    });
+    fp.moteGeo.attributes.position.needsUpdate = true;
+    fp.moteMat.size = 0.05 + charge * 0.04;
+    fp.moteMat.color.setHex(charge > 0.6 ? fp.coreColors.white : fp.coreColors.cyan);
+
+    // charge tremble on the hand
+    if (charge > 0) {
+      g.rotation.z = (Math.random() - 0.5) * charge * 0.05;
+      g.rotation.y = (Math.random() - 0.5) * charge * 0.04;
+    } else { g.rotation.z = 0; g.rotation.y = 0; }
+
+    // HUD charge bar
+    if (bar) {
+      const fill = document.getElementById('fp-charge-bar');
+      const lbl = document.getElementById('fp-charge-val');
+      bar.style.opacity = '1';
+      if (fill) fill.style.width = (charge * 100).toFixed(0) + '%';
+      if (lbl) lbl.textContent = charge > 0.92 ? 'MAX' : (charge > 0 ? (charge * 100).toFixed(0) + '%' : 'READY');
+      if (lbl) lbl.style.color = charge > 0.92 ? '#fff' : '#19f0ff';
+    }
   }
 
   // ---- PLASMA: bulky orb launcher ----
@@ -1321,7 +1441,7 @@ class Game {
       { name:'PISTOL',     type:'SEMI', dmg:38, rateMs:230,  ammo:'∞',   trait:'DOUBLE-TAP 1: DUAL', col:'#19f0ff', idx:0 },
       { name:'SMG',        type:'AUTO', dmg:13, rateMs:62,   ammo:'480', trait:'RAPID FIRE',     col:'#ffd166', idx:1 },
       { name:'DUAL SHG',   type:'SEMI', dmg:72, rateMs:360,  ammo:'120', trait:'DUAL WIELD',     col:'#ff2d95', idx:2 },
-      { name:'FORCE PUSH', type:'SEMI', dmg:80, rateMs:1500, ammo:'∞',   trait:'KNOCKBACK',      col:'#19f0ff', idx:3 },
+      { name:'FORCE PUSH', type:'CHARGE', dmg:120, rateMs:1500, ammo:'∞',  trait:'HOLD TO CHARGE',  col:'#19f0ff', idx:3 },
       { name:'PLASMA',     type:'SEMI', dmg:95, rateMs:760,  ammo:'60',  trait:'SPLASH DAMAGE',  col:'#9b5cff', idx:4 },
       { name:'PULSE',      type:'AUTO', dmg:8,  rateMs:40,   ammo:'700', trait:'HIGH CAPACITY',  col:'#ff7a18', idx:5 },
     ];
@@ -1666,47 +1786,76 @@ class Game {
     const muzzlePos = this.muzzleFlash.getWorldPosition(new THREE.Vector3());
 
     if (w.forcePush) {
-      // FORCE PUSH — shockwave cone knocking back and damaging nearby enemies
-      // Glow pulse on the hand model
-      const fpModel = this.gunModels.forcepush;
-      if (fpModel) {
-        fpModel.traverse(c => { if (c.material && c.material.emissiveIntensity !== undefined) c.material.emissiveIntensity = 3.5; });
-        setTimeout(() => {
-          if (fpModel) fpModel.traverse(c => { if (c.material && c.material.emissiveIntensity !== undefined) c.material.emissiveIntensity = c.material.color && c.material.color.getHex() === 0x19f0ff ? 0.8 : 1.2; });
-        }, 180);
-      }
-      // Shockwave ring expanding outward
-      const ringGeo = new THREE.TorusGeometry(0.5, 0.08, 6, 24);
-      const ringMat = new THREE.MeshBasicMaterial({ color:0x19f0ff, transparent:true, opacity:0.85 });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.position.copy(this.camera.position);
+      // FORCE PUSH GAUNTLET — charged kinetic blast (power 0..1 from hold time)
+      const power = this._fpPower !== undefined ? this._fpPower : 1;
+      this._fpFlare = 1; // emitter overcharge pop, decays in updateForcePushFX
       const dir = new THREE.Vector3(); this.camera.getWorldDirection(dir);
-      ring.lookAt(ring.position.clone().add(dir));
-      this.scene.add(ring);
-      let t = 0;
-      const expandRing = () => {
-        t += 0.06;
-        ring.scale.setScalar(1 + t * 18);
-        ring.material.opacity = Math.max(0, 0.85 - t * 1.4);
-        ring.position.addScaledVector(dir, 0.4);
-        if (t < 0.6) requestAnimationFrame(expandRing); else this.scene.remove(ring);
-      };
-      expandRing();
-      // Damage + knockback enemies in cone
       const origin = this.camera.position.clone();
+
+      // twin expanding shockwave rings (cyan + violet) + core flash sphere
+      const waves = [];
+      for (let k = 0; k < 2; k++) {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(0.1, 0.42, 32),
+          new THREE.MeshBasicMaterial({ color: k ? 0x9b5cff : 0x19f0ff, transparent: true, opacity: 0.95, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        ring.position.copy(origin).addScaledVector(dir, 1 + k * 0.3);
+        ring.quaternion.copy(this.camera.quaternion);
+        this.scene.add(ring);
+        waves.push({ mesh: ring, life: 0.6, max: 0.6, grow: 26 + power * 30 + k * 8 });
+      }
+      const flashS = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xdffaff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+      flashS.position.copy(origin).addScaledVector(dir, 0.8);
+      this.scene.add(flashS);
+      waves.push({ mesh: flashS, life: 0.25, max: 0.25, grow: 10 + power * 8, flash: true });
+      const wavesDir = dir.clone();
+      const animateWaves = () => {
+        let alive = false;
+        waves.forEach(s => {
+          if (s.life <= 0) return;
+          s.life -= 0.016; alive = alive || s.life > 0;
+          const k = 1 - s.life / s.max;
+          if (s.flash) s.mesh.scale.setScalar(1 + k * s.grow * 0.1);
+          else { s.mesh.scale.setScalar(1 + k * s.grow); s.mesh.position.addScaledVector(wavesDir, 0.1); }
+          s.mesh.material.opacity = Math.max(0, 1 - k) * 0.9;
+          if (s.life <= 0) this.scene.remove(s.mesh);
+        });
+        if (alive) requestAnimationFrame(animateWaves);
+      };
+      animateWaves();
+
+      // burst light
+      const bl = new THREE.PointLight(0x19f0ff, 4 + power * 5, 16, 2);
+      bl.position.copy(origin).addScaledVector(dir, 1.2); this.scene.add(bl);
+      setTimeout(() => this.scene.remove(bl), 130);
+
+      // screen flash
+      const sf = document.getElementById('fp-flash');
+      if (sf) {
+        sf.style.transition = 'none'; sf.style.opacity = String(0.3 + power * 0.45);
+        requestAnimationFrame(() => { sf.style.transition = 'opacity .45s ease'; sf.style.opacity = '0'; });
+      }
+
+      // damage + knockback in a forward cone, all scaled by charge power
+      const radius = w.pushRadius * (0.7 + 0.6 * power);
+      const dmg = w.dmg * (0.5 + power);
       this.enemies.forEach(en => {
         if (!en) return;
         const toEn = en.position.clone().sub(origin);
         const dist = toEn.length();
-        if (dist > w.pushRadius) return;
+        if (dist > radius) return;
         const dot = toEn.normalize().dot(dir);
-        if (dot < w.pushCone) return; // outside cone
-        this.damageEnemy(en, w.dmg, en.position.clone());
-        // knockback
-        en.position.addScaledVector(toEn, (1 - dist / w.pushRadius) * 8);
+        if (dot < w.pushCone) return;
+        this.damageEnemy(en, dmg, en.position.clone());
+        en.position.addScaledVector(toEn, (1 - dist / radius) * (4 + power * 8));
       });
-      this.sound.tone(80, 'sawtooth', 0.18, 0.22);
-      this.sound.tone(160, 'sine', 0.12, 0.35);
+
+      // recoil scaled by power
+      this.gunGroup.position.z = -0.42 - (0.12 + power * 0.18);
+      this.camera.rotation.x += 0.01 + power * 0.02;
+      this.sound.tone(70 + power * 30, 'sawtooth', 0.2, 0.2 + power * 0.1);
+      this.sound.tone(150 + power * 60, 'sine', 0.14, 0.3);
       return;
     }
 
@@ -2131,7 +2280,19 @@ class Game {
     // shooting
     const w = P.weapons[P.weaponIdx];
     const now = Date.now();
-    if (this.input.shoot && w.ammo > 0 && !this.gunGroup.userData.reloading && now - (w.lastShot || 0) > w.rate) {
+    if (w.forcePush) {
+      // gauntlet: HOLD to charge kinetic energy, RELEASE to blast (power scales with charge)
+      if (this.input.shoot && now - (w.lastShot || 0) > 400) {
+        this.fpCharge = Math.min(1, (this.fpCharge || 0) + dt * 0.9);
+      } else if ((this.fpCharge || 0) > 0) {
+        this._fpPower = Math.max(0.25, this.fpCharge);
+        this.fpCharge = 0;
+        w.lastShot = now;
+        this.fireWeapon(w);
+        this.sound.shoot(w.name.toLowerCase());
+      }
+    } else { this.fpCharge = 0; }
+    if (!w.forcePush && this.input.shoot && w.ammo > 0 && !this.gunGroup.userData.reloading && now - (w.lastShot || 0) > w.rate) {
       w.ammo--; w.lastShot = now;
       this.fireWeapon(w);
       this.sound.shoot(w.name.toLowerCase());
@@ -2239,6 +2400,7 @@ class Game {
       pulse.userData.spinV = THREE.MathUtils.lerp(pulse.userData.spinV || 0, 0, dt * 3);
       pulse.userData.spin.rotation.z -= (pulse.userData.spinV || 0) * dt;
     }
+    this.updateForcePushFX(dt);
 
     // MEGAWATT CITY live props
     if (this.megaProps) {
