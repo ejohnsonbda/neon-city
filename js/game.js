@@ -1648,8 +1648,8 @@ class Game {
     };
     const armoryGrid  = document.getElementById('armory-grid');
     const armoryJapan = document.getElementById('armory-japan');
-    wepDefs.forEach(w  => buildWepCard(w, armoryGrid,  true));
-    japanDefs.forEach(w => buildWepCard(w, armoryJapan, false));
+    if (armoryGrid)  wepDefs.forEach(w  => buildWepCard(w, armoryGrid,  true));
+    if (armoryJapan) japanDefs.forEach(w => buildWepCard(w, armoryJapan, false));
   }
 
   selectChar(t) {
