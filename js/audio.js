@@ -5,6 +5,7 @@ class SoundManager {
   constructor() {
     this.buffers = {};
     this.enabled = false;
+    this.lastPulseSfx = 0;
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) {
       console.warn('[SoundManager] WebAudio is not available; continuing silently.');
@@ -22,11 +23,11 @@ class SoundManager {
   }
   resume() { if (this.enabled && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); }
   loadSample(name, url) {
-    if (!this.enabled || !url) return;
-    fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
+    if (!this.enabled || !url) return Promise.resolve(null);
+    return fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
       .then(a => this.ctx.decodeAudioData(a))
-      .then(buf => { this.buffers[name] = buf; })
-      .catch(err => console.warn(`[SoundManager] Sample '${name}' unavailable; using procedural fallback.`, err));
+      .then(buf => { this.buffers[name] = buf; return buf; })
+      .catch(err => { console.warn(`[SoundManager] Sample '${name}' unavailable; using procedural fallback.`, err); return null; });
   }
   playSample(name, vol = 1, rate = 1) {
     const buf = this.buffers[name];
@@ -77,7 +78,14 @@ class SoundManager {
     if (type === 'plasma')  { // energy bloop
       this.tone(180, 'sine', 0.22, 0.45, 480); this.tone(90, 'triangle', 0.25, 0.3, 50); return;
     }
-    if (type === 'pulse')   { if (!this.playSample('shoot', 0.32, 1.7)) { this.tone(640, 'square', 0.04, 0.2, 200); } return; }
+    if (type === 'pulse')   {
+      const now = performance.now();
+      const minGap = window.__NEON_LOW_MEMORY ? 130 : 65;
+      if (now - this.lastPulseSfx < minGap) return;
+      this.lastPulseSfx = now;
+      if (!this.playSample('shoot', window.__NEON_LOW_MEMORY ? 0.18 : 0.28, 1.7)) { this.tone(640, 'square', window.__NEON_LOW_MEMORY ? 0.025 : 0.04, window.__NEON_LOW_MEMORY ? 0.12 : 0.2, 200); }
+      return;
+    }
     if (type === 'katana')  { this.playSample('shoot', 0.45, 1.7); this.noise(0.14, 0.4, 4200); this.tone(2600, 'sine', 0.12, 0.18, 900); return; }
     if (type === 'shuriken'){ this.playSample('shoot', 0.4, 1.9); this.noise(0.12, 0.3, 2600); this.tone(1700, 'sine', 0.09, 0.12, 700); return; }
     if (type === 'bow')     { this.playSample('shoot', 0.4, 0.85); this.noise(0.1, 0.25, 1400); this.tone(300, 'triangle', 0.16, 0.3, 120); return; }

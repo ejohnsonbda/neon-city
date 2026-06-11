@@ -16,12 +16,17 @@ const TextureGen = {
   img: {},
   _loaded: false,
 
+  _lowMemory() { return !!window.__NEON_LOW_MEMORY || new URLSearchParams(location.search || '').get('lowmem') === '1' || ((navigator.deviceMemory || 4) <= 1.5); },
+  _size(n) { return this._lowMemory() ? Math.max(64, Math.floor(n / 2)) : n; },
+  _count(n) { return this._lowMemory() ? Math.max(1, Math.floor(n * 0.35)) : n; },
+
   // Preload the real photo textures (from the neon-city kit) then run cb.
   // Missing files used to leave incomplete Image objects in materials, which
   // produced broken/black textures and WebGL warnings. The loader now times out
   // cleanly and lets all material builders fall back to procedural canvases.
   load(cb) {
     const R = window.__resources || {};
+    if (this._lowMemory()) { this.img = {}; this._loaded = true; if (typeof cb === 'function') cb(); return; }
     const srcs = {
       asphalt: R.texAsphalt || 'T_Concrete_Asphalt_BaseColor.png',
       concrete: R.texConcrete || 'T_Concrete_BaseColor.png',
@@ -71,6 +76,7 @@ const TextureGen = {
     t.needsUpdate = true;
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(repeatX || 1, repeatY || repeatX || 1);
+    if (this._lowMemory()) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; }
     if ('encoding' in t && THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
     if ('colorSpace' in t && THREE.SRGBColorSpace) t.colorSpace = THREE.SRGBColorSpace;
     return t;
@@ -92,7 +98,7 @@ const TextureGen = {
   // A lit-window building using the real interior photo textures.
   // Returns { map, emissive } so windows glow at night.
   createBuilding(hue) {
-    const W = 256, H = 512;
+    const W = this._size(256), H = this._size(512);
     const base = document.createElement('canvas'); base.width = W; base.height = H;
     const emis = document.createElement('canvas'); emis.width = W; emis.height = H;
     const b = base.getContext('2d');
@@ -161,7 +167,7 @@ const TextureGen = {
 
   // A glowing neon billboard sign (fully emissive look)
   createBillboard() {
-    const W = 512, H = 256;
+    const W = this._size(512), H = this._size(256);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#05060a'; ctx.fillRect(0, 0, W, H);
@@ -181,12 +187,12 @@ const TextureGen = {
 
   // Wet night asphalt — dark, subtle sheen, faint lane markings
   createAsphalt() {
-    const S = 512;
+    const S = this._size(512);
     const c = document.createElement('canvas'); c.width = S; c.height = S;
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#08090d'; ctx.fillRect(0, 0, S, S);
     // grain
-    for (let i = 0; i < 22000; i++) {
+    for (let i = 0; i < this._count(22000); i++) {
       const v = Math.random();
       ctx.fillStyle = v > 0.5 ? 'rgba(120,130,150,0.04)' : 'rgba(0,0,0,0.5)';
       ctx.fillRect(Math.random() * S, Math.random() * S, 2, 2);
@@ -208,12 +214,12 @@ const TextureGen = {
 
   // Rippled desert sand (tileable) with dune shading + grain
   createSand() {
-    const S = 512;
+    const S = this._size(512);
     const c = document.createElement('canvas'); c.width = c.height = S;
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#cda971'; ctx.fillRect(0, 0, S, S);
     // soft dune ripples
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < this._count(40); i++) {
       const y = (i / 40) * S + Math.sin(i) * 6;
       ctx.strokeStyle = `rgba(${150 + Math.random() * 30},${120 + Math.random() * 25},${70},0.10)`;
       ctx.lineWidth = 3 + Math.random() * 4;
@@ -222,7 +228,7 @@ const TextureGen = {
       ctx.stroke();
     }
     // darker ripple troughs
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < this._count(24); i++) {
       const y = Math.random() * S;
       ctx.strokeStyle = 'rgba(120,92,50,0.10)'; ctx.lineWidth = 2;
       ctx.beginPath();
@@ -230,7 +236,7 @@ const TextureGen = {
       ctx.stroke();
     }
     // grain
-    for (let i = 0; i < 16000; i++) {
+    for (let i = 0; i < this._count(16000); i++) {
       ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,235,190,0.05)' : 'rgba(110,85,45,0.06)';
       ctx.fillRect(Math.random() * S, Math.random() * S, 2, 2);
     }
@@ -239,7 +245,7 @@ const TextureGen = {
 
   // Sandstone block masonry for pyramids / temples
   createSandstone() {
-    const S = 512;
+    const S = this._size(512);
     const c = document.createElement('canvas'); c.width = c.height = S;
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#c9a87c'; ctx.fillRect(0, 0, S, S);
@@ -270,7 +276,7 @@ const TextureGen = {
 
   // Vertical wood planks (shrine timber). dark = stained beam color
   createWood(dark) {
-    const S = 512;
+    const S = this._size(512);
     const c = document.createElement('canvas'); c.width = c.height = S;
     const ctx = c.getContext('2d');
     const base = dark ? '#3a241a' : '#7a4a2b';
@@ -299,7 +305,7 @@ const TextureGen = {
 
   // Kawara roof tiles — rows of dark ridged ceramic
   createRoofTile(col) {
-    const S = 512;
+    const S = this._size(512);
     const c = document.createElement('canvas'); c.width = c.height = S;
     const ctx = c.getContext('2d');
     const base = col || '#2b3540';
@@ -327,14 +333,14 @@ const TextureGen = {
 
   // Shoji paper screen — warm rice paper with wood lattice
   createShoji() {
-    const S = 256;
+    const S = this._size(256);
     const c = document.createElement('canvas'); c.width = c.height = S;
     const ctx = c.getContext('2d');
     const g = ctx.createLinearGradient(0, 0, 0, S);
     g.addColorStop(0, '#f4ecd6'); g.addColorStop(1, '#e6d6b0');
     ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
     // fibers
-    for (let i = 0; i < 1400; i++) {
+    for (let i = 0; i < this._count(1400); i++) {
       ctx.fillStyle = `rgba(150,130,90,${Math.random() * 0.05})`;
       ctx.fillRect(Math.random() * S, Math.random() * S, 3 + Math.random() * 6, 1);
     }
@@ -350,12 +356,12 @@ const TextureGen = {
 
   // Lush grass blades (advanced ground for fields/japan)
   createGrass(dark) {
-    const S = 512;
+    const S = this._size(512);
     const c = document.createElement('canvas'); c.width = c.height = S;
     const ctx = c.getContext('2d');
     ctx.fillStyle = dark ? '#27401d' : '#3c6b2c'; ctx.fillRect(0, 0, S, S);
     // soft patches
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < this._count(60); i++) {
       const x = Math.random() * S, y = Math.random() * S, r = 18 + Math.random() * 50;
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       const lit = Math.random() > 0.5;
@@ -364,7 +370,7 @@ const TextureGen = {
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill();
     }
     // blades
-    for (let i = 0; i < 9000; i++) {
+    for (let i = 0; i < this._count(9000); i++) {
       const x = Math.random() * S, y = Math.random() * S;
       const h = 3 + Math.random() * 7;
       const shade = 40 + (Math.random() * 90) | 0;
@@ -377,11 +383,11 @@ const TextureGen = {
 
   // Stone path slabs
   createStonePath() {
-    const S = 512;
+    const S = this._size(512);
     const c = document.createElement('canvas'); c.width = c.height = S;
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#5b5750'; ctx.fillRect(0, 0, S, S);
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < this._count(16); i++) {
       const x = Math.random() * S, y = Math.random() * S, r = 30 + Math.random() * 46;
       ctx.fillStyle = this._shift('#8a857a', (Math.random() * 40 - 20) | 0);
       ctx.beginPath();
@@ -395,7 +401,7 @@ const TextureGen = {
 
   // Soft day sky (blue gradient + sun glow + haze)
   createDaySky(top, horizon) {
-    const W = 1024, H = 1024;
+    const W = this._size(1024), H = this._size(1024);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -412,7 +418,7 @@ const TextureGen = {
     sun.addColorStop(1, 'rgba(255,240,200,0)');
     ctx.fillStyle = sun; ctx.fillRect(0, 0, W, H);
     // soft clouds
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < this._count(14); i++) {
       const cx = Math.random() * W, cy = H * (0.15 + Math.random() * 0.45), r = 40 + Math.random() * 90;
       const cl = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
       cl.addColorStop(0, 'rgba(255,255,255,0.35)'); cl.addColorStop(1, 'rgba(255,255,255,0)');
@@ -430,7 +436,7 @@ const TextureGen = {
 
   // Night sky dome: deep gradient, stars, moon, city glow at horizon
   createSky() {
-    const W = 1024, H = 1024;
+    const W = this._size(1024), H = this._size(1024);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -442,7 +448,7 @@ const TextureGen = {
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
     // stars (upper region)
-    for (let i = 0; i < 700; i++) {
+    for (let i = 0; i < this._count(700); i++) {
       const y = Math.random() * H * 0.55;
       const a = Math.random() * 0.8 + 0.1;
       ctx.fillStyle = `rgba(255,255,255,${a})`;

@@ -23,3 +23,11 @@ The design medium is **HTML/CSS/JS** — these are prototypes, not production co
 - `README.md` — this file
 - `chats/` — conversation transcripts (read these!)
 - `project/` — the `bshoot` project files (HTML prototypes, assets, components)
+
+## Modular Three.js FPS Launcher
+
+The repository now includes a modular Three.js FPS implementation at [`modular-fps.html`](./modular-fps.html). This launcher uses native ES modules and an import map for Three.js, so it can run from any static web server without a bundler. Its structure follows the official Three.js FPS example's core ideas: pointer-lock mouse look, `YXZ` camera rotation, capsule-based player physics, gravity, capped delta time, and fixed physics substeps.
+
+The modular source lives under [`src/`](./src/) and is split into focused systems for rendering, input, player physics, world loading, combat, enemies, HUD, and reusable geometry. The original prototype HTML and legacy `js/` files are still kept in place as reference material.
+
+A new Underground Cleaners map is included in the modular version to provide the requested underground section and cleaner-drone theme as maintainable level content.
