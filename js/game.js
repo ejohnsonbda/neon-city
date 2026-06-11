@@ -86,9 +86,6 @@ class Game {
       { name:'PLASMA',     type:'semi', rate:760,  dmg:40, splash:5.5, splashDmg:55, color:0x9b5cff, ammo:24, maxAmmo:60, spread:0.004, projectile:true, model:'plasma', kick:0.03 },
       { name:'PULSE',      type:'auto', rate:40,   dmg:8,   color:0xff7a18, ammo:320, maxAmmo:700, spread:0.055, model:'pulse', kick:0.006 },
     ];
-    this.japanWeapons = [
-      { name:'SHURIKEN', type:'semi', rate:240, dmg:34, color:0xc8d2dc, ammo:60, maxAmmo:180, spread:0.02, model:'shuriken', kick:0.012, thrown:true, speed:70 },
-    ];
     this.player.weapons = this.defaultWeapons;
     this.weaponSmooth = { bowDraw: 0, bowRelease: 0 };
 
@@ -127,7 +124,7 @@ class Game {
     this.japanProps = null;
     // tune bloom per level: punchy at night, subtle in daylight (avoids white-out)
     if (this.bloom) {
-      const day = (level === 'fields' || level === 'desert' || level === 'japan');
+      const day = (level === 'fields' || level === 'desert');
       if (day) { this.bloom.strength = 0.22; this.bloom.threshold = 0.92; this.bloom.radius = 0.35; }
       else { this.bloom.strength = 0.95; this.bloom.threshold = 0.52; this.bloom.radius = 0.75; }
     }
@@ -135,7 +132,6 @@ class Game {
     else if (level === 'megacity') this.buildMegaCity(this.worldGroup);
     else if (level === 'rail') this.buildRailCity(this.worldGroup);
     else if (level === 'desert') this.buildDesert(this.worldGroup);
-    else if (level === 'japan') this.buildJapan(this.worldGroup);
     else this.buildCity(this.worldGroup);
   }
 
@@ -314,293 +310,6 @@ class Game {
 
     this.desertProps = { fireLights, birds, ankhs, sandP, fireflies, span: 50 * S, S };
     this._desertSpawn = new THREE.Vector3(0, this.player.height, 22 * S);
-  }
-
-  // ================= FEUDAL JAPAN =================
-  buildJapan(W) {
-    this.scene.background = null;
-    this.scene.fog = new THREE.Fog(0xc4d8ea, 120, 560);
-
-    // soft day sky dome (golden hour — deeper blue above, warm amber/gold at horizon)
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 24),
-      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#2d5fa8', '#e8a84a'), side: THREE.BackSide, fog: false }));
-    W.add(sky);
-
-    // ground: lush grass with stone courtyard
-    const grassTex = TextureGen.createGrass(false); grassTex.repeat.set(60, 60);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ map: grassTex, color: 0x88b56a, roughness: 0.95 }));
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; W.add(ground);
-
-    const stoneTex = TextureGen.createStonePath(); stoneTex.repeat.set(8, 8);
-    const court = new THREE.Mesh(new THREE.CircleGeometry(26, 40),
-      new THREE.MeshStandardMaterial({ map: stoneTex, color: 0x9a958a, roughness: 0.9 }));
-    court.rotation.x = -Math.PI / 2; court.position.y = 0.02; court.receiveShadow = true; W.add(court);
-    // gravel approach path
-    const pathT = TextureGen.createStonePath(); pathT.repeat.set(2, 10);
-    const path = new THREE.Mesh(new THREE.PlaneGeometry(7, 70),
-      new THREE.MeshStandardMaterial({ map: pathT, color: 0xb8b2a4, roughness: 1 }));
-    path.rotation.x = -Math.PI / 2; path.position.set(0, 0.015, 44); path.receiveShadow = true; W.add(path);
-
-    // shared materials
-    const woodTex = TextureGen.createWood(false); const beamTex = TextureGen.createWood(true);
-    const tileTex = TextureGen.createRoofTile('#39424d');
-    const wallWood = () => { const t = woodTex.clone(); t.needsUpdate = true; t.repeat.set(2, 2); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.7 }); };
-    const redWood = new THREE.MeshStandardMaterial({ color: 0xb5341f, roughness: 0.55 });
-    const darkWood = new THREE.MeshStandardMaterial({ color: 0x3a241a, roughness: 0.7 });
-    const tileMat = () => { const t = tileTex.clone(); t.needsUpdate = true; t.repeat.set(4, 2); return new THREE.MeshStandardMaterial({ map: t, color: 0x4a5560, roughness: 0.7 }); };
-    const shojiMat = new THREE.MeshStandardMaterial({ map: TextureGen.createShoji(), emissive: 0x4a3a1a, emissiveIntensity: 0.3, roughness: 0.8 });
-
-    // curved Japanese roof (stacked tapering tiers)
-    const addRoof = (parent, x, y, z, w, d, tiers) => {
-      for (let t = 0; t < (tiers || 1); t++) {
-        const ww = w * (1 - t * 0.22), dd = d * (1 - t * 0.22);
-        const roof = new THREE.Mesh(new THREE.BoxGeometry(ww, 0.35, dd), tileMat());
-        roof.position.set(x, y + t * 1.0, z); roof.castShadow = true; parent.add(roof);
-        // upturned eaves
-        [-1, 1].forEach(s => {
-          const eave = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, dd + 0.6), darkWood);
-          eave.position.set(x + s * ww / 2, y + t * 1.0 + 0.18, z); eave.rotation.z = s * 0.34; parent.add(eave);
-        });
-      }
-    };
-
-    // ===== GREAT PAGODA (5 tiers, enterable base) =====
-    const pagoda = new THREE.Group();
-    const tiers = 5;
-    for (let t = 0; t < tiers; t++) {
-      const s = 1 - t * 0.13;
-      const body = new THREE.Mesh(new THREE.BoxGeometry(7 * s, 2.4, 7 * s), redWood);
-      body.position.y = 2 + t * 3.0; body.castShadow = true; pagoda.add(body);
-      addRoof(pagoda, 0, 3.4 + t * 3.0, 0, 9 * s, 9 * s, 1);
-      // pillar accents
-      [-1, 1].forEach(sx => [-1, 1].forEach(sz => {
-        const p = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.4, 0.3), darkWood);
-        p.position.set(sx * 3.2 * s, 2 + t * 3.0, sz * 3.2 * s); pagoda.add(p);
-      }));
-    }
-    // golden finial
-    const finial = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.3, 3, 8), new THREE.MeshStandardMaterial({ color: 0xd9b44a, metalness: 0.8, roughness: 0.3 }));
-    finial.position.y = 2 + tiers * 3.0; pagoda.add(finial);
-    pagoda.position.set(0, 0, -14); W.add(pagoda);
-    // pagoda base walls = colliders (you can walk around/into base)
-    [[-3.4, 0], [3.4, 0], [0, -3.4]].forEach(([dx, dz]) => {
-      const wll = new THREE.Mesh(new THREE.BoxGeometry(dz ? 7 : 0.4, 2.4, dz ? 0.4 : 7), redWood);
-      wll.position.set(dx, 1.2, -14 + dz); wll.castShadow = true; W.add(wll); this.objects.push(wll);
-    });
-
-    // ===== TORII GATES along the approach =====
-    const toriiMat = new THREE.MeshStandardMaterial({ color: 0xd23b22, roughness: 0.5 });
-    const blackMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 });
-    [14, 26, 40, 56].forEach((z, i) => {
-      const t = new THREE.Group();
-      const sc = 1 - i * 0.04;
-      [-2.6, 2.6].forEach(x => {
-        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 6.4 * sc, 10), toriiMat);
-        pillar.position.set(x, 3.2 * sc, 0); pillar.castShadow = true; t.add(pillar); this.objects.push(pillar);
-      });
-      const top = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.5, 0.6), blackMat); top.position.y = 6.4 * sc; top.castShadow = true; t.add(top);
-      const top2 = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.4, 0.5), toriiMat); top2.position.y = 5.6 * sc; t.add(top2);
-      t.position.set(0, 0, z); W.add(t);
-    });
-
-    // ===== ENTERABLE BUILDINGS: dojo, teahouse, minka homes =====
-    const japanStyle = (col) => ({
-      wall: new THREE.MeshStandardMaterial({ color: col || 0xe9e0cf, roughness: 0.7 }),
-      floor: new THREE.MeshStandardMaterial({ color: 0x8a5a32, roughness: 0.7 }),
-      roof: tileMat(),
-      cone: null,
-      win: shojiMat,
-      lamp: 0xffca7a
-    });
-    const houseSpots = [[-22, 6], [22, 4], [-26, -16], [26, -14], [-18, 24], [20, 26], [-34, -2], [34, -4]];
-    houseSpots.forEach(([sx, sz], i) => {
-      const w = 9 + Math.random() * 2, d = 8 + Math.random() * 2;
-      this.buildEnterable(W, sx, sz, w, d, japanStyle(i % 3 === 0 ? 0xc9b89a : 0xe9e0cf));
-      // pretty curved roof on top of the flat enterable roof
-      addRoof(W, sx, 3.8, sz, w + 2.4, d + 2.4, i % 2 ? 2 : 1);
-      // red lantern by the door
-      const lant = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 10), new THREE.MeshStandardMaterial({ color: 0xd83a2a, emissive: 0xb01e10, emissiveIntensity: 0.7 }));
-      lant.scale.y = 1.3; lant.position.set(sx + w / 2 - 0.5, 2.4, sz + d / 2 + 0.5); W.add(lant);
-      const ll = new THREE.PointLight(0xff7a3a, 0.8, 8); ll.position.copy(lant.position); W.add(ll);
-    });
-
-    // ===== STONE LANTERNS (toro) lining the path =====
-    const lanternMats = new THREE.MeshStandardMaterial({ color: 0x8d887e, roughness: 0.95 });
-    const lanternLights = [];
-    [10, 22, 34, 48, 60].forEach(z => [-5, 5].forEach(x => {
-      const t = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.5, 6), lanternMats); base.position.y = 0.25; t.add(base);
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.9, 6), lanternMats); post.position.y = 0.9; t.add(post);
-      const box = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), lanternMats); box.position.y = 1.55; t.add(box);
-      const glow = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshStandardMaterial({ color: 0xffd98a, emissive: 0xffb347, emissiveIntensity: 0.7 })); glow.position.y = 1.55; t.add(glow);
-      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.4, 6), lanternMats); cap.position.y = 2.0; t.add(cap);
-      const lt = new THREE.PointLight(0xffc070, 0.7, 9); lt.position.set(0, 1.55, 0); t.add(lt);
-      lanternLights.push({ light: lt, base: 0.7, ph: Math.random() * 6 });
-      t.position.set(x, 0, z); t.traverse(o => { if (o.isMesh) o.castShadow = true; }); W.add(t); this.objects.push(box);
-    }));
-
-    // ===== CHERRY BLOSSOM TREES + falling petals =====
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3326, roughness: 1 });
-    const blossomMats = [0xffd1e8, 0xffb6d5, 0xffc6e0].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true, emissive: 0x3a1020, emissiveIntensity: 0.1 }));
-    const addSakura = (x, z, s) => {
-      const g = new THREE.Group();
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * s, 0.4 * s, 3.4 * s, 7), trunkMat);
-      tr.position.y = 1.7 * s; tr.castShadow = true; g.add(tr); this.objects.push(tr);
-      // branches
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * 6.28;
-        const br = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * s, 0.14 * s, 1.6 * s, 5), trunkMat);
-        br.position.set(Math.cos(a) * 0.8 * s, 3.1 * s, Math.sin(a) * 0.8 * s);
-        br.rotation.z = Math.cos(a) * 0.7; br.rotation.x = Math.sin(a) * 0.7; g.add(br);
-      }
-      // blossom canopy clumps
-      for (let i = 0; i < 14; i++) {
-        const cl = new THREE.Mesh(new THREE.IcosahedronGeometry((0.8 + Math.random() * 0.7) * s, 0), blossomMats[(Math.random() * 3) | 0]);
-        const a = Math.random() * 6.28, r = Math.random() * 2.2 * s;
-        cl.position.set(Math.cos(a) * r, (3.6 + Math.random() * 1.6) * s, Math.sin(a) * r); cl.castShadow = true; g.add(cl);
-      }
-      g.position.set(x, 0, z); W.add(g);
-    };
-    const sakuraPos = [[-12, 12], [12, 14], [-15, -4], [15, -2], [-10, 30], [10, 32], [-28, 12], [28, 14], [-30, -22], [30, -20], [-8, -28], [8, -30]];
-    sakuraPos.forEach(([x, z], i) => addSakura(x, z, 0.9 + (i % 3) * 0.25));
-
-    // falling petals particle system
-    const petalGeo = new THREE.BufferGeometry();
-    const PETALS = 1200, pp = new Float32Array(PETALS * 3);
-    for (let i = 0; i < PETALS; i++) { pp[i * 3] = (Math.random() - 0.5) * 130; pp[i * 3 + 1] = Math.random() * 30; pp[i * 3 + 2] = (Math.random() - 0.5) * 130; }
-    petalGeo.setAttribute('position', new THREE.BufferAttribute(pp, 3));
-    const petals = new THREE.Points(petalGeo, new THREE.PointsMaterial({ color: 0xffc6e0, size: 0.5, transparent: true, opacity: 0.85, depthWrite: false }));
-    W.add(petals);
-
-    // ===== BAMBOO GROVE (SE) =====
-    const bambooMat = new THREE.MeshStandardMaterial({ color: 0x6e9e3a, roughness: 0.8 });
-    for (let i = 0; i < 80; i++) {
-      const x = 24 + (Math.random() - 0.5) * 26, z = -28 + (Math.random() - 0.5) * 26;
-      const h = 5 + Math.random() * 4;
-      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, h, 6), bambooMat);
-      st.position.set(x, h / 2, z); st.castShadow = true; W.add(st);
-      if (i % 3 === 0) this.objects.push(st);
-      const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.4, 5), new THREE.MeshStandardMaterial({ color: 0x4f8a2c, roughness: 1, flatShading: true }));
-      leaf.position.set(x, h, z); W.add(leaf);
-    }
-
-    // ===== KOI POND with arched bridge =====
-    const water = new THREE.Mesh(new THREE.CircleGeometry(7, 36),
-      new THREE.MeshStandardMaterial({ color: 0x2f6f86, metalness: 0.5, roughness: 0.2, transparent: true, opacity: 0.86, emissive: 0x0a2a3a, emissiveIntensity: 0.3 }));
-    water.rotation.x = -Math.PI / 2; water.position.set(-20, 0.05, -2); W.add(water);
-    // rim
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(7, 0.4, 8, 36), lanternMats);
-    rim.rotation.x = -Math.PI / 2; rim.position.set(-20, 0.2, -2); W.add(rim);
-    // arched bridge
-    const bridge = new THREE.Group();
-    for (let i = -5; i <= 5; i++) {
-      const seg = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 0.5), redWood);
-      const a = i * 0.16; seg.position.set(0, 1.2 + Math.cos(a) * 0.9 - 0.9, i * 0.5); seg.rotation.x = -a * 0.5; bridge.add(seg);
-    }
-    bridge.position.set(-20, 0.6, -2); W.add(bridge);
-
-    // ===== sun + lighting (golden hour — warm but not over-exposed) =====
-    const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(12, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffcc88, fog: false }));
-    sunDisc.position.set(180, 90, 120); W.add(sunDisc);
-    W.add(new THREE.AmbientLight(0xc8b89a, 0.32));
-    W.add(new THREE.HemisphereLight(0xa0c0f0, 0x3a5a28, 0.28));
-    const sun = new THREE.DirectionalLight(0xffcc88, 0.95);
-    sun.position.set(120, 140, 90); sun.castShadow = true; sun.shadow.bias = -0.0002;
-    sun.shadow.camera.left = -120; sun.shadow.camera.right = 120; sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
-    sun.shadow.camera.far = 480; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
-
-    this.japanProps = { petals, lanternLights };
-    this._japanSpawn = new THREE.Vector3(0, this.player.height, 56);
-
-    // ===================================================================
-    //  TOWN EXPANSION — castle, village district, market, hanging lanterns
-    // ===================================================================
-    // a registry so hanging lanterns can pulse with bloom
-    const hangLanterns = [];
-
-    // ----- GREAT CASTLE (tenshu) landmark behind the pagoda -----
-    const castle = new THREE.Group();
-    const castleWall = new THREE.MeshStandardMaterial({ color: 0xf0ead8, roughness: 0.7 });
-    const stoneBase = new THREE.MeshStandardMaterial({ map: TextureGen.createStonePath(), color: 0x8e887c, roughness: 0.95 });
-    // sloped stone foundation
-    const found = new THREE.Mesh(new THREE.CylinderGeometry(11, 14, 5, 4), stoneBase);
-    found.rotation.y = Math.PI / 4; found.position.y = 2.5; found.castShadow = true; found.receiveShadow = true; castle.add(found);
-    this.objects.push(found);
-    // stacked tapering tiers with curved roofs
-    for (let t = 0; t < 4; t++) {
-      const s = 1 - t * 0.18;
-      const body = new THREE.Mesh(new THREE.BoxGeometry(12 * s, 3, 12 * s), castleWall);
-      body.position.y = 6.5 + t * 3.6; body.castShadow = true; castle.add(body);
-      addRoof(castle, 0, 8.2 + t * 3.6, 0, 15 * s, 15 * s, 1);
-      // gold accents along the tier
-      const trim = new THREE.Mesh(new THREE.BoxGeometry(12 * s + 0.2, 0.3, 12 * s + 0.2), new THREE.MeshStandardMaterial({ color: 0xc8a24a, metalness: 0.7, roughness: 0.3, emissive: 0x4a3410, emissiveIntensity: 0.4 }));
-      trim.position.y = 5.1 + t * 3.6; castle.add(trim);
-    }
-    // golden shachihoko finial
-    const cf = new THREE.Mesh(new THREE.ConeGeometry(0.4, 2, 6), new THREE.MeshStandardMaterial({ color: 0xe8c24a, metalness: 0.85, roughness: 0.25, emissive: 0x6a4e10, emissiveIntensity: 0.5 }));
-    cf.position.y = 22; castle.add(cf);
-    castle.position.set(0, 0, -48); W.add(castle);
-
-    // ----- VILLAGE DISTRICT: two rows of enterable shops along a market street -----
-    const shopCols = [0xd9c4a3, 0xc98a5a, 0x9fb0a0, 0xcf9f8a, 0xb8a878, 0xe0cdaa];
-    const banners = [0xd23b22, 0x2a5c8a, 0x3a7a3a, 0xc89a2a, 0x7a3a8a];
-    for (let row = 0; row < 2; row++) {
-      const sx = row === 0 ? -10 : 10;
-      for (let i = 0; i < 5; i++) {
-        const sz = -2 - i * 11;
-        const w = 8, d = 8;
-        this.buildEnterable(W, sx, sz, w, d, japanStyle(shopCols[(i + row) % shopCols.length]));
-        addRoof(W, sx, 3.8, sz, w + 2.6, d + 2.6, 1);
-        // noren shop banner facing the street
-        const ban = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 3.2),
-          new THREE.MeshStandardMaterial({ color: banners[(i + row) % banners.length], roughness: 0.8, side: THREE.DoubleSide }));
-        ban.position.set(sx + (row === 0 ? w / 2 + 0.2 : -w / 2 - 0.2), 2.0, sz); W.add(ban);
-        // glowing paper lantern at each shop corner
-        const lp = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.6, 10),
-          new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xff8a2a, emissiveIntensity: 0.9 }));
-        lp.position.set(sx + (row === 0 ? w / 2 + 0.4 : -w / 2 - 0.4), 2.7, sz - 3); W.add(lp);
-        const lpl = new THREE.PointLight(0xffb060, 0.7, 7); lpl.position.copy(lp.position); W.add(lpl);
-        hangLanterns.push({ mesh: lp, light: lpl, base: 0.9, ph: Math.random() * 6 });
-      }
-    }
-
-    // ----- HANGING LANTERN STRINGS arched over the approach path -----
-    for (let z = 8; z <= 56; z += 8) {
-      const cordY = 5.2 + Math.sin(z * 0.2) * 0.3;
-      // cord
-      const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 11, 4), new THREE.MeshStandardMaterial({ color: 0x2a2018 }));
-      cord.rotation.z = Math.PI / 2; cord.position.set(0, cordY, z); W.add(cord);
-      for (let k = -2; k <= 2; k++) {
-        const col = k % 2 ? 0xff5a4a : 0xffd27a;
-        const lan = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8),
-          new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.85 }));
-        lan.scale.y = 1.25; lan.position.set(k * 2.4, cordY - 0.5, z); W.add(lan);
-        hangLanterns.push({ mesh: lan, base: 0.85, ph: Math.random() * 6 });
-      }
-    }
-
-    // ----- MARKET STALLS in the courtyard -----
-    const stallWood = new THREE.MeshStandardMaterial({ color: 0x6a4528, roughness: 0.8 });
-    [[-7, 8], [7, 6], [-6, -2], [8, -4]].forEach(([sx, sz], i) => {
-      const stall = new THREE.Group();
-      [-1.4, 1.4].forEach(px => [-1, 1].forEach(pz => {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.2, 6), stallWood);
-        post.position.set(px, 1.1, pz); stall.add(post);
-      }));
-      const counter = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.2, 2.4), stallWood);
-      counter.position.y = 1.0; stall.add(counter);
-      const awn = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.12, 2.8), new THREE.MeshStandardMaterial({ color: banners[i % banners.length], roughness: 0.8 }));
-      awn.position.y = 2.3; awn.rotation.x = 0.12; stall.add(awn);
-      stall.position.set(sx, 0, sz); stall.traverse(o => { if (o.isMesh) o.castShadow = true; });
-      W.add(stall); this.objects.push(counter);
-    });
-
-    // ----- extra cherry trees ringing the town -----
-    [[-40, 20], [40, 18], [-44, -14], [44, -12], [-38, -34], [38, -32], [0, -64], [-20, -52], [20, -50]]
-      .forEach(([x, z], i) => addSakura(x, z, 1.0 + (i % 2) * 0.3));
-
-    this.japanProps.hangLanterns = hangLanterns;
   }
 
   // small helper to clone a tileable ground texture
@@ -1317,7 +1026,6 @@ class Game {
       forcepush:  this.buildForcePush(),
       plasma:     this._buildPlasma(0x9b5cff),
       pulse:      this._buildPulse(0xff7a18),
-      shuriken:   this._buildShuriken(),
     };
     // second shotgun for dual wield
     this.gunModels.shotgun2 = this._buildShotgun(0xff2d95);
@@ -1522,27 +1230,6 @@ class Game {
     return g;
   }
 
-  // ---- SHURIKEN: throwing star held in fingers ----
-  _buildShuriken() {
-    const g = new THREE.Group();
-    const steel = new THREE.MeshStandardMaterial({ color: 0xb8c2cc, metalness: 0.9, roughness: 0.25 });
-    const star = new THREE.Group();
-    for (let i = 0; i < 4; i++) {
-      const pt = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.22, 4), steel);
-      pt.rotation.z = Math.PI / 2; pt.rotation.y = i * Math.PI / 2;
-      pt.position.set(Math.cos(i * Math.PI / 2) * 0.13, Math.sin(i * Math.PI / 2) * 0.13, 0);
-      pt.rotation.z = i * Math.PI / 2 + Math.PI / 2; star.add(pt);
-    }
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 8), steel);
-    hub.rotation.x = Math.PI / 2; star.add(hub);
-    const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.04, 8), new THREE.MeshBasicMaterial({ color: 0x111 }));
-    hole.rotation.x = Math.PI / 2; star.add(hole);
-    star.position.set(0, 0.02, -0.35); star.rotation.x = 0.5; g.add(star);
-    g.userData.star = star;
-    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.5);
-    return g;
-  }
-
   updateWeaponModel(name) {
     const key = (name || 'PISTOL').toLowerCase().replace(' ', '');
     const lookupKey = key === 'dualshg' ? 'shotgun' : key;
@@ -1568,8 +1255,7 @@ class Game {
       { id: 'fields', name: 'COUNTRYSIDE', desc: 'Sunlit fields, hills & houses.',   art: 'fields' },
       { id: 'megacity', name: 'MEGAWATT CITY 1', desc: 'Dense grid, live traffic & neon.', art: 'mega' },
       { id: 'rail', name: 'RAIL CITY', desc: 'Ride the monorail · day to night.', art: 'rail' },
-      { id: 'desert', name: 'EGYPT DESERT', desc: 'Pyramids, jungle & pharaoh golems.', art: 'desert' },
-      { id: 'japan', name: 'FEUDAL JAPAN', desc: 'Temples, torii gates & shuriken.', art: 'japan' }
+      { id: 'desert', name: 'EGYPT DESERT', desc: 'Pyramids, jungle & pharaoh golems.', art: 'desert' }
     ];
     levels.forEach(l => {
       const c = document.createElement('div');
@@ -1626,9 +1312,6 @@ class Game {
       { name:'PLASMA',     type:'SEMI', dmg:95, rateMs:760,  ammo:'60',  trait:'SPLASH DAMAGE',  col:'#9b5cff', idx:4 },
       { name:'PULSE',      type:'AUTO', dmg:8,  rateMs:40,   ammo:'700', trait:'HIGH CAPACITY',  col:'#ff7a18', idx:5 },
     ];
-    const japanDefs = [
-      { name:'SHURIKEN', type:'THROWN', dmg:34, rateMs:240, ammo:'180', trait:'FAST THROW', col:'#c8d2dc' },
-    ];
     const buildWepCard = (w, container, selectable) => {
       const rateBar = Math.round((1 - w.rateMs / 1050) * 100);
       const dmgBar  = Math.round((w.dmg / 135) * 100);
@@ -1653,10 +1336,8 @@ class Game {
       }
       container.appendChild(card);
     };
-    const armoryGrid  = document.getElementById('armory-grid');
-    const armoryJapan = document.getElementById('armory-japan');
-    if (armoryGrid)  wepDefs.forEach(w  => buildWepCard(w, armoryGrid,  true));
-    if (armoryJapan) japanDefs.forEach(w => buildWepCard(w, armoryJapan, false));
+    const armoryGrid = document.getElementById('armory-grid');
+    if (armoryGrid) wepDefs.forEach(w => buildWepCard(w, armoryGrid, true));
   }
 
   selectChar(t) {
@@ -1759,18 +1440,14 @@ class Game {
     this.curGameMusic = (this.level === 'desert') ? this.gameMusic[1] : this.gameMusic[0];
     if (this.curGameMusic) this.curGameMusic.play().catch(() => {});
     this.buildWorld(this.level || 'city');
-    // pick arsenal for the level: Japan prepends shuriken to the default loadout.
-    this.player.weapons = this.level === 'japan'
-      ? [...this.japanWeapons, ...this.defaultWeapons]
-      : this.defaultWeapons;
-    this.player.weaponIdx = this.level === 'japan' ? 0 : (this.startWeaponIdx || 0);
+    this.player.weapons = this.defaultWeapons;
+    this.player.weaponIdx = this.startWeaponIdx || 0;
     this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
     this.waveCountdown = null;
     this.player.weapons.forEach(w => w.ammo = w.ammo === Infinity ? Infinity : Math.floor(w.maxAmmo * 0.6));
     this.camera.position.set(0, this.player.height, 0);
     if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
     if (this._desertSpawn && this.level === 'desert') this.camera.position.copy(this._desertSpawn);
-    if (this._japanSpawn && this.level === 'japan') this.camera.position.copy(this._japanSpawn);
     this.player.ridingCar = null; this.player.floorY = this.player.height;
     this.camera.rotation.set(0, 0, 0);
     // time-of-day chip only on rail level
@@ -2513,9 +2190,6 @@ class Game {
     } else {
       this.gunGroup.rotation.z = THREE.MathUtils.lerp(this.gunGroup.rotation.z, 0, dt * 12);
     }
-    // shuriken spin in hand
-    const sk = this.gunModels && this.gunModels.shuriken;
-    if (sk && sk.visible && sk.userData.star) sk.userData.star.rotation.z += dt * 6;
     // pulse cannon barrel spin
     const pulse = this.gunModels && this.gunModels.pulse;
     if (pulse && pulse.userData.spin) {
@@ -2638,24 +2312,6 @@ class Game {
       dp.fireflies.rotation.y += dt * 0.04;
     }
 
-    // JAPAN live props — falling cherry petals + lantern flicker
-    if (this.japanProps) {
-      const jp = this.japanProps, t = performance.now() * 0.001;
-      const arr = jp.petals.geometry.attributes.position.array;
-      for (let i = 0; i < arr.length; i += 3) {
-        arr[i + 1] -= dt * 1.4;                       // fall
-        arr[i] += Math.sin(t * 1.5 + i) * dt * 0.5;   // sway
-        if (arr[i + 1] < 0) { arr[i + 1] = 28 + Math.random() * 4; }
-      }
-      jp.petals.geometry.attributes.position.needsUpdate = true;
-      jp.lanternLights.forEach(l => { l.light.intensity = l.base + Math.sin(t * 6 + l.ph) * 0.18; });
-      if (jp.hangLanterns) jp.hangLanterns.forEach(l => {
-        const pulse = l.base + Math.sin(t * 4 + l.ph) * 0.3;
-        if (l.mesh) l.mesh.material.emissiveIntensity = pulse;
-        if (l.light) l.light.intensity = 0.7 + Math.sin(t * 4 + l.ph) * 0.2;
-        if (l.mesh) l.mesh.position.y += Math.sin(t * 2 + l.ph) * 0.0006;
-      });
-    }
     // particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i]; p.life -= dt;

@@ -77,15 +77,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,6,12,.88);
 .bar-num{font:700 11px 'Orbitron';width:32px;}
 .wfc-badge{display:inline-block;font:700 9px 'Rajdhani';letter-spacing:.2em;padding:4px 10px;margin-top:16px;}
 
-/* JAPAN SECTION */
-.japan-header{
-  padding:20px 28px;background:rgba(160,40,24,.1);border:1px solid rgba(160,80,60,.2);
-  clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
-  margin-bottom:20px;display:flex;align-items:center;gap:16px;}
-.japan-header svg{flex-shrink:0;}
-.japan-header-text{font:700 11px 'Rajdhani';letter-spacing:.25em;color:rgba(255,200,180,.6);line-height:1.6;}
-.japan-header-text b{color:#f0a8c8;display:block;font:700 14px 'Orbitron';letter-spacing:.2em;margin-bottom:4px;}
-
 /* FOOTER */
 footer{background:rgba(5,6,12,.95);border-top:1px solid rgba(255,255,255,.07);
   padding:32px clamp(16px,6vw,80px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
@@ -361,57 +352,6 @@ footer{background:rgba(5,6,12,.95);border-top:1px solid rgba(255,255,255,.07);
     </div>
 
   </div><!-- /wep-section -->
-
-  <!-- JAPAN EXCLUSIVE -->
-  <div class="wep-section">
-    <div class="wep-section-label">FEUDAL JAPAN — AUTO-EQUIPPED</div>
-
-    <div class="japan-header">
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <circle cx="14" cy="14" r="12" stroke="#f0a8c8" stroke-width="1.5" opacity=".5"/>
-        <path d="M14 6v16M6 14h16" stroke="#f0a8c8" stroke-width="1.5" opacity=".4"/>
-        <circle cx="14" cy="14" r="3" fill="#f0a8c8" opacity=".6"/>
-      </svg>
-      <div class="japan-header-text">
-        <b>FEUDAL JAPAN EXCLUSIVE</b>
-        On the Feudal Japan level, the Shuriken is added to your loadout automatically. Standard weapons remain available.
-      </div>
-    </div>
-
-    <!-- SHURIKEN -->
-    <div class="wep-full-card" style="opacity:.75;">
-      <div class="wfc-visual" style="background:linear-gradient(135deg,#0a0c10,#141820);">
-        <svg class="wfc-icon" viewBox="0 0 120 120" fill="none">
-          <!-- shuriken star -->
-          <g transform="translate(60,60)">
-            <path d="M0-38 L8-8 L38 0 L8 8 L0 38 L-8 8 L-38 0 L-8-8 Z" fill="#c8d2dc" opacity=".85"/>
-            <path d="M0-38 L8-8 L38 0 L8 8 L0 38 L-8 8 L-38 0 L-8-8 Z" fill="none" stroke="#c8d2dc" stroke-width="1.5" opacity=".4"/>
-            <circle r="6" fill="#c8d2dc" opacity=".9"/>
-            <circle r="3" fill="#0a0c10"/>
-          </g>
-        </svg>
-        <div class="wfc-name-bg">SHURIKEN</div>
-      </div>
-      <div class="wfc-info">
-        <div class="wfc-header">
-          <div><div class="wfc-name" style="color:#c8d2dc">SHURIKEN</div><div class="wfc-tag">THROWN · JAPAN LEVEL</div></div>
-        </div>
-        <p class="wfc-desc">Precision throwing star. Fast release, silent kill, accurate at range. Carried in addition to the standard six-weapon loadout on the Feudal Japan level.</p>
-        <div class="wfc-stats">
-          <div class="wfc-stat"><div class="wfc-stat-label">DAMAGE</div><div class="wfc-stat-val" style="color:#c8d2dc">34</div></div>
-          <div class="wfc-stat"><div class="wfc-stat-label">AMMO POOL</div><div class="wfc-stat-val" style="color:#c8d2dc">180</div></div>
-          <div class="wfc-stat"><div class="wfc-stat-label">FIRE RATE</div><div class="wfc-stat-val" style="color:#c8d2dc">240ms</div></div>
-          <div class="wfc-stat"><div class="wfc-stat-label">SPREAD</div><div class="wfc-stat-val" style="color:#c8d2dc">TIGHT</div></div>
-        </div>
-        <div class="wfc-bars">
-          <div class="bar-row"><span class="bar-label">DMG</span><div class="bar-track"><div class="bar-fill" style="width:25%;background:#c8d2dc"></div></div><span class="bar-num" style="color:#c8d2dc">25</span></div>
-          <div class="bar-row"><span class="bar-label">RATE</span><div class="bar-track"><div class="bar-fill" style="width:77%;background:#c8d2dc88"></div></div><span class="bar-num" style="color:#c8d2dc88">77</span></div>
-        </div>
-        <div class="wfc-badge" style="background:#c8d2dc1a;color:#c8d2dc;border:1px solid #c8d2dc44">THROWN · SILENT · FAST THROW</div>
-      </div>
-    </div>
-
-  </div>
 
   <!-- DEPLOY CTA -->
   <div style="text-align:center;padding:20px 0 40px;">
