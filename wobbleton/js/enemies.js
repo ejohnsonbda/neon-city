@@ -57,14 +57,16 @@ const EnemyFactory = {
       case 'dragon':  return this._dragon(c);
       case 'boss':    return this._boss(c);
       case 'spider':  return this._spider(c);
-      case 'sapling': return this._sapling(c);
-      case 'bramble': return this._bramble(c);
-      case 'treant':  return this._treant(c);
-      case 'monkey':  return this._monkey(c);
-      case 'slinger': return this._slinger(c);
-      case 'ape':     return this._ape(c);
-      case 'clown':   return this._clown(c);
-      case 'jester':  return this._jester(c);
+      // every foe in Wobbleton is a golem now — stage variety comes from
+      // each type's colour, scale and stats rather than different species
+      case 'sapling': return this._runner(c);
+      case 'bramble': return this._grunt(c);
+      case 'treant':  return this._shooter(c);
+      case 'monkey':  return this._runner(c);
+      case 'slinger': return this._shooter(c);
+      case 'ape':     return this._tank(c);
+      case 'clown':   return this._grunt(c);
+      case 'jester':  return this._shooter(c);
       default:        return this._grunt(c);
     }
   },

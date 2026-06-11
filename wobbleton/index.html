@@ -186,15 +186,15 @@
   </div>
 
   <div id="rack">
-    <div class="wslot on"><div class="num">1</div><div class="nm">Peashooter</div></div>
-    <div class="wslot"><div class="num">2</div><div class="nm">Buzzgun</div></div>
-    <div class="wslot"><div class="num">3</div><div class="nm">Boomstick</div></div>
-    <div class="wslot"><div class="num">4</div><div class="nm">Zap Rail</div></div>
-    <div class="wslot"><div class="num">5</div><div class="nm">Pulse Fan</div></div>
-    <div class="wslot"><div class="num">6</div><div class="nm">Gloop Cannon</div></div>
+    <div class="wslot on"><div class="num">1</div><div class="nm">Pistol</div></div>
+    <div class="wslot"><div class="num">2</div><div class="nm">SMG</div></div>
+    <div class="wslot"><div class="num">3</div><div class="nm">Dual SHG</div></div>
+    <div class="wslot"><div class="num">4</div><div class="nm">Force Push</div></div>
+    <div class="wslot"><div class="num">5</div><div class="nm">Plasma</div></div>
+    <div class="wslot"><div class="num">6</div><div class="nm">Pulse</div></div>
   </div>
 
-  <div class="panel" id="ammobox"><div id="wpn-name">PEASHOOTER</div><div id="ammo"><b>14</b><span>/ ∞</span></div></div>
+  <div class="panel" id="ammobox"><div id="wpn-name">PISTOL</div><div id="ammo"><b>12</b><span>/ ∞</span></div></div>
 </div>
 
 <div id="cross"><div class="ch t"></div><div class="ch b"></div><div class="cv l"></div><div class="cv r"></div><div id="cdot"></div></div>
@@ -368,6 +368,14 @@
       setTimeout(() => { const c = document.querySelector('#app canvas'); if (c && c.requestPointerLock) { const p = c.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } }, 80);
     }
     playBtn.addEventListener('click', start);
+    // ?stage=<id> from the Neon City home page deep-links straight into a stage
+    const urlStage = new URLSearchParams(location.search).get('stage');
+    if (urlStage && stageNames[urlStage]) {
+      selectedStage = urlStage;
+      grid.querySelectorAll('.stage').forEach(c => c.classList.toggle('sel', c.dataset.stage === urlStage));
+      playBtn.innerHTML = 'PLAY · ' + stageNames[urlStage] + ' 🎉';
+      start();
+    }
   })();
 </script>
 </body>

@@ -174,10 +174,10 @@ const World = (() => {
 
     // ---- OPEN AREAS reached by portals ----
     const AREAS = {
-      town:   { center: new THREE.Vector3(0, 0, 0),     R: TOWN_R, obstacles: colliders, group: scene, pool: ['runner', 'sapling', 'grunt', 'bramble', 'spider'], boss: 'spider', bossEvery: 5, label: 'THE STREETS', sub: 'Wobbleton · open streets' },
-      jungle: { center: new THREE.Vector3(600, 0, 0),   R: 92, obstacles: [], group: new THREE.Group(), pool: ['monkey', 'monkey', 'slinger', 'sapling', 'bramble'], boss: 'ape', bossEvery: 5, label: 'THE JUNGLE', sub: 'Wibblewood · deep jungle' },
-      castle: { center: new THREE.Vector3(-600, 0, 0),  R: 90, obstacles: [], group: new THREE.Group(), pool: ['clown', 'grunt', 'tank', 'clown', 'shooter'], boss: 'boss', bossEvery: 5, label: 'WACKY CASTLE', sub: 'Castle Cattywumpus' },
-      maze:   { center: new THREE.Vector3(0, 0, 600),   R: 66, obstacles: [], group: new THREE.Group(), pool: ['clown', 'runner', 'monkey', 'jester', 'clown'], boss: 'ape', bossEvery: 6, label: 'HEDGE MAZE', sub: 'Maze of Maziness' },
+      town:   { center: new THREE.Vector3(0, 0, 0),     R: TOWN_R, obstacles: colliders, group: scene, pool: ['runner', 'runner', 'grunt', 'grunt', 'spider'], boss: 'spider', bossEvery: 5, label: 'THE STREETS', sub: 'Wobbleton · open streets' },
+      jungle: { center: new THREE.Vector3(600, 0, 0),   R: 92, obstacles: [], group: new THREE.Group(), pool: ['runner', 'runner', 'shooter', 'runner', 'grunt'], boss: 'ape', bossEvery: 5, label: 'THE JUNGLE', sub: 'Wibblewood · deep jungle' },
+      castle: { center: new THREE.Vector3(-600, 0, 0),  R: 90, obstacles: [], group: new THREE.Group(), pool: ['grunt', 'grunt', 'tank', 'runner', 'shooter'], boss: 'boss', bossEvery: 5, label: 'WACKY CASTLE', sub: 'Castle Cattywumpus' },
+      maze:   { center: new THREE.Vector3(0, 0, 600),   R: 66, obstacles: [], group: new THREE.Group(), pool: ['grunt', 'runner', 'runner', 'shooter', 'grunt'], boss: 'ape', bossEvery: 6, label: 'HEDGE MAZE', sub: 'Maze of Maziness' },
     };
     buildJungle(AREAS.jungle.group, AREAS.jungle.center, AREAS.jungle.R, AREAS.jungle.obstacles);
     buildCastle(AREAS.castle.group, AREAS.castle.center, AREAS.castle.R, AREAS.castle.obstacles);
@@ -188,12 +188,6 @@ const World = (() => {
 
     // portals: each lives in `area`, sits at world `pos`, and sends you to `target`
     function addPortal(area, x, z, col, label, target) { portal(scene, x, z, col, label); PORTALS.push({ area, pos: new THREE.Vector3(x, 0, z), target, color: col }); }
-    addPortal('town', 56, 0, 0, '#6fd83a', 'JUNGLE', 'jungle');
-    addPortal('town', -56, 0, 0, '#c9a0ff', 'CASTLE', 'castle');
-    addPortal('town', 0, 0, 56, '#9be84a', 'MAZE', 'maze');
-    addPortal('jungle', AREAS.jungle.center.x - 70, AREAS.jungle.center.z, '#43c6ff', 'TOWN', 'town');
-    addPortal('castle', AREAS.castle.center.x + 52, AREAS.castle.center.z, '#43c6ff', 'TOWN', 'town');
-    addPortal('maze', AREAS.maze.center.x, AREAS.maze.center.z - 58, '#43c6ff', 'TOWN', 'town');
 
     // ---- lights ----
     scene.add(new THREE.HemisphereLight(0xcdeeff, 0x4f7a3a, 0.85));

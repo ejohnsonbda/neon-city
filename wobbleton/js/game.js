@@ -7,20 +7,21 @@ const Game = (() => {
   const EYE = 1.7;
 
   // ---------- weapons ----------
+  // Shared arsenal — same six weapons as Neon City: Nightfall
   const WEAPONS = [
-    { key: 'pistol',  name: 'PEASHOOTER',  color: 0x19f0ff, dmg: 22, rate: 0.26, auto: false, mode: 'hit',  pellets: 1, spread: 0.01, mag: 14, reserveMax: 9999, recoil: 0.08 },
-    { key: 'smg',     name: 'BUZZGUN',     color: 0xffd166, dmg: 11, rate: 0.07, auto: true,  mode: 'hit',  pellets: 1, spread: 0.035, mag: 36, reserveMax: 9999, recoil: 0.04 },
-    { key: 'shotgun', name: 'BOOMSTICK',   color: 0xff2d95, dmg: 9,  rate: 0.75, auto: false, mode: 'hit',  pellets: 9, spread: 0.11, mag: 6,  reserveMax: 9999, recoil: 0.22 },
-    { key: 'railgun', name: 'ZAP RAIL',    color: 0x39ff14, dmg: 120,rate: 1.1,  auto: false, mode: 'rail', pellets: 1, spread: 0,    mag: 4,  reserveMax: 9999, recoil: 0.3 },
-    { key: 'pulse',   name: 'PULSE FAN',   color: 0xff7a18, dmg: 16, rate: 0.11, auto: true,  mode: 'proj', pellets: 1, spread: 0.03, mag: 40, reserveMax: 9999, recoil: 0.05, pspeed: 70, pr: 0.22 },
-    { key: 'plasma',  name: 'GLOOP CANNON',color: 0x9b5cff, dmg: 55, rate: 0.6,  auto: false, mode: 'proj', pellets: 1, spread: 0.005,mag: 8,  reserveMax: 9999, recoil: 0.18, pspeed: 38, pr: 0.4, splash: 4 },
+    { key: 'pistol',  name: 'PISTOL',     color: 0x19f0ff, dmg: 38, rate: 0.23,  auto: false, mode: 'hit',   pellets: 1, spread: 0.008, mag: 12, reserveMax: 9999, recoil: 0.08 },
+    { key: 'smg',     name: 'SMG',        color: 0xffd166, dmg: 13, rate: 0.062, auto: true,  mode: 'hit',   pellets: 1, spread: 0.05,  mag: 36, reserveMax: 9999, recoil: 0.04 },
+    { key: 'shotgun', name: 'DUAL SHG',   color: 0xff2d95, dmg: 8,  rate: 0.36,  auto: false, mode: 'hit',   pellets: 9, spread: 0.14,  mag: 8,  reserveMax: 9999, recoil: 0.22, dual: true },
+    { key: 'gauntlet',name: 'FORCE PUSH', color: 0x19f0ff, dmg: 80, rate: 1.5,   auto: false, mode: 'force', pellets: 1, spread: 0,     mag: 999, reserveMax: 9999, recoil: 0.2, reach: 14, arc: 0.45, knockback: 9 },
+    { key: 'plasma',  name: 'PLASMA',     color: 0x9b5cff, dmg: 40, rate: 0.76,  auto: false, mode: 'proj',  pellets: 1, spread: 0.005, mag: 8,  reserveMax: 9999, recoil: 0.18, pspeed: 46, pr: 0.4, splash: 5.5 },
+    { key: 'pulse',   name: 'PULSE',      color: 0xff7a18, dmg: 8,  rate: 0.04,  auto: true,  mode: 'proj',  pellets: 1, spread: 0.055, mag: 60, reserveMax: 9999, recoil: 0.03, pspeed: 70, pr: 0.22 },
   ];
 
   // ---------- runtime state ----------
   const S = {
     yaw: 0, pitch: 0, pos: new THREE.Vector3(0, EYE, 8),
     vel: new THREE.Vector3(), onGround: true,
-    hp: 100, maxHp: 100, score: 0, alive: true,
+    hp: 100, maxHp: 100, armor: 0, score: 0, alive: true,
     level: 0, area: 'building', locked: false, transit: false, portalCD: 0,
     wi: 0,                       // weapon index
     mags: [], reserves: [], cd: 0, recoil: 0, reloadT: 0,
@@ -71,6 +72,14 @@ const Game = (() => {
       // All weapon models are authored barrel-forward (-z); no flip needed.
       vm.rotation.y = 0;
       vm.scale.setScalar(1.1);
+      // dual-wield: second gun in the left hand (always for DUAL SHG,
+      // toggled by double-tapping 1 for the pistol)
+      if (w.dual || w.key === 'pistol') {
+        const second = WeaponFactory.build(w.key);
+        second.position.x = -0.58;
+        second.visible = !!w.dual;
+        vm.add(second); vm.userData.second = second;
+      }
       vm.visible = i === 0; vmHolder.add(vm); viewModels.push(vm);
       S.mags[i] = w.mag; S.reserves[i] = w.reserveMax;
     });
@@ -173,7 +182,14 @@ const Game = (() => {
     addEventListener('mouseup', e => { if (e.button === 0) S.mouseDown = false; });
     addEventListener('keydown', e => {
       S.keys[e.code] = true;
-      if (e.code >= 'Digit1' && e.code <= 'Digit6') switchWeapon(+e.code.slice(5) - 1);
+      if (e.code >= 'Digit1' && e.code <= 'Digit6') {
+        const i = +e.code.slice(5) - 1;
+        // double-tap 1 while holding the pistol toggles dual wield (same as Neon City)
+        const now = performance.now();
+        if (i === 0 && S.wi === 0 && now - (S._tap1 || 0) < 350) toggleDualPistol();
+        else switchWeapon(i);
+        if (i === 0) S._tap1 = now;
+      }
       if (e.code === 'KeyR') reload();
       if (e.code === 'Space') jump();
       if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
@@ -181,6 +197,18 @@ const Game = (() => {
     addEventListener('keyup', e => { S.keys[e.code] = false; });
     addEventListener('wheel', e => { if (S.engaged) switchWeapon((S.wi + (e.deltaY > 0 ? 1 : -1) + WEAPONS.length) % WEAPONS.length); });
     document.getElementById('restart').addEventListener('click', restart);
+  }
+
+  function toggleDualPistol() {
+    const p = WEAPONS[0];
+    S.dualPistol = !S.dualPistol;
+    p.name = S.dualPistol ? 'DUAL PISTOL' : 'PISTOL';
+    p.rate = S.dualPistol ? 0.115 : 0.23;
+    p.spread = S.dualPistol ? 0.018 : 0.008;
+    const vm = viewModels[0];
+    if (vm && vm.userData.second) vm.userData.second.visible = S.dualPistol;
+    HUD.weapon(p, S.mags[0], S.reserves[0]);
+    HUD.flash('#43c6ff', S.dualPistol ? 'DUAL WIELD!' : 'SINGLE PISTOL');
   }
 
   function switchWeapon(i) {
@@ -199,7 +227,25 @@ const Game = (() => {
   // ---------- shooting ----------
   function tryShoot(dt) {
     const w = WEAPONS[S.wi];
-    if (S.cd > 0 || S.reloadT > 0 || !S.engaged || !S.alive || S.transit) return;
+    if (!S.engaged || !S.alive || S.transit) { S.fpCharge = 0; return; }
+    // FORCE PUSH: hold to charge — range, damage and knockback all grow the
+    // longer the gauntlet is held; release to unleash the blast
+    if (w.mode === 'force') {
+      if (S.mouseDown && S.cd <= 0) {
+        S.fpCharge = Math.min(1, (S.fpCharge || 0) + dt * 0.9);
+      } else if ((S.fpCharge || 0) > 0 && !S.mouseDown) {
+        const power = Math.max(0.25, S.fpCharge);
+        S.fpCharge = 0;
+        S.cd = w.rate * (S.buffs.rapid > 0 ? 0.42 : 1);
+        S.recoil = Math.min(0.6, w.recoil * (0.6 + power));
+        if (Game.opts.shake) S.shake = Math.min(0.7, 0.2 + power * 0.4);
+        muzzle.intensity = 4 + power * 4; muzzle.color.setHex(w.color);
+        if (muzzleFlash) { muzzleFlash.material.color.setHex(w.color); muzzleFlash.material.opacity = 1; muzzleFlash.scale.setScalar(0.8 + power); }
+        forceBlast(camForward(), w, power);
+      }
+      return;
+    }
+    if (S.cd > 0 || S.reloadT > 0) return;
     const want = S.mouseDown && (w.auto || !S.firedThisClick);
     if (!w.auto) { if (S.mouseDown && !S.prevDown) S.firedThisClick = false; }
     if (!S.mouseDown) { S.firedThisClick = false; return; }
@@ -228,6 +274,37 @@ const Game = (() => {
       }
     }
     tracer(dir, w);
+  }
+
+  // FORCE PUSH — kinetic cone blast: damage + knockback (shared with Neon City).
+  // power (0..1, from hold time) scales range up to ~2.2x, plus damage/knockback.
+  function forceBlast(dir, w, power) {
+    power = power === undefined ? 1 : power;
+    const reach = w.reach * (0.6 + 1.6 * power);
+    const dmg = w.dmg * (0.5 + power);
+    const origin = camera.position.clone();
+    // twin expanding shockwave rings — bigger blast at higher charge
+    for (let k = 0; k < 2; k++) {
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.12, 0.45, 28),
+        new THREE.MeshBasicMaterial({ color: k ? 0xb06cf6 : 0x43c6ff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+      ring.position.copy(origin).add(dir.clone().multiplyScalar(1 + k * 0.3));
+      ring.quaternion.copy(camera.quaternion);
+      scene.add(ring);
+      S.parts.push({ mesh: ring, life: 0.5, fade: true, grow: (24 + k * 8) + power * 30, dir: dir.clone() });
+    }
+    for (const e of S.enemies) {
+      if (e.dead) continue;
+      const to = e.center().clone().sub(origin);
+      const dist = to.length();
+      if (dist > reach) continue;
+      const align = to.clone().normalize().dot(dir);
+      if (align < w.arc) continue;
+      damageEnemy(e, dmg);
+      // shove the golem backwards
+      const push = to.setY(0).normalize().multiplyScalar((1 - dist / reach) * w.knockback * (0.5 + power));
+      e.group.position.add(push);
+      if (e.kb) e.kb.add(push); // if the enemy tracks knockback velocity
+    }
   }
 
   function hitscan(origin, dir, w) {
@@ -387,7 +464,8 @@ const Game = (() => {
     for (const p of S.parts) {
       p.life -= dt;
       if (p.vel) { p.mesh.position.addScaledVector(p.vel, dt); p.vel.y -= 14 * dt; }
-      if (p.fade && p.mesh.material) p.mesh.material.opacity = Math.max(0, p.mesh.material.opacity - dt * 6);
+      if (p.grow) { const s = p.mesh.scale.x + p.grow * dt; p.mesh.scale.setScalar(s); if (p.dir) p.mesh.position.addScaledVector(p.dir, dt * 6); }
+      if (p.fade && p.mesh.material) p.mesh.material.opacity = Math.max(0, p.mesh.material.opacity - dt * (p.grow ? 2 : 6));
       if (p.life <= 0) { scene.remove(p.mesh); p.gone = true; }
     }
     S.parts = S.parts.filter(p => !p.gone);
@@ -412,6 +490,7 @@ const Game = (() => {
     { kind: 'speed',  emoji: '⚡', disc: 0x43c6ff, weight: 2 },
     { kind: 'rapid',  emoji: '⭐', disc: 0xffd23f, weight: 2 },
     { kind: 'shield', emoji: '🛡️', disc: 0x5fe3a1, weight: 2 },
+    { kind: 'armor',  emoji: '🦺', disc: 0x43c6ff, weight: 3 },
     { kind: 'double', text: '2×', disc: 0xff5ca2, weight: 2 },
     { kind: 'heart',  emoji: '❤️', disc: 0xff5ca2, weight: 1 },
   ];
@@ -467,12 +546,13 @@ const Game = (() => {
   }
   function applyPowerup(def) {
     switch (def.kind) {
-      case 'heal':   S.hp = Math.min(S.maxHp, S.hp + 35); HUD.hp(S.hp, S.maxHp); HUD.flash('#ff8a3d', '🍔 YUM +35'); break;
-      case 'heart':  S.hp = S.maxHp; HUD.hp(S.hp, S.maxHp); HUD.flash('#ff5ca2', '❤️ FULL HEAL!'); break;
+      case 'heal':   S.hp = Math.min(S.maxHp, S.hp + 35); HUD.hp(S.hp, S.maxHp, S.armor); HUD.flash('#ff8a3d', '🍔 YUM +35'); break;
+      case 'heart':  S.hp = S.maxHp; HUD.hp(S.hp, S.maxHp, S.armor); HUD.flash('#ff5ca2', '❤️ FULL HEAL!'); break;
       case 'ammo':   WEAPONS.forEach((w, i) => { S.mags[i] = w.mag; }); HUD.weapon(WEAPONS[S.wi], S.mags[S.wi], S.reserves[S.wi]); HUD.flash('#ffd23f', '🔋 AMMO FULL'); break;
       case 'speed':  S.buffs.speed = 10; HUD.flash('#43c6ff', '⚡ ZOOMIES!'); break;
       case 'rapid':  S.buffs.rapid = 10; HUD.flash('#ffd23f', '⭐ RAPID FIRE!'); break;
       case 'shield': S.buffs.shield = 8; HUD.flash('#5fe3a1', '🛡️ SHIELD UP!'); break;
+      case 'armor':  S.armor = Math.min(100, (S.armor || 0) + 50); HUD.hp(S.hp, S.maxHp, S.armor); HUD.flash('#43c6ff', '🦺 ARMOR +50'); break;
       case 'double': S.buffs.double = 14; HUD.flash('#ff5ca2', '2× SCORE!'); break;
     }
   }
@@ -481,8 +561,13 @@ const Game = (() => {
   function hurtPlayer(dmg) {
     if (!S.alive || S.transit) return;
     if (S.buffs.shield > 0) { S.shieldHit = 0.25; return; }   // shield blocks all damage
+    // armor absorbs 60% of damage until it breaks (same rule as Neon City)
+    if (S.armor > 0) {
+      const absorbed = Math.min(S.armor, dmg * 0.6);
+      S.armor -= absorbed; dmg -= absorbed;
+    }
     S.hp -= dmg; S.hurt = 0.4; if (Game.opts.shake) S.shake = Math.min(0.7, S.shake + 0.25);
-    HUD.hp(S.hp, S.maxHp);
+    HUD.hp(S.hp, S.maxHp, S.armor);
     if (S.hp <= 0) gameOver();
   }
   function gameOver() {

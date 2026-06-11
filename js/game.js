@@ -71,7 +71,7 @@ class Game {
     this.player = {
       speed: 14, runSpeed: 22, jumpForce: 14,
       velocity: new THREE.Vector3(),
-      onGround: false, hp: 120, maxHp: 120,
+      onGround: false, hp: 120, maxHp: 120, armor: 0, maxArmor: 100,
       height: 1.7, classType: 'soldier', weaponIdx: 0,
       bobTimer: 0, lastStep: 0,
       weapons: []
@@ -1523,6 +1523,12 @@ class Game {
     };
     addEventListener('keydown', e => onKey(e.code, true));
     addEventListener('keyup', e => onKey(e.code, false));
+    // scroll wheel cycles weapons (shared behaviour with Wobbleton Tower)
+    addEventListener('wheel', e => {
+      if (!this.gameStarted || this.isPaused) return;
+      const n = this.player.weapons.length;
+      this.switchWeapon((this.player.weaponIdx + (e.deltaY > 0 ? 1 : -1) + n) % n);
+    });
     addEventListener('mousedown', e => {
       if (this.isPaused || !this.gameStarted) return;
       if (e.button === 2) this.setAim(true);
@@ -1588,7 +1594,7 @@ class Game {
     this.buildWorld(this.level || 'city');
     this.player.weapons = this.defaultWeapons;
     this.player.weaponIdx = this.startWeaponIdx || 0;
-    this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
+    this.player.hp = this.player.maxHp; this.player.armor = 0; this.score = 0; this.wave = 1;
     this.waveCountdown = null;
     this.player.weapons.forEach(w => w.ammo = w.ammo === Infinity ? Infinity : Math.floor(w.maxAmmo * 0.6));
     this.camera.position.set(0, this.player.height, 0);
@@ -1850,6 +1856,18 @@ class Game {
     return spr;
   }
 
+  // armor absorbs 60% of incoming damage until it breaks; the rest hits health
+  damagePlayer(dmg) {
+    const P = this.player;
+    if (P.armor > 0) {
+      const absorbed = Math.min(P.armor, dmg * 0.6);
+      P.armor -= absorbed; dmg -= absorbed;
+    }
+    P.hp -= dmg;
+    this.damageFlash(); this.updateHUD();
+    if (P.hp <= 0) this.endGame();
+  }
+
   _pickupGlow(color) {
     return new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 10),
       new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -1864,6 +1882,12 @@ class Game {
     const spr = this._emojiSprite(Math.random() > 0.5 ? '❤️' : '💊');
     spr.position.copy(pos); spr.position.y = 0.7; spr.userData.health = true;
     spr.add(this._pickupGlow(0xff3355));
+    this.scene.add(spr); this.items.push(spr);
+  }
+  spawnArmor(pos) {
+    const spr = this._emojiSprite('🛡️');
+    spr.position.copy(pos); spr.position.y = 0.7; spr.userData.armor = true;
+    spr.add(this._pickupGlow(0x19f0ff));
     this.scene.add(spr); this.items.push(spr);
   }
 
@@ -1933,8 +1957,9 @@ class Game {
         requestAnimationFrame(() => { sf.style.transition = 'opacity .45s ease'; sf.style.opacity = '0'; });
       }
 
-      // damage + knockback in a forward cone, all scaled by charge power
-      const radius = w.pushRadius * (0.7 + 0.6 * power);
+      // damage + knockback in a forward cone — RANGE grows the longer the
+      // charge was held (up to ~2.2x), along with damage and knockback
+      const radius = w.pushRadius * (0.6 + 1.6 * power);
       const dmg = w.dmg * (0.5 + power);
       this.enemies.forEach(en => {
         if (!en) return;
@@ -2170,9 +2195,10 @@ class Game {
     this.spawnSparks(point || e.position.clone().setY(e.userData.eyeHeight * 0.6), e.userData.cores[0].color.getHex(), 18);
     // drops
     const r = Math.random();
-    if (e.userData.boss) { this.spawnHealth(e.position); this.spawnAmmo(e.position); }
-    else if (r > 0.82) this.spawnHealth(e.position);
-    else if (r > 0.55) this.spawnAmmo(e.position);
+    if (e.userData.boss) { this.spawnHealth(e.position); this.spawnAmmo(e.position); this.spawnArmor(e.position.clone().add(new THREE.Vector3(1.5, 0, 0))); }
+    else if (r > 0.84) this.spawnHealth(e.position);
+    else if (r > 0.72) this.spawnArmor(e.position);
+    else if (r > 0.5) this.spawnAmmo(e.position);
 
     if (e === this.boss) { this.boss = null; document.getElementById('boss-bar-wrap').classList.add('hidden'); this.showMessage('APEX DOWN', '#39ff14'); }
     this.scene.remove(e);
@@ -2384,6 +2410,7 @@ class Game {
       if (this.camera.position.distanceTo(it.position) < 2) {
         this.sound.collect();
         if (it.userData.health) { P.hp = Math.min(P.maxHp, P.hp + 35); this.showMessage('+ HEALTH', '#ff3355'); }
+        else if (it.userData.armor) { P.armor = Math.min(P.maxArmor, P.armor + 50); this.showMessage('+ ARMOR', '#19f0ff'); }
         else { P.weapons.forEach(w => { if (w.name !== 'PISTOL') w.ammo = Math.min(w.maxAmmo, w.ammo + 30); }); this.showMessage('+ AMMO', '#39ff14'); }
         this.updateHUD();
         this.scene.remove(it); this.items.splice(i, 1);
@@ -2644,9 +2671,8 @@ class Game {
       const b = this.eBullets[i];
       b.mesh.position.add(b.vel.clone().multiplyScalar(dt)); b.life -= dt;
       if (this.camera.position.distanceTo(b.mesh.position) < 1.1) {
-        P.hp -= b.dmg; this.damageFlash(); this.sound.damage(); this.updateHUD();
+        this.sound.damage(); this.damagePlayer(b.dmg);
         this.scene.remove(b.mesh); this.eBullets.splice(i, 1);
-        if (P.hp <= 0) this.endGame();
         continue;
       }
       if (b.life <= 0) { this.scene.remove(b.mesh); this.eBullets.splice(i, 1); }
@@ -2683,7 +2709,7 @@ class Game {
         }
         if (ud.parts && ud.parts.orb) ud.parts.orb.scale.lerp(new THREE.Vector3(1, 1, 1), dt * 4);
         // boss also melees if close
-        if (ud.boss && dist2D < 3.5) { P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD(); if (P.hp <= 0) this.endGame(); }
+        if (ud.boss && dist2D < 3.5) this.damagePlayer(ud.dmg * dt);
       } else {
         // melee chaser
         const atkRange = ud.boss ? 3.5 : 1.6 + (ud.type === 'tank' ? 0.6 : 0);
@@ -2696,9 +2722,8 @@ class Game {
           ud.parts.legs.forEach((l, k) => l.rotation.x = Math.sin(time * (ud.crawl ? 2 : 1) + (k % 2) * Math.PI) * sw);
           ud.parts.arms.forEach((a, k) => a.rotation.x = Math.sin(time + (k % 2) * Math.PI) * 0.5);
         } else {
-          P.hp -= ud.dmg * dt; this.damageFlash(); this.updateHUD();
+          this.damagePlayer(ud.dmg * dt);
           ud.parts.arms.forEach(a => a.rotation.x = -Math.PI / 2.2);
-          if (P.hp <= 0) this.endGame();
         }
       }
     }
@@ -2756,6 +2781,12 @@ class Game {
     const hpPct = Math.max(0, this.player.hp / this.player.maxHp * 100);
     document.getElementById('health-bar').style.width = hpPct + '%';
     document.getElementById('hp-num').innerText = Math.max(0, Math.ceil(this.player.hp));
+    const armorBar = document.getElementById('armor-bar');
+    if (armorBar) {
+      armorBar.style.width = Math.max(0, this.player.armor / this.player.maxArmor * 100) + '%';
+      const an = document.getElementById('armor-num');
+      if (an) an.innerText = Math.max(0, Math.ceil(this.player.armor));
+    }
     const w = this.player.weapons[this.player.weaponIdx];
     document.getElementById('weapon-name').innerText = w.name;
     document.getElementById('ammo-display').innerText = w.ammo === Infinity ? '∞' : w.ammo;

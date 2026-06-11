@@ -23,6 +23,7 @@ const WeaponFactory = {
       case 'railgun': return this._railgun(0x39ff14);
       case 'plasma': return this._plasma(0x9b5cff);
       case 'pulse': return this._pulse(0xff7a18);
+      case 'gauntlet': return this._gauntlet(0x19f0ff);
       case 'katana': return this._katana();
       case 'shuriken': return this._shuriken();
       case 'bow': return this._bow();
@@ -88,6 +89,27 @@ const WeaponFactory = {
     this._part(g, new THREE.BoxGeometry(0.1, 0.18, 0.12), this._dark, 0, -0.16, 0.16, 0.28);
     this._part(g, new THREE.TorusGeometry(0.08, 0.02, 8, 18), this.glow(c, 1.6), 0, 0, -0.12);
     this._part(g, new THREE.BoxGeometry(0.17, 0.014, 0.2), this.accent(c), 0, 0.1, 0.06);
+    return g;
+  },
+  // FORCE PUSH gauntlet — armored open hand with palm emitter (shared with Neon City)
+  _gauntlet(c) {
+    const g = new THREE.Group();
+    const plate = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.35, metalness: 0.85 });
+    const plate2 = new THREE.MeshStandardMaterial({ color: 0x2c3a52, roughness: 0.3, metalness: 0.9 });
+    // forearm + wrist energy band
+    const arm = this._part(g, new THREE.CylinderGeometry(0.085, 0.1, 0.3, 10), plate, 0, 0, 0.2); arm.rotation.x = Math.PI / 2;
+    this._part(g, new THREE.TorusGeometry(0.1, 0.018, 8, 20), this.glow(c, 1.6), 0, 0, 0.08, Math.PI / 2);
+    // open palm
+    this._part(g, new THREE.BoxGeometry(0.2, 0.19, 0.06), plate2, 0, 0.02, -0.1);
+    // fingers fanned up + thumb
+    [[-0.072, 0.13, 0.3], [-0.025, 0.145, 0.1], [0.025, 0.14, -0.1], [0.072, 0.12, -0.3]].forEach(([x, y, sp]) => {
+      this._part(g, new THREE.BoxGeometry(0.034, 0.11, 0.036), plate, x, y, -0.1, -0.15, 0, sp);
+      this._part(g, new THREE.SphereGeometry(0.018, 8, 8), this.glow(c, 2), x + sp * -0.02, y + 0.06, -0.11);
+    });
+    this._part(g, new THREE.BoxGeometry(0.034, 0.09, 0.036), plate, 0.115, -0.02, -0.1, -0.3, 0, -1.1);
+    // palm emitter core + ring
+    g.userData.orb = this._part(g, new THREE.SphereGeometry(0.055, 14, 14), this.glow(0xdffaff, 2.4), 0, 0.02, -0.15);
+    this._part(g, new THREE.TorusGeometry(0.08, 0.012, 8, 22), this.glow(c, 1.8), 0, 0.02, -0.14);
     return g;
   },
   _katana() {

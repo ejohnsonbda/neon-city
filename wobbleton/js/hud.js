@@ -5,11 +5,13 @@ const HUD = (() => {
   const $ = id => document.getElementById(id);
   let msgT;
   return {
-    hp(hp, max) {
+    hp(hp, max, armor) {
       const pct = Math.max(0, hp / max * 100);
       $('hp-fill').style.width = pct + '%';
       $('hp-fill').style.background = pct > 50 ? 'linear-gradient(90deg,#5fe3a1,#9be84a)' : pct > 25 ? 'linear-gradient(90deg,#ffd23f,#ff8a3d)' : 'linear-gradient(90deg,#ff8a3d,#ff5a5a)';
       $('hp-text').textContent = Math.max(0, Math.round(hp));
+      // armor swaps the heart for a vest while plate remains
+      if (armor !== undefined) $('heart').textContent = armor > 0 ? '🦺' : '❤️';
     },
     buffs(map) {
       const box = $('buffs'); if (!box) return;
@@ -23,7 +25,7 @@ const HUD = (() => {
       $('wpn-name').style.color = '#' + w.color.toString(16).padStart(6, '0');
       $('ammo').innerHTML = `<b>${mag}</b><span>/ ∞</span>`;
       [...document.querySelectorAll('.wslot')].forEach((s, i) => s.classList.toggle('on', '#' + w.color.toString(16).padStart(6, '0') === s.dataset.col));
-      const idx = ['pistol','smg','shotgun','railgun','pulse','plasma'].indexOf(w.key);
+      const idx = ['pistol','smg','shotgun','gauntlet','plasma','pulse'].indexOf(w.key);
       [...document.querySelectorAll('.wslot')].forEach((s, i) => s.classList.toggle('on', i === idx));
     },
     score(n) { $('score').textContent = n.toLocaleString(); },
