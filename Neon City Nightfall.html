@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2305060c'/%3E%3Cpath d='M14 46V18h8l20 28V18h8v28h-8L22 18v28z' fill='%2319f0ff'/%3E%3Cpath d='M10 50h44' stroke='%23ff2d95' stroke-width='4'/%3E%3C/svg%3E">
 <title>Neon City: Nightfall</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/lib/three.min.js"></script>
+<script>if (typeof THREE === 'undefined') document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -273,6 +274,24 @@
     <button id="preload-dismiss" type="button">CONTINUE IN BACKGROUND</button>
   </div>
 </div>
+<script>
+(function () {
+  const ov = document.getElementById('preload-overlay');
+  window.__dismissPreload = function (err) {
+    if (!ov || ov.classList.contains('done')) return;
+    if (err) {
+      document.getElementById('preload-status').textContent = 'STARTUP ERROR';
+      document.getElementById('preload-detail').textContent = String(err).slice(0, 160);
+      return; // keep visible so the error is readable; button still dismisses
+    }
+    document.getElementById('preload-bar').style.width = '100%';
+    setTimeout(() => ov.classList.add('done'), 200);
+  };
+  document.getElementById('preload-dismiss').onclick = () => ov.classList.add('done');
+  // Failsafe: never block the menu for more than 8 seconds
+  setTimeout(() => ov.classList.add('done'), 8000);
+})();
+</script>
 
 
 <!-- HUD -->

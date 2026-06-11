@@ -2823,8 +2823,13 @@ Game.showFatalStartupError = function(message, err) {
 };
 
 window.onload = () => TextureGen.load(() => {
-  try { window.game = new Game(); }
-  catch (err) { Game.showFatalStartupError('The game failed to initialize. Check the browser console for details.', err); }
+  try {
+    window.game = new Game();
+    if (window.__dismissPreload) window.__dismissPreload();
+  } catch (err) {
+    if (window.__dismissPreload) window.__dismissPreload(err);
+    Game.showFatalStartupError('The game failed to initialize. Check the browser console for details.', err);
+  }
 });
 addEventListener('resize', () => {
   if (window.game && game.camera && game.renderer) {
