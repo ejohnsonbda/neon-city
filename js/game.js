@@ -74,29 +74,22 @@ class Game {
       onGround: false, hp: 120, maxHp: 120,
       height: 1.7, classType: 'soldier', weaponIdx: 0,
       bobTimer: 0, lastStep: 0,
-      weapons: [
-        { name: 'PISTOL',  type: 'semi', rate: 230, dmg: 38,  color: 0x19f0ff, ammo: Infinity, maxAmmo: Infinity, spread: 0.008, model: 'pistol',  kick: 0.012 },
-        { name: 'SMG',     type: 'auto', rate: 62,  dmg: 13,  color: 0xffd166, ammo: 220, maxAmmo: 480, spread: 0.05,  model: 'smg',     kick: 0.009 },
-        { name: 'SHOTGUN', type: 'semi', rate: 700, dmg: 11,  pellets: 9, color: 0xff2d95, ammo: 36,  maxAmmo: 96,  spread: 0.11, model: 'shotgun', kick: 0.05 },
-        { name: 'RAILGUN', type: 'semi', rate: 1050, dmg: 135, color: 0x39ff14, ammo: 18, maxAmmo: 48, spread: 0, pierce: true, model: 'railgun', kick: 0.06 },
-        { name: 'PLASMA',  type: 'semi', rate: 760, dmg: 40, splash: 5.5, splashDmg: 55, color: 0x9b5cff, ammo: 24, maxAmmo: 60, spread: 0.004, projectile: true, model: 'plasma', kick: 0.03 },
-        { name: 'PULSE',   type: 'auto', rate: 40,  dmg: 8,   color: 0xff7a18, ammo: 320, maxAmmo: 700, spread: 0.055, model: 'pulse', kick: 0.006 }
-      ]
+      weapons: []
     };
 
-    // per-level arsenals: the neon katana and bow are available in every theatre;
-    // Japan keeps the focused traditional loadout with shuriken support.
-    this.defaultWeapons = this.player.weapons;
-    this.japanWeapons = [
-      { name: 'KATANA',   type: 'semi', rate: 320,  dmg: 90, color: 0xcfe8ff, ammo: Infinity, maxAmmo: Infinity, spread: 0, model: 'katana',   kick: 0, melee: true, reach: 4.35, arc: 0.55 },
-      { name: 'SHURIKEN', type: 'semi', rate: 240,  dmg: 34, color: 0xc8d2dc, ammo: 60, maxAmmo: 180, spread: 0.02, model: 'shuriken', kick: 0.012, thrown: true, speed: 70 },
-      { name: 'BOW',      type: 'semi', rate: 620,  dmg: 120, color: 0x19f0ff, ammo: 30, maxAmmo: 80, spread: 0.003, model: 'bow', kick: 0.008, arrow: true, speed: 104 }
-    ];
+    // per-level arsenals
     this.defaultWeapons = [
-      ...this.defaultWeapons,
-      { ...this.japanWeapons[0] },
-      { ...this.japanWeapons[2] }
+      { name:'PISTOL',     type:'semi', rate:230,  dmg:38,  color:0x19f0ff, ammo:Infinity, maxAmmo:Infinity, spread:0.008, model:'pistol',  kick:0.012 },
+      { name:'SMG',        type:'auto', rate:62,   dmg:13,  color:0xffd166, ammo:220, maxAmmo:480, spread:0.05,  model:'smg',     kick:0.009 },
+      { name:'DUAL SHG',   type:'semi', rate:360,  dmg:8,   pellets:9, dual:true, color:0xff2d95, ammo:48,  maxAmmo:120, spread:0.14, model:'shotgun', kick:0.06 },
+      { name:'FORCE PUSH', type:'semi', rate:1500, dmg:80,  color:0x19f0ff, ammo:Infinity, maxAmmo:Infinity, spread:0, forcePush:true, pushRadius:12, pushCone:0.55, model:'forcepush', kick:0 },
+      { name:'PLASMA',     type:'semi', rate:760,  dmg:40, splash:5.5, splashDmg:55, color:0x9b5cff, ammo:24, maxAmmo:60, spread:0.004, projectile:true, model:'plasma', kick:0.03 },
+      { name:'PULSE',      type:'auto', rate:40,   dmg:8,   color:0xff7a18, ammo:320, maxAmmo:700, spread:0.055, model:'pulse', kick:0.006 },
     ];
+    this.japanWeapons = [
+      { name:'SHURIKEN', type:'semi', rate:240, dmg:34, color:0xc8d2dc, ammo:60, maxAmmo:180, spread:0.02, model:'shuriken', kick:0.012, thrown:true, speed:70 },
+    ];
+    this.player.weapons = this.defaultWeapons;
     this.weaponSmooth = { bowDraw: 0, bowRelease: 0 };
 
     this.input = { w: 0, a: 0, s: 0, d: 0, jump: 0, shoot: 0, sprint: 0 };
@@ -1318,16 +1311,17 @@ class Game {
     this.gltfLoader = null;
 
     this.gunModels = {
-      pistol:  this._buildPistol(0x19f0ff),
-      smg:     this._buildSMG(0xffd166),
-      shotgun: this._buildShotgun(0xff2d95),
-      railgun: this._buildRailgun(0x39ff14),
-      plasma:  this._buildPlasma(0x9b5cff),
-      pulse:   this._buildPulse(0xff7a18),
-      katana:  this._buildKatana(),
-      shuriken: this._buildShuriken(),
-      bow:     this._buildBow()
+      pistol:     this._buildPistol(0x19f0ff),
+      smg:        this._buildSMG(0xffd166),
+      shotgun:    this._buildShotgun(0xff2d95),
+      forcepush:  this.buildForcePush(),
+      plasma:     this._buildPlasma(0x9b5cff),
+      pulse:      this._buildPulse(0xff7a18),
+      shuriken:   this._buildShuriken(),
     };
+    // second shotgun for dual wield
+    this.gunModels.shotgun2 = this._buildShotgun(0xff2d95);
+    this.gunModels.shotgun2.position.set(-0.44, 0, 0);
     Object.values(this.gunModels).forEach(m => { m.visible = false; this.gunGroup.add(m); });
     this.loadNeonWeaponModels();
 
@@ -1464,18 +1458,33 @@ class Game {
     return g;
   }
 
-  // ---- RAILGUN: long sleek coil rifle ----
-  _buildRailgun(c) {
+  // ---- FORCE PUSH: glowing gauntlet ----
+  buildForcePush() {
     const g = new THREE.Group();
-    this._part(g, new THREE.BoxGeometry(0.1, 0.11, 0.62), this._matPoly, 0, 0, -0.12);
-    // twin rails with glowing energy line between
-    [-0.045, 0.045].forEach(dx => this._part(g, new THREE.BoxGeometry(0.02, 0.05, 0.8), this._matMetal, dx, 0.07, -0.32));
-    this._part(g, new THREE.BoxGeometry(0.05, 0.02, 0.8), this._glow(c, 2.2), 0, 0.07, -0.32); // energy core
-    // coils
-    [-0.34, -0.14, 0.06].forEach(z => { const r = this._part(g, new THREE.TorusGeometry(0.07, 0.018, 8, 16), this._glow(c, 1.6), 0, 0.05, z); });
-    this._part(g, new THREE.BoxGeometry(0.09, 0.16, 0.1), this._matDark, 0, -0.13, 0.16, 0.3);
-    this._part(g, new THREE.BoxGeometry(0.05, 0.05, 0.18), this._matPoly, 0, 0.0, 0.28);
-    g.userData.muzzle = new THREE.Vector3(0, 0.07, -0.78);
+    // Glowing hand/gauntlet
+    const palm = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.06, 0.18),
+      new THREE.MeshStandardMaterial({ color:0x2a3040, emissive:0x19f0ff, emissiveIntensity:0.8, metalness:0.7, roughness:0.3 })
+    );
+    g.add(palm);
+    // Fingers
+    for (let i = 0; i < 4; i++) {
+      const f = new THREE.Mesh(
+        new THREE.BoxGeometry(0.018, 0.016, 0.07),
+        new THREE.MeshStandardMaterial({ color:0x2a3040, emissive:0x19f0ff, emissiveIntensity:1.2, metalness:0.8, roughness:0.2 })
+      );
+      f.position.set(-0.028 + i * 0.019, 0, -0.12);
+      g.add(f);
+    }
+    // Energy ring on wrist
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.055, 0.007, 6, 18),
+      new THREE.MeshBasicMaterial({ color:0x19f0ff })
+    );
+    ring.rotation.y = Math.PI / 2; ring.position.set(0, 0, 0.06);
+    g.add(ring);
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.22);
+    g.userData.energyRing = ring;
     return g;
   }
 
@@ -1513,43 +1522,6 @@ class Game {
     return g;
   }
 
-  // ---- KATANA: held forward, long curved blade ----
-  _buildKatana() {
-    const g = new THREE.Group();
-    const steel = new THREE.MeshStandardMaterial({ color: 0xdfe9f2, metalness: 0.95, roughness: 0.12 });
-    const edge = new THREE.MeshBasicMaterial({ color: 0xeaf6ff });
-    const wrap = new THREE.MeshStandardMaterial({ color: 0x14110e, roughness: 0.8 });
-    const gold = new THREE.MeshStandardMaterial({ color: 0xc8a24a, metalness: 0.8, roughness: 0.3 });
-    // blade (slightly curved via segments)
-    const blade = new THREE.Group();
-    for (let i = 0; i < 10; i++) {
-      const seg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.018, 0.12), steel);
-      const a = i * 0.02;
-      seg.position.set(Math.sin(a) * 0.05, 0, -0.18 - i * 0.12);
-      seg.rotation.x = a; blade.add(seg);
-    }
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.16, 4), steel);
-    tip.rotation.x = -Math.PI / 2; tip.position.set(0.08, 0, -1.5); blade.add(tip);
-    const shine = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.02, 1.2), edge);
-    shine.position.set(0.02, 0.006, -0.78); blade.add(shine);
-    g.add(blade);
-    // tsuba (guard)
-    const tsuba = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 12), gold);
-    tsuba.rotation.x = Math.PI / 2; tsuba.position.set(0, 0, -0.12); g.add(tsuba);
-    // handle
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.34, 8), wrap);
-    handle.rotation.x = Math.PI / 2; handle.position.set(0, 0, 0.06); g.add(handle);
-    // diamond wrap rings
-    for (let i = 0; i < 6; i++) {
-      const r = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 6, 10), gold);
-      r.position.set(0, 0, -0.05 + i * 0.05); g.add(r);
-    }
-    g.position.set(0, 0, 0); g.scale.setScalar(1.1);
-    g.userData.muzzle = new THREE.Vector3(0.08, 0, -1.5);
-    g.userData.blade = blade;
-    return g;
-  }
-
   // ---- SHURIKEN: throwing star held in fingers ----
   _buildShuriken() {
     const g = new THREE.Group();
@@ -1571,47 +1543,15 @@ class Game {
     return g;
   }
 
-  // ---- BOW: yumi longbow held vertical, with arrow nocked ----
-  _buildBow() {
-    const g = new THREE.Group();
-    const wood = new THREE.MeshStandardMaterial({ color: 0x7a4a24, roughness: 0.6 });
-    const lac = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.5 });
-    // curved limb via segments
-    const limb = new THREE.Group();
-    for (let i = -8; i <= 8; i++) {
-      const seg = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.03), i % 4 === 0 ? lac : wood);
-      const a = i * 0.16;
-      seg.position.set(-0.02 - Math.cos(a) * 0.06 + 0.06, i * 0.085, 0);
-      seg.rotation.z = a * 0.5; limb.add(seg);
-    }
-    limb.position.set(0.18, 0, -0.2); g.add(limb);
-    // string
-    const str = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1.45, 4), new THREE.MeshBasicMaterial({ color: 0xeeeeee }));
-    str.position.set(0.12, 0, -0.2); g.add(str);
-    g.userData.string = str;
-    // nocked arrow
-    const arrow = new THREE.Group();
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.7, 6), new THREE.MeshStandardMaterial({ color: 0xcaa472 }));
-    shaft.rotation.x = Math.PI / 2; shaft.position.set(0.12, 0, -0.45); arrow.add(shaft);
-    const head = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 4), new THREE.MeshStandardMaterial({ color: 0x9aa3ab, metalness: 0.8, roughness: 0.3 }));
-    head.rotation.x = -Math.PI / 2; head.position.set(0.12, 0, -0.82); arrow.add(head);
-    const fl = new THREE.Mesh(new THREE.BoxGeometry(0.001, 0.06, 0.08), new THREE.MeshBasicMaterial({ color: 0xcc3344, side: THREE.DoubleSide }));
-    fl.position.set(0.12, 0, -0.12); arrow.add(fl);
-    g.add(arrow); g.userData.arrow = arrow;
-    g.userData.arrowBaseZ = arrow.position.z;
-    g.userData.stringBaseZ = str.position.z;
-    g.userData.muzzle = new THREE.Vector3(0.12, 0, -0.85);
-    return g;
-  }
-
   updateWeaponModel(name) {
-    const key = (name || 'PISTOL').toLowerCase();
-    Object.entries(this.gunModels).forEach(([k, m]) => m.visible = (k === key));
+    const key = (name || 'PISTOL').toLowerCase().replace(' ', '');
+    const lookupKey = key === 'dualshg' ? 'shotgun' : key;
+    Object.entries(this.gunModels).forEach(([k, m]) => m.visible = false);
+    if (this.gunModels[lookupKey]) this.gunModels[lookupKey].visible = true;
+    if (key === 'dualshg' && this.gunModels.shotgun2) this.gunModels.shotgun2.visible = true;
     if (this.weaponSmooth) { this.weaponSmooth.bowDraw = 0; this.weaponSmooth.bowRelease = 0; }
     this.swing = null;
-    const bow = this.gunModels && this.gunModels.bow;
-    if (bow && bow.userData.arrow) bow.userData.arrow.visible = true;
-    const model = this.gunModels[key] || this.gunModels.pistol;
+    const model = this.gunModels[lookupKey] || this.gunModels.pistol;
     const mz = model.userData.muzzle || new THREE.Vector3(0, 0.03, -0.6);
     this.muzzleFlash.position.copy(mz).add(new THREE.Vector3(0, 0, -0.04));
     this.muzzleLight.position.copy(mz).add(new THREE.Vector3(0, 0, -0.06));
@@ -1671,17 +1611,15 @@ class Game {
     // ---- Armory ----
     this.startWeaponIdx = 0;
     const wepDefs = [
-      { name:'PISTOL',  type:'SEMI', dmg:38,  rateMs:230,  ammo:'∞',   trait:'RELIABLE',       col:'#19f0ff', idx:0 },
-      { name:'SMG',     type:'AUTO', dmg:13,  rateMs:62,   ammo:'480', trait:'RAPID FIRE',     col:'#ffd166', idx:1 },
-      { name:'SHOTGUN', type:'SEMI', dmg:99,  rateMs:700,  ammo:'96',  trait:'×9 PELLETS',     col:'#ff2d95', idx:2 },
-      { name:'RAILGUN', type:'SEMI', dmg:135, rateMs:1050, ammo:'48',  trait:'PIERCE · SCOPE', col:'#39ff14', idx:3 },
-      { name:'PLASMA',  type:'SEMI', dmg:95,  rateMs:760,  ammo:'60',  trait:'SPLASH DAMAGE',  col:'#9b5cff', idx:4 },
-      { name:'PULSE',   type:'AUTO', dmg:8,   rateMs:40,   ammo:'700', trait:'HIGH CAPACITY',  col:'#ff7a18', idx:5 },
+      { name:'PISTOL',     type:'SEMI', dmg:38, rateMs:230,  ammo:'∞',   trait:'RELIABLE',       col:'#19f0ff', idx:0 },
+      { name:'SMG',        type:'AUTO', dmg:13, rateMs:62,   ammo:'480', trait:'RAPID FIRE',     col:'#ffd166', idx:1 },
+      { name:'DUAL SHG',   type:'SEMI', dmg:72, rateMs:360,  ammo:'120', trait:'DUAL WIELD',     col:'#ff2d95', idx:2 },
+      { name:'FORCE PUSH', type:'SEMI', dmg:80, rateMs:1500, ammo:'∞',   trait:'KNOCKBACK',      col:'#19f0ff', idx:3 },
+      { name:'PLASMA',     type:'SEMI', dmg:95, rateMs:760,  ammo:'60',  trait:'SPLASH DAMAGE',  col:'#9b5cff', idx:4 },
+      { name:'PULSE',      type:'AUTO', dmg:8,  rateMs:40,   ammo:'700', trait:'HIGH CAPACITY',  col:'#ff7a18', idx:5 },
     ];
     const japanDefs = [
-      { name:'KATANA',   type:'MELEE',  dmg:90,  rateMs:360, ammo:'∞',   trait:'SILENT KILL',  col:'#cfe8ff' },
-      { name:'SHURIKEN', type:'THROWN', dmg:34,  rateMs:240, ammo:'180', trait:'FAST THROW',   col:'#c8d2dc' },
-      { name:'BOW',      type:'RANGED', dmg:120, rateMs:720, ammo:'80',  trait:'HIGH DAMAGE',  col:'#9a6b3a' },
+      { name:'SHURIKEN', type:'THROWN', dmg:34, rateMs:240, ammo:'180', trait:'FAST THROW', col:'#c8d2dc' },
     ];
     const buildWepCard = (w, container, selectable) => {
       const rateBar = Math.round((1 - w.rateMs / 1050) * 100);
@@ -1813,9 +1751,10 @@ class Game {
     this.curGameMusic = (this.level === 'desert') ? this.gameMusic[1] : this.gameMusic[0];
     if (this.curGameMusic) this.curGameMusic.play().catch(() => {});
     this.buildWorld(this.level || 'city');
-    // pick arsenal for the level: all theatres include the neon katana and bow,
-    // while Japan keeps the focused katana / shuriken / bow loadout.
-    this.player.weapons = this.level === 'japan' ? this.japanWeapons : this.defaultWeapons;
+    // pick arsenal for the level: Japan prepends shuriken to the default loadout.
+    this.player.weapons = this.level === 'japan'
+      ? [...this.japanWeapons, ...this.defaultWeapons]
+      : this.defaultWeapons;
     this.player.weaponIdx = this.level === 'japan' ? 0 : (this.startWeaponIdx || 0);
     this.player.hp = this.player.maxHp; this.score = 0; this.wave = 1;
     this.waveCountdown = null;
@@ -2004,6 +1943,51 @@ class Game {
     const camPos = this.camera.getWorldPosition(new THREE.Vector3());
     const baseDir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
     const muzzlePos = this.muzzleFlash.getWorldPosition(new THREE.Vector3());
+
+    if (w.forcePush) {
+      // FORCE PUSH — shockwave cone knocking back and damaging nearby enemies
+      // Glow pulse on the hand model
+      const fpModel = this.gunModels.forcepush;
+      if (fpModel) {
+        fpModel.traverse(c => { if (c.material && c.material.emissiveIntensity !== undefined) c.material.emissiveIntensity = 3.5; });
+        setTimeout(() => {
+          if (fpModel) fpModel.traverse(c => { if (c.material && c.material.emissiveIntensity !== undefined) c.material.emissiveIntensity = c.material.color && c.material.color.getHex() === 0x19f0ff ? 0.8 : 1.2; });
+        }, 180);
+      }
+      // Shockwave ring expanding outward
+      const ringGeo = new THREE.TorusGeometry(0.5, 0.08, 6, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color:0x19f0ff, transparent:true, opacity:0.85 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.copy(this.camera.position);
+      const dir = new THREE.Vector3(); this.camera.getWorldDirection(dir);
+      ring.lookAt(ring.position.clone().add(dir));
+      this.scene.add(ring);
+      let t = 0;
+      const expandRing = () => {
+        t += 0.06;
+        ring.scale.setScalar(1 + t * 18);
+        ring.material.opacity = Math.max(0, 0.85 - t * 1.4);
+        ring.position.addScaledVector(dir, 0.4);
+        if (t < 0.6) requestAnimationFrame(expandRing); else this.scene.remove(ring);
+      };
+      expandRing();
+      // Damage + knockback enemies in cone
+      const origin = this.camera.position.clone();
+      this.enemies.forEach(en => {
+        if (!en) return;
+        const toEn = en.position.clone().sub(origin);
+        const dist = toEn.length();
+        if (dist > w.pushRadius) return;
+        const dot = toEn.normalize().dot(dir);
+        if (dot < w.pushCone) return; // outside cone
+        this.damageEnemy(en, w.dmg, en.position.clone());
+        // knockback
+        en.position.addScaledVector(toEn, (1 - dist / w.pushRadius) * 8);
+      });
+      this.sound.tone(80, 'sawtooth', 0.18, 0.22);
+      this.sound.tone(160, 'sine', 0.12, 0.35);
+      return;
+    }
 
     if (w.melee) {
       // KATANA — arc slash hitting all enemies within reach + frontal cone

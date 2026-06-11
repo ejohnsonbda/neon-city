@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2305060c'/%3E%3Cpath d='M14 46V18h8l20 28V18h8v28h-8L22 18v28z' fill='%2319f0ff'/%3E%3Cpath d='M10 50h44' stroke='%23ff2d95' stroke-width='4'/%3E%3C/svg%3E">
+<title>Armory — Neon City: Nightfall</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--cyan:#19f0ff;--mag:#ff2d95;--purple:#9b5cff;--amber:#ffd166;--green:#39ff14;--ink:#05060c;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--ink);color:#fff;font-family:'Rajdhani',sans-serif;overflow-x:hidden;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,6,12,.88);backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(25,240,255,.12);display:flex;align-items:center;justify-content:space-between;
+  padding:0 clamp(16px,4vw,60px);height:62px;}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.nav-logo-text{font:900 16px 'Orbitron';letter-spacing:.06em;color:#fff;}
+.nav-logo-text span{color:var(--cyan);}
+.nav-links{display:flex;align-items:center;gap:clamp(12px,2.5vw,36px);}
+.nav-links a{font:700 11px 'Orbitron';letter-spacing:.2em;color:rgba(255,255,255,.5);text-decoration:none;transition:.15s;}
+.nav-links a:hover,.nav-links a.active{color:var(--cyan);}
+.nav-cta{color:#04121a !important;background:var(--cyan);padding:9px 22px;
+  clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);}
+.nav-cta:hover{background:#5cffe6 !important;}
+
+/* PAGE HEADER */
+.page-header{
+  padding:130px clamp(16px,6vw,80px) 60px;
+  background:
+    linear-gradient(rgba(25,240,255,.05) 1px,transparent 1px) 0 0/100% 48px,
+    linear-gradient(90deg,rgba(255,45,149,.04) 1px,transparent 1px) 0 0/48px 100%,
+    radial-gradient(ellipse at 20% 60%,rgba(25,240,255,.08),transparent 50%),
+    #060b18;
+  border-bottom:1px solid rgba(255,255,255,.07);}
+.page-kicker{font:700 10px 'Rajdhani';letter-spacing:.6em;color:var(--cyan);opacity:.75;margin-bottom:10px;}
+.page-title{font:900 clamp(40px,8vw,90px) 'Orbitron';line-height:.88;margin-bottom:12px;
+  background:linear-gradient(180deg,#fff 30%,var(--cyan) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.page-lead{font:600 15px 'Rajdhani';color:rgba(255,255,255,.5);max-width:500px;line-height:1.6;letter-spacing:.04em;}
+
+/* WEAPON SECTION */
+.armory-body{padding:clamp(40px,6vw,80px) clamp(16px,6vw,80px);}
+.wep-section{margin-bottom:70px;}
+.wep-section-label{font:700 10px 'Rajdhani';letter-spacing:.6em;color:rgba(255,255,255,.3);margin-bottom:28px;
+  padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);}
+
+/* FULL WEAPON CARD */
+.wep-full-card{
+  display:grid;grid-template-columns:1fr 1fr;gap:0;
+  background:rgba(8,12,24,.85);border:1px solid rgba(255,255,255,.1);
+  clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);
+  margin-bottom:16px;overflow:hidden;transition:.18s;}
+.wep-full-card:hover{border-color:rgba(255,255,255,.22);}
+.wfc-visual{
+  padding:40px 36px;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;position:relative;min-height:220px;}
+.wfc-visual::after{content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px,rgba(0,0,0,.1) 2px 4px);}
+.wfc-icon{position:relative;z-index:1;width:120px;height:120px;}
+.wfc-name-bg{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  font:900 11px 'Orbitron';letter-spacing:.3em;color:rgba(255,255,255,.12);white-space:nowrap;z-index:1;}
+.wfc-info{padding:32px 36px;border-left:1px solid rgba(255,255,255,.07);}
+.wfc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+.wfc-name{font:900 clamp(22px,3vw,32px) 'Orbitron';}
+.wfc-tag{font:700 9px 'Rajdhani';letter-spacing:.3em;padding:5px 10px;margin-top:4px;
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);}
+.wfc-desc{font:600 14px 'Rajdhani';color:rgba(255,255,255,.6);line-height:1.6;letter-spacing:.04em;margin-bottom:24px;}
+.wfc-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px 24px;margin-bottom:20px;}
+.wfc-stat{display:flex;flex-direction:column;gap:4px;}
+.wfc-stat-label{font:700 9px 'Rajdhani';letter-spacing:.3em;color:rgba(255,255,255,.3);}
+.wfc-stat-val{font:700 18px 'Orbitron';}
+.wfc-bars{display:flex;flex-direction:column;gap:8px;}
+.bar-row{display:flex;align-items:center;gap:12px;}
+.bar-label{font:700 9px 'Rajdhani';letter-spacing:.2em;color:rgba(255,255,255,.35);width:44px;text-align:right;}
+.bar-track{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;}
+.bar-num{font:700 11px 'Orbitron';width:32px;}
+.wfc-badge{display:inline-block;font:700 9px 'Rajdhani';letter-spacing:.2em;padding:4px 10px;margin-top:16px;}
+
+/* JAPAN SECTION */
+.japan-header{
+  padding:20px 28px;background:rgba(160,40,24,.1);border:1px solid rgba(160,80,60,.2);
+  clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
+  margin-bottom:20px;display:flex;align-items:center;gap:16px;}
+.japan-header svg{flex-shrink:0;}
+.japan-header-text{font:700 11px 'Rajdhani';letter-spacing:.25em;color:rgba(255,200,180,.6);line-height:1.6;}
+.japan-header-text b{color:#f0a8c8;display:block;font:700 14px 'Orbitron';letter-spacing:.2em;margin-bottom:4px;}
+
+/* FOOTER */
+footer{background:rgba(5,6,12,.95);border-top:1px solid rgba(255,255,255,.07);
+  padding:32px clamp(16px,6vw,80px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.footer-logo{font:900 12px 'Orbitron';color:rgba(255,255,255,.28);letter-spacing:.08em;}
+.footer-logo span{color:var(--cyan);}
+.footer-links{display:flex;gap:22px;flex-wrap:wrap;}
+.footer-links a{font:700 10px 'Rajdhani';letter-spacing:.25em;color:rgba(255,255,255,.28);text-decoration:none;transition:.15s;}
+.footer-links a:hover{color:var(--cyan);}
+
+.btn-deploy{font:900 16px 'Orbitron';letter-spacing:.18em;color:#04121a;
+  padding:16px 44px;border:none;cursor:pointer;text-decoration:none;
+  background:linear-gradient(180deg,#5cffe6,var(--cyan));
+  clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);
+  display:inline-block;transition:.15s;box-shadow:0 0 32px rgba(25,240,255,.35);}
+.btn-deploy:hover{transform:translateY(-2px);box-shadow:0 0 50px rgba(25,240,255,.6);}
+
+@media(max-width:680px){
+  .wep-full-card{grid-template-columns:1fr;}
+  .wfc-info{border-left:none;border-top:1px solid rgba(255,255,255,.07);}
+  .wfc-visual{min-height:160px;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="index.html">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="6" fill="#05060c"/>
+      <path d="M7 23V9h4l10 14V9h4v14h-4L11 9v14z" fill="#19f0ff"/>
+      <path d="M5 25h22" stroke="#ff2d95" stroke-width="2"/>
+    </svg>
+    <span class="nav-logo-text">NEON CITY<span>: NIGHTFALL</span></span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html">HOME</a>
+    <a href="Golem Bestiary.html">BESTIARY</a>
+    <a href="armory.html" class="active">ARMORY</a>
+    <a class="nav-cta" href="Neon City Nightfall.html">PLAY NOW</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-kicker">Equipment &amp; Loadout</div>
+  <h1 class="page-title">ARMORY</h1>
+  <p class="page-lead">Select your starting weapon in the in-game menu. All six are live from wave one — this is the full tactical breakdown.</p>
+</div>
+
+<div class="armory-body">
+
+  <!-- STANDARD WEAPONS -->
+  <div class="wep-section">
+    <div class="wep-section-label">STANDARD LOADOUT — ALL LEVELS</div>
+
+    <!-- PISTOL -->
+    <div class="wep-full-card">
+      <div class="wfc-visual" style="background:linear-gradient(135deg,#060e16,#0a1e28);">
+        <svg class="wfc-icon" viewBox="0 0 120 120" fill="none">
+          <rect x="14" y="44" width="72" height="28" rx="5" fill="#19f0ff" opacity=".85"/>
+          <rect x="18" y="72" width="22" height="28" rx="3" fill="#19f0ff" opacity=".6"/>
+          <rect x="86" y="48" width="20" height="10" rx="2" fill="#19f0ff" opacity=".7"/>
+          <rect x="14" y="55" width="72" height="5" fill="#04181e" opacity=".5"/>
+          <circle cx="22" cy="58" r="3" fill="#04181e" opacity=".6"/>
+          <rect x="42" y="42" width="28" height="4" rx="2" fill="#19f0ff" opacity=".35"/>
+        </svg>
+        <div class="wfc-name-bg">PISTOL</div>
+      </div>
+      <div class="wfc-info">
+        <div class="wfc-header">
+          <div><div class="wfc-name" style="color:#19f0ff">PISTOL</div><div class="wfc-tag">SEMI-AUTO</div></div>
+        </div>
+        <p class="wfc-desc">Your always-available sidearm. Infinite ammunition, reliable accuracy, and enough stopping power to down a Grunt at close range. Never runs dry — never lets you down.</p>
+        <div class="wfc-stats">
+          <div class="wfc-stat"><div class="wfc-stat-label">DAMAGE</div><div class="wfc-stat-val" style="color:#19f0ff">38</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">AMMO POOL</div><div class="wfc-stat-val" style="color:#19f0ff">∞</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">FIRE RATE</div><div class="wfc-stat-val" style="color:#19f0ff">230ms</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">SPREAD</div><div class="wfc-stat-val" style="color:#19f0ff">TIGHT</div></div>
+        </div>
+        <div class="wfc-bars">
+          <div class="bar-row"><span class="bar-label">DMG</span><div class="bar-track"><div class="bar-fill" style="width:28%;background:#19f0ff"></div></div><span class="bar-num" style="color:#19f0ff">28</span></div>
+          <div class="bar-row"><span class="bar-label">RATE</span><div class="bar-track"><div class="bar-fill" style="width:78%;background:#19f0ff88"></div></div><span class="bar-num" style="color:#19f0ff88">78</span></div>
+        </div>
+        <div class="wfc-badge" style="background:#19f0ff1a;color:#19f0ff;border:1px solid #19f0ff44">RELIABLE · INFINITE AMMO</div>
+      </div>
+    </div>
+
+    <!-- SMG -->
+    <div class="wep-full-card">
+      <div class="wfc-visual" style="background:linear-gradient(135deg,#100c00,#1c1400);">
+        <svg class="wfc-icon" viewBox="0 0 120 120" fill="none">
+          <rect x="8" y="48" width="86" height="22" rx="5" fill="#ffd166" opacity=".85"/>
+          <rect x="14" y="70" width="18" height="22" rx="3" fill="#ffd166" opacity=".6"/>
+          <rect x="94" y="51" width="16" height="8" rx="2" fill="#ffd166" opacity=".7"/>
+          <rect x="8" y="57" width="86" height="4" fill="#0a0800" opacity=".45"/>
+          <rect x="28" y="46" width="40" height="4" rx="2" fill="#ffd166" opacity=".35"/>
+          <rect x="34" y="44" width="6" height="4" rx="1" fill="#ffd166" opacity=".5"/>
+          <rect x="44" y="44" width="6" height="4" rx="1" fill="#ffd166" opacity=".5"/>
+          <rect x="54" y="44" width="6" height="4" rx="1" fill="#ffd166" opacity=".5"/>
+        </svg>
+        <div class="wfc-name-bg">SMG</div>
+      </div>
+      <div class="wfc-info">
+        <div class="wfc-header">
+          <div><div class="wfc-name" style="color:#ffd166">SMG</div><div class="wfc-tag">FULL-AUTO</div></div>
+        </div>
+        <p class="wfc-desc">Lightweight and unrelenting. The SMG's blistering fire rate shreds runners and clusters before they close range. Low per-shot damage is offset by the volume of lead downrange.</p>
+        <div class="wfc-stats">
+          <div class="wfc-stat"><div class="wfc-stat-label">DAMAGE</div><div class="wfc-stat-val" style="color:#ffd166">13/shot</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">AMMO POOL</div><div class="wfc-stat-val" style="color:#ffd166">480</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">FIRE RATE</div><div class="wfc-stat-val" style="color:#ffd166">62ms</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">SPREAD</div><div class="wfc-stat-val" style="color:#ffd166">MODERATE</div></div>
+        </div>
+        <div class="wfc-bars">
+          <div class="bar-row"><span class="bar-label">DMG</span><div class="bar-track"><div class="bar-fill" style="width:10%;background:#ffd166"></div></div><span class="bar-num" style="color:#ffd166">10</span></div>
+          <div class="bar-row"><span class="bar-label">RATE</span><div class="bar-track"><div class="bar-fill" style="width:94%;background:#ffd16688"></div></div><span class="bar-num" style="color:#ffd16688">94</span></div>
+        </div>
+        <div class="wfc-badge" style="background:#ffd1661a;color:#ffd166;border:1px solid #ffd16644">RAPID FIRE · HIGH DPS</div>
+      </div>
+    </div>
+
+    <!-- DUAL SHOTGUNS -->
+    <div class="wep-full-card">
+      <div class="wfc-visual" style="background:linear-gradient(135deg,#120008,#1e0012);">
+        <svg class="wfc-icon" viewBox="0 0 120 120" fill="none">
+          <!-- Left gun -->
+          <rect x="8" y="34" width="82" height="18" rx="4" fill="#ff2d95" opacity=".9"/>
+          <rect x="10" y="52" width="14" height="18" rx="2" fill="#ff2d95" opacity=".6"/>
+          <rect x="90" y="36" width="22" height="8" rx="2" fill="#ff2d95" opacity=".75"/>
+          <!-- Right gun -->
+          <rect x="8" y="68" width="82" height="18" rx="4" fill="#ff2d95" opacity=".9"/>
+          <rect x="10" y="86" width="14" height="14" rx="2" fill="#ff2d95" opacity=".6"/>
+          <rect x="90" y="70" width="22" height="8" rx="2" fill="#ff2d95" opacity=".75"/>
+          <!-- rails -->
+          <rect x="8" y="40" width="82" height="2" fill="#0a0008" opacity=".5"/>
+          <rect x="8" y="74" width="82" height="2" fill="#0a0008" opacity=".5"/>
+          <!-- muzzle flash hint -->
+          <circle cx="112" cy="40" r="4" fill="#ff2d95" opacity=".4"/>
+          <circle cx="112" cy="74" r="4" fill="#ff2d95" opacity=".4"/>
+        </svg>
+        <div class="wfc-name-bg">DUAL SHOTGUNS</div>
+      </div>
+      <div class="wfc-info">
+        <div class="wfc-header">
+          <div><div class="wfc-name" style="color:#ff2d95">DUAL SHOTGUNS</div><div class="wfc-tag">SEMI-AUTO · DUAL WIELD</div></div>
+        </div>
+        <p class="wfc-desc">Two chrome shotguns, one devastating volley. Nine pellets per trigger pull spread across both barrels. Best at knife-fight range. The Heavy's weapon of choice — and with good reason.</p>
+        <div class="wfc-stats">
+          <div class="wfc-stat"><div class="wfc-stat-label">DAMAGE</div><div class="wfc-stat-val" style="color:#ff2d95">8×9 pel</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">AMMO POOL</div><div class="wfc-stat-val" style="color:#ff2d95">120</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">FIRE RATE</div><div class="wfc-stat-val" style="color:#ff2d95">360ms</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">SPREAD</div><div class="wfc-stat-val" style="color:#ff2d95">WIDE</div></div>
+        </div>
+        <div class="wfc-bars">
+          <div class="bar-row"><span class="bar-label">DMG</span><div class="bar-track"><div class="bar-fill" style="width:53%;background:#ff2d95"></div></div><span class="bar-num" style="color:#ff2d95">53</span></div>
+          <div class="bar-row"><span class="bar-label">RATE</span><div class="bar-track"><div class="bar-fill" style="width:66%;background:#ff2d9588"></div></div><span class="bar-num" style="color:#ff2d9588">66</span></div>
+        </div>
+        <div class="wfc-badge" style="background:#ff2d951a;color:#ff2d95;border:1px solid #ff2d9544">DUAL WIELD · CLOSE RANGE · 9 PELLETS</div>
+      </div>
+    </div>
+
+    <!-- FORCE PUSH -->
+    <div class="wep-full-card">
+      <div class="wfc-visual" style="background:linear-gradient(135deg,#040e16,#071828);">
+        <svg class="wfc-icon" viewBox="0 0 120 120" fill="none">
+          <!-- palm/gauntlet -->
+          <rect x="42" y="38" width="36" height="52" rx="8" fill="#19f0ff" opacity=".12"/>
+          <rect x="46" y="44" width="28" height="38" rx="6" fill="#19f0ff" opacity=".3"/>
+          <!-- fingers -->
+          <rect x="44" y="28" width="8" height="20" rx="4" fill="#19f0ff" opacity=".75"/>
+          <rect x="54" y="22" width="8" height="22" rx="4" fill="#19f0ff" opacity=".9"/>
+          <rect x="64" y="22" width="8" height="22" rx="4" fill="#19f0ff" opacity=".9"/>
+          <rect x="74" y="28" width="8" height="20" rx="4" fill="#19f0ff" opacity=".75"/>
+          <!-- wrist ring -->
+          <ellipse cx="60" cy="68" rx="14" ry="4" stroke="#19f0ff" stroke-width="2.5" opacity=".7"/>
+          <!-- shockwave rings -->
+          <circle cx="60" cy="54" r="22" stroke="#19f0ff" stroke-width="2" opacity=".45"/>
+          <circle cx="60" cy="54" r="34" stroke="#19f0ff" stroke-width="1.5" opacity=".22"/>
+          <circle cx="60" cy="54" r="46" stroke="#19f0ff" stroke-width="1" opacity=".1"/>
+          <!-- energy glow center -->
+          <circle cx="60" cy="54" r="6" fill="#19f0ff" opacity=".6"/>
+          <circle cx="60" cy="54" r="10" fill="#19f0ff" opacity=".2"/>
+        </svg>
+        <div class="wfc-name-bg">FORCE PUSH</div>
+      </div>
+      <div class="wfc-info">
+        <div class="wfc-header">
+          <div><div class="wfc-name" style="color:#19f0ff">FORCE PUSH</div><div class="wfc-tag">KINETIC · COOLDOWN 1.5s</div></div>
+        </div>
+        <p class="wfc-desc">Extend the gauntlet. Release the shockwave. Enemies within 12 units are hurled backward and dealt 80 kinetic damage. No ammo required — energy is infinite. Perfect for crowd control and breaking encirclements.</p>
+        <div class="wfc-stats">
+          <div class="wfc-stat"><div class="wfc-stat-label">DAMAGE</div><div class="wfc-stat-val" style="color:#19f0ff">80</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">AMMO POOL</div><div class="wfc-stat-val" style="color:#19f0ff">∞</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">RANGE</div><div class="wfc-stat-val" style="color:#19f0ff">12 units</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">COOLDOWN</div><div class="wfc-stat-val" style="color:#19f0ff">1.5s</div></div>
+        </div>
+        <div class="wfc-bars">
+          <div class="bar-row"><span class="bar-label">DMG</span><div class="bar-track"><div class="bar-fill" style="width:59%;background:#19f0ff"></div></div><span class="bar-num" style="color:#19f0ff">59</span></div>
+          <div class="bar-row"><span class="bar-label">RATE</span><div class="bar-track"><div class="bar-fill" style="width:12%;background:#19f0ff88"></div></div><span class="bar-num" style="color:#19f0ff88">12</span></div>
+        </div>
+        <div class="wfc-badge" style="background:#19f0ff1a;color:#19f0ff;border:1px solid #19f0ff44">KNOCKBACK · CROWD CONTROL · INFINITE ENERGY</div>
+      </div>
+    </div>
+
+    <!-- PLASMA -->
+    <div class="wep-full-card">
+      <div class="wfc-visual" style="background:linear-gradient(135deg,#080412,#10081e);">
+        <svg class="wfc-icon" viewBox="0 0 120 120" fill="none">
+          <rect x="12" y="46" width="76" height="28" rx="7" fill="#9b5cff" opacity=".85"/>
+          <rect x="18" y="74" width="16" height="22" rx="3" fill="#9b5cff" opacity=".55"/>
+          <rect x="88" y="48" width="18" height="22" rx="5" fill="#9b5cff" opacity=".8"/>
+          <circle cx="97" cy="59" r="8" fill="#9b5cff" opacity=".9"/>
+          <circle cx="97" cy="59" r="13" stroke="#9b5cff" stroke-width="2" opacity=".35"/>
+          <circle cx="97" cy="59" r="18" stroke="#9b5cff" stroke-width="1" opacity=".15"/>
+          <rect x="12" y="57" width="76" height="5" fill="#050010" opacity=".4"/>
+        </svg>
+        <div class="wfc-name-bg">PLASMA</div>
+      </div>
+      <div class="wfc-info">
+        <div class="wfc-header">
+          <div><div class="wfc-name" style="color:#9b5cff">PLASMA</div><div class="wfc-tag">SEMI-AUTO · PROJECTILE</div></div>
+        </div>
+        <p class="wfc-desc">Fires a slow, heavy plasma orb that detonates on impact. Direct hit deals 40 damage; the 5.5-unit splash radius delivers an additional 55 to nearby enemies. Devastating against tight groups.</p>
+        <div class="wfc-stats">
+          <div class="wfc-stat"><div class="wfc-stat-label">DIRECT DMG</div><div class="wfc-stat-val" style="color:#9b5cff">40</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">SPLASH DMG</div><div class="wfc-stat-val" style="color:#9b5cff">+55</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">AMMO POOL</div><div class="wfc-stat-val" style="color:#9b5cff">60</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">SPLASH R.</div><div class="wfc-stat-val" style="color:#9b5cff">5.5u</div></div>
+        </div>
+        <div class="wfc-bars">
+          <div class="bar-row"><span class="bar-label">DMG</span><div class="bar-track"><div class="bar-fill" style="width:70%;background:#9b5cff"></div></div><span class="bar-num" style="color:#9b5cff">70</span></div>
+          <div class="bar-row"><span class="bar-label">RATE</span><div class="bar-track"><div class="bar-fill" style="width:28%;background:#9b5cff88"></div></div><span class="bar-num" style="color:#9b5cff88">28</span></div>
+        </div>
+        <div class="wfc-badge" style="background:#9b5cff1a;color:#9b5cff;border:1px solid #9b5cff44">SPLASH DAMAGE · GROUP CLEAR</div>
+      </div>
+    </div>
+
+    <!-- PULSE CANNON -->
+    <div class="wep-full-card">
+      <div class="wfc-visual" style="background:linear-gradient(135deg,#0e0600,#180a00);">
+        <svg class="wfc-icon" viewBox="0 0 120 120" fill="none">
+          <rect x="8" y="46" width="92" height="28" rx="5" fill="#ff7a18" opacity=".85"/>
+          <rect x="12" y="74" width="20" height="18" rx="3" fill="#ff7a18" opacity=".6"/>
+          <rect x="100" y="50" width="12" height="8" rx="2" fill="#ff7a18" opacity=".8"/>
+          <rect x="8" y="56" width="92" height="4" fill="#0e0400" opacity=".45"/>
+          <rect x="8" y="63" width="92" height="3" fill="#0e0400" opacity=".35"/>
+          <rect x="22" y="44" width="55" height="4" rx="2" fill="#ff7a18" opacity=".35"/>
+          <!-- vent slits -->
+          <rect x="30" y="42" width="3" height="4" rx="1" fill="#ff7a18" opacity=".55"/>
+          <rect x="38" y="42" width="3" height="4" rx="1" fill="#ff7a18" opacity=".55"/>
+          <rect x="46" y="42" width="3" height="4" rx="1" fill="#ff7a18" opacity=".55"/>
+          <rect x="54" y="42" width="3" height="4" rx="1" fill="#ff7a18" opacity=".55"/>
+          <rect x="62" y="42" width="3" height="4" rx="1" fill="#ff7a18" opacity=".55"/>
+        </svg>
+        <div class="wfc-name-bg">PULSE CANNON</div>
+      </div>
+      <div class="wfc-info">
+        <div class="wfc-header">
+          <div><div class="wfc-name" style="color:#ff7a18">PULSE CANNON</div><div class="wfc-tag">FULL-AUTO · HIGH CAPACITY</div></div>
+        </div>
+        <p class="wfc-desc">A continuous stream of low-damage energy bolts. The largest ammo pool in the arsenal means you can sustain fire through entire waves without reloading. Best paired with precise aim to maximise hit rate.</p>
+        <div class="wfc-stats">
+          <div class="wfc-stat"><div class="wfc-stat-label">DAMAGE</div><div class="wfc-stat-val" style="color:#ff7a18">8/shot</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">AMMO POOL</div><div class="wfc-stat-val" style="color:#ff7a18">700</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">FIRE RATE</div><div class="wfc-stat-val" style="color:#ff7a18">40ms</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">SPREAD</div><div class="wfc-stat-val" style="color:#ff7a18">LOW</div></div>
+        </div>
+        <div class="wfc-bars">
+          <div class="bar-row"><span class="bar-label">DMG</span><div class="bar-track"><div class="bar-fill" style="width:6%;background:#ff7a18"></div></div><span class="bar-num" style="color:#ff7a18">6</span></div>
+          <div class="bar-row"><span class="bar-label">RATE</span><div class="bar-track"><div class="bar-fill" style="width:99%;background:#ff7a1888"></div></div><span class="bar-num" style="color:#ff7a1888">99</span></div>
+        </div>
+        <div class="wfc-badge" style="background:#ff7a181a;color:#ff7a18;border:1px solid #ff7a1844">HIGH CAPACITY · SUPPRESSION FIRE</div>
+      </div>
+    </div>
+
+  </div><!-- /wep-section -->
+
+  <!-- JAPAN EXCLUSIVE -->
+  <div class="wep-section">
+    <div class="wep-section-label">FEUDAL JAPAN — AUTO-EQUIPPED</div>
+
+    <div class="japan-header">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="12" stroke="#f0a8c8" stroke-width="1.5" opacity=".5"/>
+        <path d="M14 6v16M6 14h16" stroke="#f0a8c8" stroke-width="1.5" opacity=".4"/>
+        <circle cx="14" cy="14" r="3" fill="#f0a8c8" opacity=".6"/>
+      </svg>
+      <div class="japan-header-text">
+        <b>FEUDAL JAPAN EXCLUSIVE</b>
+        On the Feudal Japan level, the Shuriken is added to your loadout automatically. Standard weapons remain available.
+      </div>
+    </div>
+
+    <!-- SHURIKEN -->
+    <div class="wep-full-card" style="opacity:.75;">
+      <div class="wfc-visual" style="background:linear-gradient(135deg,#0a0c10,#141820);">
+        <svg class="wfc-icon" viewBox="0 0 120 120" fill="none">
+          <!-- shuriken star -->
+          <g transform="translate(60,60)">
+            <path d="M0-38 L8-8 L38 0 L8 8 L0 38 L-8 8 L-38 0 L-8-8 Z" fill="#c8d2dc" opacity=".85"/>
+            <path d="M0-38 L8-8 L38 0 L8 8 L0 38 L-8 8 L-38 0 L-8-8 Z" fill="none" stroke="#c8d2dc" stroke-width="1.5" opacity=".4"/>
+            <circle r="6" fill="#c8d2dc" opacity=".9"/>
+            <circle r="3" fill="#0a0c10"/>
+          </g>
+        </svg>
+        <div class="wfc-name-bg">SHURIKEN</div>
+      </div>
+      <div class="wfc-info">
+        <div class="wfc-header">
+          <div><div class="wfc-name" style="color:#c8d2dc">SHURIKEN</div><div class="wfc-tag">THROWN · JAPAN LEVEL</div></div>
+        </div>
+        <p class="wfc-desc">Precision throwing star. Fast release, silent kill, accurate at range. Carried in addition to the standard six-weapon loadout on the Feudal Japan level.</p>
+        <div class="wfc-stats">
+          <div class="wfc-stat"><div class="wfc-stat-label">DAMAGE</div><div class="wfc-stat-val" style="color:#c8d2dc">34</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">AMMO POOL</div><div class="wfc-stat-val" style="color:#c8d2dc">180</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">FIRE RATE</div><div class="wfc-stat-val" style="color:#c8d2dc">240ms</div></div>
+          <div class="wfc-stat"><div class="wfc-stat-label">SPREAD</div><div class="wfc-stat-val" style="color:#c8d2dc">TIGHT</div></div>
+        </div>
+        <div class="wfc-bars">
+          <div class="bar-row"><span class="bar-label">DMG</span><div class="bar-track"><div class="bar-fill" style="width:25%;background:#c8d2dc"></div></div><span class="bar-num" style="color:#c8d2dc">25</span></div>
+          <div class="bar-row"><span class="bar-label">RATE</span><div class="bar-track"><div class="bar-fill" style="width:77%;background:#c8d2dc88"></div></div><span class="bar-num" style="color:#c8d2dc88">77</span></div>
+        </div>
+        <div class="wfc-badge" style="background:#c8d2dc1a;color:#c8d2dc;border:1px solid #c8d2dc44">THROWN · SILENT · FAST THROW</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DEPLOY CTA -->
+  <div style="text-align:center;padding:20px 0 40px;">
+    <a class="btn-deploy" href="Neon City Nightfall.html">DEPLOY INTO BATTLE</a>
+  </div>
+
+</div><!-- /armory-body -->
+
+<footer>
+  <div class="footer-logo">NEON CITY<span>: NIGHTFALL</span></div>
+  <div class="footer-links">
+    <a href="index.html">HOME</a>
+    <a href="Neon City Nightfall.html">PLAY</a>
+    <a href="Golem Bestiary.html">BESTIARY</a>
+  </div>
+</footer>
+
+</body>
+</html>

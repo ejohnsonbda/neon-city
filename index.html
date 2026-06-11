@@ -1,5 +1,307 @@
 <!DOCTYPE html>
-<html>
-<head><meta http-equiv="refresh" content="0; url=Neon City Nightfall.html"></head>
-<body><a href="Neon City Nightfall.html">Open Neon City: Nightfall</a></body>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2305060c'/%3E%3Cpath d='M14 46V18h8l20 28V18h8v28h-8L22 18v28z' fill='%2319f0ff'/%3E%3Cpath d='M10 50h44' stroke='%23ff2d95' stroke-width='4'/%3E%3C/svg%3E">
+<title>Neon City: Nightfall — Urban Survival FPS</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cyan:#19f0ff;--mag:#ff2d95;--purple:#9b5cff;--amber:#ffd166;--green:#39ff14;
+  --ink:#05060c;--ink2:#080d18;--panel:rgba(8,14,28,.72);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--ink);color:#fff;font-family:'Rajdhani',sans-serif;overflow-x:hidden;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(5,6,12,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(25,240,255,.12);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 clamp(16px,4vw,60px);height:62px;}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.nav-logo-text{font:900 16px 'Orbitron';letter-spacing:.06em;color:#fff;}
+.nav-logo-text span{color:var(--cyan);}
+.nav-links{display:flex;align-items:center;gap:clamp(12px,2.5vw,36px);}
+.nav-links a{font:700 11px 'Orbitron';letter-spacing:.2em;color:rgba(255,255,255,.5);text-decoration:none;transition:.15s;}
+.nav-links a:hover{color:var(--cyan);}
+.nav-cta{color:#04121a !important;background:var(--cyan);padding:9px 22px;
+  clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);transition:.15s !important;}
+.nav-cta:hover{background:#5cffe6 !important;box-shadow:0 0 24px rgba(25,240,255,.5);}
+
+/* HERO */
+#hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;
+  text-align:center;overflow:hidden;padding:100px 20px 60px;
+  background:radial-gradient(ellipse at 50% 60%,rgba(25,240,255,.06),transparent 65%),
+    radial-gradient(ellipse at 20% 80%,rgba(255,45,149,.08),transparent 50%),
+    url('uploads/nicolas-caetano-YBtULi9OAWs-unsplash.jpg') center/cover no-repeat;}
+#hero::before{content:"";position:absolute;inset:0;
+  background:linear-gradient(rgba(5,6,12,.5),rgba(5,6,12,.78) 60%,var(--ink) 100%);}
+#hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px,rgba(0,0,0,.14) 2px 4px);}
+.hero-inner{position:relative;z-index:2;max-width:900px;}
+.hero-kicker{font:700 11px 'Rajdhani';letter-spacing:.8em;color:var(--cyan);opacity:.8;margin-bottom:18px;text-transform:uppercase;}
+.hero-title{font:900 clamp(52px,12vw,158px) 'Orbitron';line-height:.84;letter-spacing:-.02em;
+  background:linear-gradient(180deg,#fff 0%,var(--cyan) 55%,var(--mag) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 40px rgba(25,240,255,.2));}
+.hero-sub{font:900 clamp(18px,4vw,48px) 'Orbitron';letter-spacing:.5em;color:var(--mag);
+  text-shadow:0 0 30px rgba(255,45,149,.45);margin:8px 0 28px;}
+.hero-desc{font:600 17px 'Rajdhani';color:rgba(255,255,255,.6);max-width:540px;margin:0 auto 42px;line-height:1.6;letter-spacing:.04em;}
+.hero-btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+.btn-primary{font:900 17px 'Orbitron';letter-spacing:.16em;color:#04121a;
+  padding:18px 54px;border:none;cursor:pointer;text-decoration:none;
+  background:linear-gradient(180deg,#5cffe6,var(--cyan));
+  clip-path:polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%);
+  transition:.15s;box-shadow:0 0 40px rgba(25,240,255,.4);display:inline-block;}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(25,240,255,.65);}
+.btn-secondary{font:700 13px 'Orbitron';letter-spacing:.16em;color:var(--purple);
+  padding:16px 30px;border:1px solid rgba(194,75,255,.5);background:rgba(20,12,30,.6);
+  clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);
+  transition:.15s;text-decoration:none;display:inline-block;}
+.btn-secondary:hover{box-shadow:0 0 28px rgba(194,75,255,.35);border-color:var(--purple);}
+.hero-scroll{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
+  font:700 10px 'Rajdhani';letter-spacing:.4em;color:rgba(255,255,255,.28);
+  display:flex;flex-direction:column;align-items:center;gap:8px;}
+.hero-scroll::after{content:"";width:1px;height:36px;background:linear-gradient(var(--cyan),transparent);}
+
+/* SECTIONS */
+section{padding:clamp(60px,8vw,110px) clamp(16px,6vw,80px);}
+.section-kicker{font:700 10px 'Rajdhani';letter-spacing:.6em;color:var(--cyan);opacity:.75;margin-bottom:12px;}
+.section-title{font:900 clamp(28px,5vw,58px) 'Orbitron';line-height:.92;margin-bottom:14px;}
+.section-title em{font-style:normal;color:var(--cyan);}
+.section-lead{font:600 15px 'Rajdhani';color:rgba(255,255,255,.5);max-width:500px;line-height:1.65;letter-spacing:.04em;margin-bottom:46px;}
+.section-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(25,240,255,.18),transparent);}
+
+/* LEVELS */
+#levels{background:var(--ink);}
+.levels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:15px;}
+.level-card{position:relative;overflow:hidden;cursor:pointer;
+  clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+  transition:.2s;border:1px solid rgba(255,255,255,.1);background:rgba(10,14,26,.9);}
+.level-card:hover{transform:translateY(-4px);border-color:rgba(25,240,255,.3);}
+.lc-art{height:120px;background-size:cover;background-position:center;}
+.lc-art.city{background:linear-gradient(150deg,#070716,#1a0a36 50%,#ff2d95 140%);}
+.lc-art.fields{background:linear-gradient(150deg,#6aabe0,#a8d878 55%,#4a9040 130%);}
+.lc-art.mega{background:linear-gradient(150deg,#040412,#2a1a60 50%,#cc44dd 140%);}
+.lc-art.rail{background:linear-gradient(150deg,#7ab8e0,#e87840 55%,#081028 130%);}
+.lc-art.desert{background:linear-gradient(150deg,#d4b870,#b88840 50%,#285020 130%);}
+.lc-art.japan{background:linear-gradient(150deg,#6a9ad0,#f0a8c8 55%,#a02818 130%);}
+.lc-body{padding:12px 16px 16px;}
+.lc-num{font:700 10px 'Rajdhani';letter-spacing:.4em;color:rgba(255,255,255,.28);margin-bottom:3px;}
+.lc-name{font:900 17px 'Orbitron';margin-bottom:3px;}
+.lc-desc{font:600 12px 'Rajdhani';color:rgba(255,255,255,.48);letter-spacing:.03em;}
+
+/* WEAPONS */
+#weapons{background:linear-gradient(rgba(25,240,255,.03) 1px,transparent 1px) 0 0/100% 48px,
+  linear-gradient(90deg,rgba(255,45,149,.03) 1px,transparent 1px) 0 0/48px 100%,#060b18;}
+.weapons-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:12px;}
+.wep-preview{padding:20px 16px;background:rgba(8,12,24,.85);border:1px solid rgba(255,255,255,.08);
+  clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
+  transition:.18s;}
+.wep-preview:hover{border-color:rgba(255,255,255,.25);transform:translateY(-2px);}
+.wep-icon{width:44px;height:44px;margin-bottom:12px;}
+.wp-name{font:900 14px 'Orbitron';margin-bottom:3px;}
+.wp-type{font:700 10px 'Rajdhani';letter-spacing:.28em;color:rgba(255,255,255,.32);margin-bottom:10px;}
+.wp-trait{font:700 9px 'Rajdhani';letter-spacing:.18em;padding:3px 7px;display:inline-block;}
+
+/* CHARACTERS */
+#characters{background:var(--ink);}
+.chars-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;max-width:900px;}
+.char-card{padding:26px 22px;background:rgba(10,14,26,.85);border:1px solid rgba(255,255,255,.1);
+  clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+  transition:.18s;}
+.char-card:hover{border-color:rgba(255,255,255,.28);transform:translateY(-3px);}
+.cc-name{font:900 24px 'Orbitron';margin-bottom:3px;}
+.cc-stats{font:700 10px 'Rajdhani';letter-spacing:.25em;color:rgba(255,255,255,.35);margin-bottom:12px;}
+.cc-desc{font:600 13px 'Rajdhani';color:rgba(255,255,255,.62);line-height:1.5;}
+.stat-bars{margin-top:14px;display:flex;flex-direction:column;gap:6px;}
+.sbar-row{display:flex;align-items:center;gap:10px;font:700 9px 'Rajdhani';letter-spacing:.15em;color:rgba(255,255,255,.35);}
+.sbar-row span:first-child{width:32px;text-align:right;}
+.sbar-track{flex:1;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;}
+.sbar-fill{height:100%;border-radius:2px;}
+
+/* CTA */
+#cta{text-align:center;padding:clamp(70px,10vw,130px) 20px;
+  background:radial-gradient(ellipse at 50% 50%,rgba(25,240,255,.07),transparent 60%),
+    radial-gradient(ellipse at 80% 20%,rgba(255,45,149,.06),transparent 50%),#060b18;}
+.cta-title{font:900 clamp(34px,7vw,78px) 'Orbitron';line-height:.9;margin-bottom:18px;}
+.cta-title span{color:var(--cyan);}
+.cta-sub{font:600 16px 'Rajdhani';color:rgba(255,255,255,.45);margin-bottom:40px;letter-spacing:.06em;}
+
+/* FOOTER */
+footer{background:rgba(5,6,12,.95);border-top:1px solid rgba(255,255,255,.07);
+  padding:36px clamp(16px,6vw,80px);
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.footer-logo{font:900 13px 'Orbitron';color:rgba(255,255,255,.28);letter-spacing:.08em;}
+.footer-logo span{color:var(--cyan);}
+.footer-links{display:flex;gap:24px;flex-wrap:wrap;}
+.footer-links a{font:700 10px 'Rajdhani';letter-spacing:.25em;color:rgba(255,255,255,.28);text-decoration:none;transition:.15s;}
+.footer-links a:hover{color:var(--cyan);}
+.footer-copy{font:600 10px 'Rajdhani';color:rgba(255,255,255,.18);letter-spacing:.15em;}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="index.html">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="6" fill="#05060c"/>
+      <path d="M7 23V9h4l10 14V9h4v14h-4L11 9v14z" fill="#19f0ff"/>
+      <path d="M5 25h22" stroke="#ff2d95" stroke-width="2"/>
+    </svg>
+    <span class="nav-logo-text">NEON CITY<span>: NIGHTFALL</span></span>
+  </a>
+  <div class="nav-links">
+    <a href="#levels">LEVELS</a>
+    <a href="#weapons">WEAPONS</a>
+    <a href="#characters">OPERATIVES</a>
+    <a href="Golem Bestiary.html">BESTIARY</a>
+    <a href="armory.html">ARMORY</a>
+    <a class="nav-cta" href="Neon City Nightfall.html">PLAY NOW</a>
+  </div>
+</nav>
+
+<section id="hero">
+  <div class="hero-inner">
+    <div class="hero-kicker">Urban Survival · Nightfall Protocol · Wave-Based FPS</div>
+    <h1 class="hero-title">NEON<br>CITY</h1>
+    <div class="hero-sub">NIGHTFALL</div>
+    <p class="hero-desc">Six districts. Endless waves. One operative. Survive the collapse of a cyberpunk megacity — or burn with it.</p>
+    <div class="hero-btns">
+      <a class="btn-primary" href="Neon City Nightfall.html">DEPLOY NOW</a>
+      <a class="btn-secondary" href="armory.html">⬡ VIEW ARMORY</a>
+    </div>
+  </div>
+  <div class="hero-scroll">SCROLL</div>
+</section>
+
+<div class="section-divider"></div>
+
+<section id="levels">
+  <div class="section-kicker">Six Theatres of War</div>
+  <h2 class="section-title">CHOOSE YOUR <em>BATTLEGROUND</em></h2>
+  <p class="section-lead">From rain-slick neon streets to feudal temples — every level is a different survival challenge with unique enemy spawns and environmental hazards.</p>
+  <div class="levels-grid">
+    <div class="level-card"><div class="lc-art city"></div><div class="lc-body"><div class="lc-num">LEVEL 01</div><div class="lc-name">NEON CITY</div><div class="lc-desc">Rain-slick streets at midnight. Billboards blaze. Golems hunt.</div></div></div>
+    <div class="level-card"><div class="lc-art fields"></div><div class="lc-body"><div class="lc-num">LEVEL 02</div><div class="lc-name">COUNTRYSIDE</div><div class="lc-desc">Sunlit fields and farmhouses. Deceptive calm before the swarm.</div></div></div>
+    <div class="level-card"><div class="lc-art mega"></div><div class="lc-body"><div class="lc-num">LEVEL 03</div><div class="lc-name">MEGAWATT CITY</div><div class="lc-desc">Dense grid, live traffic, neon overload. Every alley is a kill zone.</div></div></div>
+    <div class="level-card"><div class="lc-art rail"></div><div class="lc-body"><div class="lc-num">LEVEL 04</div><div class="lc-name">RAIL CITY</div><div class="lc-desc">Ride the monorail. Day turns to night. The hordes don't stop.</div></div></div>
+    <div class="level-card"><div class="lc-art desert"></div><div class="lc-body"><div class="lc-num">LEVEL 05</div><div class="lc-name">EGYPT DESERT</div><div class="lc-desc">Pyramids, jungle ruins, and pharaoh golems. Ancient evil, modern firepower.</div></div></div>
+    <div class="level-card"><div class="lc-art japan"></div><div class="lc-body"><div class="lc-num">LEVEL 06</div><div class="lc-name">FEUDAL JAPAN</div><div class="lc-desc">Temples, torii gates, cherry blossoms. Shuriken and steel.</div></div></div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section id="weapons">
+  <div class="section-kicker">Arsenal</div>
+  <h2 class="section-title">WEAPONS &amp; <em>LOADOUT</em></h2>
+  <p class="section-lead">Six precision instruments of destruction. Select your starting weapon in the Armory before deploying. All six unlock from wave one.</p>
+  <div class="weapons-grid">
+    <div class="wep-preview">
+      <div class="wep-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="6" y="18" width="28" height="10" rx="2" fill="#19f0ff" opacity=".9"/><rect x="8" y="28" width="8" height="10" rx="1" fill="#19f0ff" opacity=".6"/><rect x="34" y="20" width="8" height="4" rx="1" fill="#19f0ff" opacity=".7"/></svg></div>
+      <div class="wp-name" style="color:#19f0ff">PISTOL</div>
+      <div class="wp-type">SEMI · ∞ AMMO</div>
+      <div class="wp-trait" style="background:#19f0ff1a;color:#19f0ff;border:1px solid #19f0ff44">RELIABLE</div>
+    </div>
+    <div class="wep-preview">
+      <div class="wep-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="4" y="20" width="34" height="8" rx="2" fill="#ffd166" opacity=".9"/><rect x="8" y="28" width="6" height="8" rx="1" fill="#ffd166" opacity=".6"/><rect x="38" y="21" width="6" height="3" rx="1" fill="#ffd166" opacity=".7"/></svg></div>
+      <div class="wp-name" style="color:#ffd166">SMG</div>
+      <div class="wp-type">AUTO · 480 POOL</div>
+      <div class="wp-trait" style="background:#ffd1661a;color:#ffd166;border:1px solid #ffd16644">RAPID FIRE</div>
+    </div>
+    <div class="wep-preview">
+      <div class="wep-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="4" y="14" width="32" height="7" rx="2" fill="#ff2d95" opacity=".9"/><rect x="4" y="27" width="32" height="7" rx="2" fill="#ff2d95" opacity=".9"/><rect x="36" y="15" width="8" height="3" rx="1" fill="#ff2d95" opacity=".7"/><rect x="36" y="28" width="8" height="3" rx="1" fill="#ff2d95" opacity=".7"/></svg></div>
+      <div class="wp-name" style="color:#ff2d95">DUAL SHOTGUNS</div>
+      <div class="wp-type">SEMI · 120 POOL</div>
+      <div class="wp-trait" style="background:#ff2d951a;color:#ff2d95;border:1px solid #ff2d9544">DUAL WIELD</div>
+    </div>
+    <div class="wep-preview">
+      <div class="wep-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="16" y="14" width="16" height="22" rx="4" fill="#19f0ff" opacity=".15"/><rect x="18" y="18" width="12" height="14" rx="3" fill="#19f0ff" opacity=".4"/><rect x="17" y="12" width="3" height="8" rx="1.5" fill="#19f0ff" opacity=".8"/><rect x="21" y="10" width="3" height="9" rx="1.5" fill="#19f0ff" opacity=".9"/><rect x="25" y="10" width="3" height="9" rx="1.5" fill="#19f0ff" opacity=".9"/><rect x="29" y="12" width="3" height="8" rx="1.5" fill="#19f0ff" opacity=".8"/><circle cx="24" cy="20" r="8" stroke="#19f0ff" stroke-width="1.5" opacity=".5"/><circle cx="24" cy="20" r="14" stroke="#19f0ff" stroke-width=".8" opacity=".2"/></svg></div>
+      <div class="wp-name" style="color:#19f0ff">FORCE PUSH</div>
+      <div class="wp-type">KINETIC · ∞ ENERGY</div>
+      <div class="wp-trait" style="background:#19f0ff1a;color:#19f0ff;border:1px solid #19f0ff44">KNOCKBACK</div>
+    </div>
+    <div class="wep-preview">
+      <div class="wep-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="6" y="19" width="30" height="10" rx="3" fill="#9b5cff" opacity=".9"/><rect x="10" y="29" width="6" height="8" rx="1" fill="#9b5cff" opacity=".55"/><circle cx="39" cy="24" r="4" fill="#9b5cff" opacity=".9"/><circle cx="39" cy="24" r="6" stroke="#9b5cff" stroke-width="1" opacity=".3"/></svg></div>
+      <div class="wp-name" style="color:#9b5cff">PLASMA</div>
+      <div class="wp-type">SEMI · 60 POOL</div>
+      <div class="wp-trait" style="background:#9b5cff1a;color:#9b5cff;border:1px solid #9b5cff44">SPLASH DAMAGE</div>
+    </div>
+    <div class="wep-preview">
+      <div class="wep-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="4" y="19" width="36" height="10" rx="2" fill="#ff7a18" opacity=".85"/><rect x="8" y="29" width="7" height="7" rx="1" fill="#ff7a18" opacity=".6"/><rect x="4" y="23" width="36" height="1.5" fill="#200a00" opacity=".4"/></svg></div>
+      <div class="wp-name" style="color:#ff7a18">PULSE CANNON</div>
+      <div class="wp-type">AUTO · 700 POOL</div>
+      <div class="wp-trait" style="background:#ff7a181a;color:#ff7a18;border:1px solid #ff7a1844">HIGH CAPACITY</div>
+    </div>
+  </div>
+  <div style="margin-top:30px;text-align:center;">
+    <a class="btn-secondary" href="armory.html">VIEW FULL ARMORY →</a>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section id="characters">
+  <div class="section-kicker">Operatives</div>
+  <h2 class="section-title">CHOOSE YOUR <em>OPERATIVE</em></h2>
+  <p class="section-lead">Three specialists. Each optimised for a different survival strategy. Your choice shapes speed, health, and endurance.</p>
+  <div class="chars-row">
+    <div class="char-card">
+      <div class="cc-name" style="color:#19f0ff">SCOUT</div>
+      <div class="cc-stats">SPD +++ · HP +</div>
+      <p class="cc-desc">Hit-and-run specialist. Born to flank, strafe, and vanish before the enemy reacts. Fragile but untouchable at full speed.</p>
+      <div class="stat-bars">
+        <div class="sbar-row"><span>SPD</span><div class="sbar-track"><div class="sbar-fill" style="width:92%;background:#19f0ff"></div></div></div>
+        <div class="sbar-row"><span>HP</span><div class="sbar-track"><div class="sbar-fill" style="width:32%;background:#19f0ff"></div></div></div>
+      </div>
+    </div>
+    <div class="char-card">
+      <div class="cc-name" style="color:#ffd166">SOLDIER</div>
+      <div class="cc-stats">SPD ++ · HP ++</div>
+      <p class="cc-desc">Versatile all-rounder. The default operative — enough speed to dodge, enough health to take a hit. Dangerous in any theatre.</p>
+      <div class="stat-bars">
+        <div class="sbar-row"><span>SPD</span><div class="sbar-track"><div class="sbar-fill" style="width:60%;background:#ffd166"></div></div></div>
+        <div class="sbar-row"><span>HP</span><div class="sbar-track"><div class="sbar-fill" style="width:60%;background:#ffd166"></div></div></div>
+      </div>
+    </div>
+    <div class="char-card">
+      <div class="cc-name" style="color:#ff2d95">HEAVY</div>
+      <div class="cc-stats">SPD + · HP +++</div>
+      <p class="cc-desc">Armoured juggernaut. Walks through fire. Prefers dual shotguns and the Force Push. Slow to react — impossible to put down.</p>
+      <div class="stat-bars">
+        <div class="sbar-row"><span>SPD</span><div class="sbar-track"><div class="sbar-fill" style="width:28%;background:#ff2d95"></div></div></div>
+        <div class="sbar-row"><span>HP</span><div class="sbar-track"><div class="sbar-fill" style="width:95%;background:#ff2d95"></div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section id="cta" style="text-align:center;padding:clamp(70px,10vw,130px) 20px;background:radial-gradient(ellipse at 50% 50%,rgba(25,240,255,.07),transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(255,45,149,.06),transparent 50%),#060b18;">
+  <div class="cta-title">READY TO<br><span>DEPLOY?</span></div>
+  <p class="cta-sub">Select your theatre. Arm up. Survive the night.</p>
+  <div class="hero-btns">
+    <a class="btn-primary" href="Neon City Nightfall.html">ENTER THE CITY</a>
+    <a class="btn-secondary" href="Golem Bestiary.html">▦ GOLEM BESTIARY</a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">NEON CITY<span>: NIGHTFALL</span></div>
+  <div class="footer-links">
+    <a href="Neon City Nightfall.html">PLAY</a>
+    <a href="armory.html">ARMORY</a>
+    <a href="Golem Bestiary.html">BESTIARY</a>
+    <a href="#levels">LEVELS</a>
+    <a href="#characters">OPERATIVES</a>
+  </div>
+  <div class="footer-copy">BUILT WITH THREE.JS · URBAN SURVIVAL FPS</div>
+</footer>
+
+</body>
 </html>
