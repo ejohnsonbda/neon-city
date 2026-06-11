@@ -198,12 +198,14 @@ class Game {
     // ===== SACRED TORCHES (flickering fire + light) =====
     const fireMat = new THREE.MeshStandardMaterial({ color: 0xff7722, emissive: 0xff3300, emissiveIntensity: 1.0 });
     const fireLights = [];
-    [[-3, 10], [3, 10], [-2, 16.5], [2, 16.5], [0, 13], [-6, 5], [6, 5]].forEach(([x, z]) => {
+    [[-3, 10], [3, 10], [-2, 16.5], [2, 16.5], [0, 13], [-6, 5], [6, 5]].forEach(([x, z], i) => {
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * S, 0.22 * S, 1.8 * S, 6), new THREE.MeshStandardMaterial({ color: 0x9a7838, roughness: 0.8 }));
       pole.position.set(x * S, 0.9 * S, z * S); pole.castShadow = true; W.add(pole);
       const fire = new THREE.Mesh(new THREE.SphereGeometry(0.28 * S, 8, 8), fireMat);
       fire.position.set(x * S, 1.95 * S, z * S); W.add(fire);
-      const lt = new THREE.PointLight(0xff7a33, 2.0, 12 * S * 0.5, 2); lt.position.set(x * S, 2.0 * S, z * S); W.add(lt);
+      // real flame light on every other torch only (per-light cost on all meshes)
+      let lt = null;
+      if (i % 2 === 0) { lt = new THREE.PointLight(0xff7a33, 2.0, 12 * S * 0.5, 2); lt.position.set(x * S, 2.0 * S, z * S); W.add(lt); }
       fireLights.push({ light: lt, fire, base: 2.0, ph: Math.random() * 6 });
     });
 
@@ -813,8 +815,7 @@ class Game {
       const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 0.92), signGlowMat);
       glow.position.set(0, 3.1, 0.062); g.add(glow);
       g.position.set(x, 0, z); g.rotation.y = rot; W.add(g);
-      const light = new THREE.PointLight(0x19f0ff, 0.55, 8, 2.4);
-      light.position.set(x, 3.05, z); W.add(light);
+      // sign glow plane is emissive — no per-sign PointLight (33 lights caused city lag)
     };
     [[-17, -17, 'NEON AVE', Math.PI / 4], [17, -17, 'NIGHTFALL', -Math.PI / 4], [-17, 17, 'CYBER ST', Math.PI * 0.75], [17, 17, 'DOWNTOWN', -Math.PI * 0.75],
      [0, -31, 'MAIN ST', 0], [0, 31, 'PLAZA', Math.PI], [-31, 0, 'MARKET', Math.PI / 2], [31, 0, 'SKYWAY', -Math.PI / 2]].forEach(s => addStreetSign(s[0], s[1], s[2], s[3]));
@@ -837,7 +838,9 @@ class Game {
         const m = new THREE.Mesh(bldgGeo, variants[(Math.random() * variants.length) | 0]);
         m.position.set(x * blockSize + (Math.random() - 0.5) * 6, h / 2, z * blockSize + (Math.random() - 0.5) * 6);
         m.scale.set(0.8 + Math.random() * 0.7, h, 0.8 + Math.random() * 0.7);
-        m.castShadow = true; m.receiveShadow = true; W.add(m); this.objects.push(m);
+        // only buildings near the playable plaza cast shadows (270 casters tanked the framerate)
+        m.castShadow = Math.abs(x) <= 4 && Math.abs(z) <= 4;
+        m.receiveShadow = true; W.add(m); this.objects.push(m);
         if (Math.random() > 0.7) billboards.push(m);
       }
     }
@@ -879,14 +882,20 @@ class Game {
         strip.position.y = 0.82; m.add(strip); W.add(m); this.objects.push(m);
       }
     }
+    // 18 glowing bulbs for atmosphere, but only 6 real PointLights near the
+    // plaza — forward rendering pays per-light on every mesh (Megawatt budget)
     const hues = [0x19f0ff, 0xff2d95, 0x9b5cff, 0xffb347, 0x39ff14];
     for (let i = 0; i < 18; i++) {
       const hue = hues[(Math.random() * hues.length) | 0];
-      const pl = new THREE.PointLight(hue, 3.0, 24, 1.6);
-      pl.position.set((Math.random() - 0.5) * 280, 2.4 + Math.random() * 1.8, (Math.random() - 0.5) * 280);
-      W.add(pl);
+      const near = i < 6;
+      const range = near ? 120 : 280;
+      const pos = new THREE.Vector3((Math.random() - 0.5) * range, 2.4 + Math.random() * 1.8, (Math.random() - 0.5) * range);
+      if (near) {
+        const pl = new THREE.PointLight(hue, 3.0, 24, 1.6);
+        pl.position.copy(pos); W.add(pl);
+      }
       const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), new THREE.MeshBasicMaterial({ color: hue }));
-      bulb.position.copy(pl.position); W.add(bulb);
+      bulb.position.copy(pos); W.add(bulb);
     }
     // lights
     W.add(new THREE.AmbientLight(0x3a4a60, 0.7));
@@ -1030,6 +1039,9 @@ class Game {
     // second shotgun for dual wield
     this.gunModels.shotgun2 = this._buildShotgun(0xff2d95);
     this.gunModels.shotgun2.position.set(-0.44, 0, 0);
+    // second pistol for dual wield (double-tap 1)
+    this.gunModels.pistol2 = this._buildPistol(0x19f0ff);
+    this.gunModels.pistol2.position.set(-0.44, 0, 0);
     Object.values(this.gunModels).forEach(m => { m.visible = false; this.gunGroup.add(m); });
     this.loadNeonWeaponModels();
 
@@ -1231,11 +1243,12 @@ class Game {
   }
 
   updateWeaponModel(name) {
-    const key = (name || 'PISTOL').toLowerCase().replace(' ', '');
-    const lookupKey = key === 'dualshg' ? 'shotgun' : key;
+    const key = (name || 'PISTOL').toLowerCase().replace(/ /g, '');
+    const lookupKey = key === 'dualshg' ? 'shotgun' : (key === 'dualpistol' ? 'pistol' : key);
     Object.entries(this.gunModels).forEach(([k, m]) => m.visible = false);
     if (this.gunModels[lookupKey]) this.gunModels[lookupKey].visible = true;
     if (key === 'dualshg' && this.gunModels.shotgun2) this.gunModels.shotgun2.visible = true;
+    if (key === 'dualpistol' && this.gunModels.pistol2) this.gunModels.pistol2.visible = true;
     if (this.weaponSmooth) { this.weaponSmooth.bowDraw = 0; this.weaponSmooth.bowRelease = 0; }
     this.swing = null;
     const model = this.gunModels[lookupKey] || this.gunModels.pistol;
@@ -1305,7 +1318,7 @@ class Game {
     // ---- Armory ----
     this.startWeaponIdx = 0;
     const wepDefs = [
-      { name:'PISTOL',     type:'SEMI', dmg:38, rateMs:230,  ammo:'∞',   trait:'RELIABLE',       col:'#19f0ff', idx:0 },
+      { name:'PISTOL',     type:'SEMI', dmg:38, rateMs:230,  ammo:'∞',   trait:'DOUBLE-TAP 1: DUAL', col:'#19f0ff', idx:0 },
       { name:'SMG',        type:'AUTO', dmg:13, rateMs:62,   ammo:'480', trait:'RAPID FIRE',     col:'#ffd166', idx:1 },
       { name:'DUAL SHG',   type:'SEMI', dmg:72, rateMs:360,  ammo:'120', trait:'DUAL WIELD',     col:'#ff2d95', idx:2 },
       { name:'FORCE PUSH', type:'SEMI', dmg:80, rateMs:1500, ammo:'∞',   trait:'KNOCKBACK',      col:'#19f0ff', idx:3 },
@@ -1372,7 +1385,17 @@ class Game {
       if (code === 'ShiftLeft') this.input.sprint = down;
       if (code === 'Escape' && down) this.togglePause();
       const digit = /^Digit([1-9])$/.exec(code);
-      if (digit && down) this.switchWeapon(parseInt(digit[1], 10) - 1);
+      if (digit && down) {
+        const idx = parseInt(digit[1], 10) - 1;
+        // double-tap 1 while holding the pistol toggles dual wield
+        const now = performance.now();
+        if (idx === 0 && this.player.weaponIdx === 0 && now - (this._lastPistolTap || 0) < 350) {
+          this.toggleDualPistol();
+        } else {
+          this.switchWeapon(idx);
+        }
+        if (idx === 0) this._lastPistolTap = now;
+      }
       if (code === 'KeyR' && down) this.reload();
     };
     addEventListener('keydown', e => onKey(e.code, true));
@@ -1487,6 +1510,19 @@ class Game {
   }
 
   jump() { if (this.player.onGround && this.gameStarted && !this.isPaused) { this.player.velocity.y = this.player.jumpForce; this.player.onGround = false; } }
+
+  // double-tap 1: twin pistols — twice the fire rate, slightly looser spread
+  toggleDualPistol() {
+    const p = this.defaultWeapons[0];
+    this.dualPistol = !this.dualPistol;
+    p.name = this.dualPistol ? 'DUAL PISTOL' : 'PISTOL';
+    p.rate = this.dualPistol ? 115 : 230;
+    p.spread = this.dualPistol ? 0.018 : 0.008;
+    p.kick = this.dualPistol ? 0.016 : 0.012;
+    this.updateWeaponModel(p.name);
+    this.updateHUD();
+    this.showMessage(this.dualPistol ? 'DUAL WIELD' : 'SINGLE PISTOL', '#19f0ff');
+  }
 
   switchWeapon(idx) {
     if (idx === undefined) idx = (this.player.weaponIdx + 1) % this.player.weapons.length;
@@ -1765,6 +1801,13 @@ class Game {
     this.gunGroup.position.z = -0.42 - (w.kick || 0.01) * 3;
     this.gunGroup.rotation.x = 0.06 + (w.kick || 0.01) * 2.5;
     this.camera.rotation.x += w.kick || 0.012;
+    // dual wield: flash alternates between right and left gun
+    if (w.name === 'DUAL PISTOL' || w.name === 'DUAL SHG') {
+      this._dualFlip = !this._dualFlip;
+      this.muzzleFlash.position.x = this._dualFlip ? -0.44 : 0;
+    } else {
+      this.muzzleFlash.position.x = 0;
+    }
     this.muzzleFlash.material.opacity = 1;
     this.muzzleFlash.rotation.z = Math.random() * Math.PI;
     this.muzzleFlash.scale.setScalar(w.pellets ? 1.6 : (w.pierce ? 1.8 : (w.projectile ? 1.4 : 1)));
@@ -2296,7 +2339,7 @@ class Game {
     if (this.desertProps) {
       const dp = this.desertProps, t = performance.now() * 0.001;
       dp.fireLights.forEach((f, i) => {
-        f.light.intensity = f.base + Math.sin(t * 9 + f.ph) * 0.7 + Math.random() * 0.2;
+        if (f.light) f.light.intensity = f.base + Math.sin(t * 9 + f.ph) * 0.7 + Math.random() * 0.2;
         f.fire.scale.setScalar(1 + Math.sin(t * 11 + f.ph) * 0.16);
       });
       dp.ankhs.forEach((a, i) => a.rotation.y += dt * (i % 2 ? -0.6 : 0.6));
