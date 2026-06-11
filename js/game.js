@@ -1585,6 +1585,13 @@ class Game {
       };
       levelSelect.appendChild(c);
     });
+    // ?level=<id> from the home page pre-selects that theatre
+    const urlLevel = new URLSearchParams(location.search).get('level');
+    if (urlLevel && levels.some(l => l.id === urlLevel)) {
+      this.level = urlLevel;
+      document.querySelectorAll('#level-select .lvl-card').forEach(b =>
+        b.classList.toggle('sel', b.dataset.id === urlLevel));
+    }
 
     const charSelect = document.getElementById('char-select');
     const classes = [
