@@ -289,8 +289,8 @@ class Game {
 
   getTargetPixelRatio() {
     const dpr = Math.max(0.5, window.devicePixelRatio || 1);
-    // Fixed lower render scale: keeps the canvas at full UI size while rendering fewer pixels for faster gameplay.
-    return Math.min(dpr, this.lowMemoryMode ? 0.58 : 0.85);
+    // Aggressive browser render scale: keeps the canvas full-size while rendering fewer internal pixels for smoother play.
+    return Math.min(dpr, this.lowMemoryMode ? 0.42 : 0.60);
   }
 
   applyRenderResolution() {
@@ -2002,263 +2002,152 @@ class Game {
 
   // ================= NIGHT CITY =================
   buildCity(W) {
-    // The default Neon City theatre now follows the official Three.js FPS example's readable
-    // blue-grid arena language: orthogonal blocks, obvious collision walls, stair-stepped
-    // vertical routes, sky-blue fog, and a clean open combat floor.
-    this.scene.background = new THREE.Color(0x88aeda);
-    this.scene.fog = new THREE.Fog(0x88aeda, 48, 235);
-    if (this.bloom) { this.bloom.strength = 0.38; this.bloom.threshold = 0.74; this.bloom.radius = 0.42; }
+    this.scene.background = null;
+    this.scene.fog = new THREE.FogExp2(0x090818, this.lowMemoryMode ? 0.015 : 0.012);
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(780, this.lowMemoryMode ? 18 : 28, this.lowMemoryMode ? 12 : 18),
+      new THREE.MeshBasicMaterial({ map: TextureGen.createSky(), side: THREE.BackSide, fog: false }));
+    W.add(sky);
 
-    const makeFpsGridTexture = (major = '#79b8ff', minor = 'rgba(255,255,255,0.34)', fill = '#477eb8') => {
-      const size = this.lowMemoryMode ? 256 : 512;
-      const c = document.createElement('canvas'); c.width = size; c.height = size;
-      const ctx = c.getContext('2d');
-      const bg = ctx.createLinearGradient(0, 0, size, size);
-      bg.addColorStop(0, fill);
-      bg.addColorStop(1, '#2b5f99');
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size);
-      const step = size / 8;
-      ctx.strokeStyle = minor; ctx.lineWidth = Math.max(1, size / 256);
-      for (let i = 0; i <= 8; i++) {
-        const p = Math.round(i * step) + 0.5;
-        ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, size); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(size, p); ctx.stroke();
-      }
-      ctx.strokeStyle = major; ctx.lineWidth = Math.max(2, size / 128);
-      ctx.strokeRect(2, 2, size - 4, size - 4);
-      ctx.beginPath(); ctx.moveTo(size / 2, 0); ctx.lineTo(size / 2, size); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, size / 2); ctx.lineTo(size, size / 2); ctx.stroke();
-      const t = new THREE.CanvasTexture(c);
-      t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.repeat.set(1, 1);
-      t.needsUpdate = true;
-      if (this.lowMemoryMode) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; }
-      if ('encoding' in t && THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
-      if ('colorSpace' in t && THREE.SRGBColorSpace) t.colorSpace = THREE.SRGBColorSpace;
-      return t;
+    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), this.lowMemoryMode ? 36 : 48, this.lowMemoryMode ? 36 : 48);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(520, 520),
+      new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.58, metalness: 0.34, color: 0x414957 }));
+    floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
+
+    // Restored original concept: neon downtown streets, sidewalks, signs, storefronts, and skyline silhouettes.
+    // Geometry is intentionally capped so the browser version stays faster than the original dense city grid.
+    const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x858c9a, roughness: 0.74, metalness: 0.08 });
+    const curbMat = new THREE.MeshBasicMaterial({ color: 0xcfd8e6 });
+    const grassTex = TextureGen.createGrass(true); grassTex.repeat.set(12, 12);
+    const cityGrassMat = new THREE.MeshStandardMaterial({ map: grassTex, color: 0x1d6a35, roughness: 0.95, metalness: 0.02 });
+    const addCitySlab = (w, d, x, z, mat, y = 0.045, h = 0.09) => {
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      slab.position.set(x, y, z); slab.receiveShadow = true; slab.castShadow = false; W.add(slab);
+      return slab;
     };
+    [[-11.5, 0, 4.6, 250], [11.5, 0, 4.6, 250], [0, -11.5, 250, 4.6], [0, 11.5, 250, 4.6]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, sidewalkMat, 0.075, 0.15));
+    [[-6.7, 0, 0.42, 250], [6.7, 0, 0.42, 250], [-16.3, 0, 0.34, 250], [16.3, 0, 0.34, 250],
+     [0, -6.7, 250, 0.42], [0, 6.7, 250, 0.42], [0, -16.3, 250, 0.34], [0, 16.3, 250, 0.34]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, curbMat, 0.16, 0.06));
+    [[-23, 0, 4.2, 230], [23, 0, 4.2, 230], [0, -23, 230, 4.2], [0, 23, 230, 4.2],
+     [-24, -24, 16, 16], [24, -24, 16, 16], [-24, 24, 16, 16], [24, 24, 16, 16]].forEach(([x, z, w, d]) => addCitySlab(w, d, x, z, cityGrassMat, 0.035, 0.045));
 
-    const finishCanvasTexture = (canvas, repeatX = 1, repeatY = 1) => {
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(repeatX, repeatY);
-      tex.needsUpdate = true;
+    const makeStreetSignTexture = (label) => {
+      const c = document.createElement('canvas'); c.width = 192; c.height = 72;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#061321'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.strokeStyle = '#19f0ff'; ctx.lineWidth = 5; ctx.strokeRect(5, 5, c.width - 10, c.height - 10);
+      ctx.fillStyle = '#19f0ff'; ctx.font = 'bold 23px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = '#19f0ff'; ctx.shadowBlur = 10; ctx.fillText(label, c.width / 2, c.height / 2);
+      const tex = new THREE.CanvasTexture(c); tex.needsUpdate = true;
       if (this.lowMemoryMode) { tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; }
       if ('encoding' in tex && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
       if ('colorSpace' in tex && THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
       return tex;
     };
+    const signPostMat = new THREE.MeshStandardMaterial({ color: 0xb9c9d8, roughness: 0.35, metalness: 0.65 });
+    const signFaceMat = new THREE.MeshBasicMaterial({ color: 0x10263c });
+    const addStreetSign = (x, z, label, rot = 0) => {
+      const g = new THREE.Group();
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.0, 6), signPostMat);
+      post.position.y = 1.5; g.add(post);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.7, 0.08), signFaceMat);
+      panel.position.set(0, 2.95, 0); g.add(panel);
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.35, 0.52), new THREE.MeshBasicMaterial({ map: makeStreetSignTexture(label), transparent: true }));
+      face.position.set(0, 2.95, 0.05); g.add(face);
+      g.position.set(x, 0, z); g.rotation.y = rot; W.add(g);
+      if (!this.lowMemoryMode) { const light = new THREE.PointLight(0x19f0ff, 0.38, 6, 2.4); light.position.set(x, 3.0, z); W.add(light); }
+    };
+    [[-17, -17, 'NEON AVE', Math.PI / 4], [17, -17, 'NIGHTFALL', -Math.PI / 4], [-17, 17, 'CYBER ST', Math.PI * 0.75], [17, 17, 'DOWNTOWN', -Math.PI * 0.75], [0, -31, 'MAIN ST', 0], [31, 0, 'SKYWAY', -Math.PI / 2]].forEach(s => addStreetSign(s[0], s[1], s[2], s[3]));
 
-    const makeCityWallTexture = () => {
-      const size = this.lowMemoryMode ? 256 : 384;
-      const c = document.createElement('canvas'); c.width = c.height = size;
-      const ctx = c.getContext('2d');
-      const bg = ctx.createLinearGradient(0, 0, size, size);
-      bg.addColorStop(0, '#9dcfff');
-      bg.addColorStop(0.55, '#4c86bf');
-      bg.addColorStop(1, '#214d78');
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size);
-
-      ctx.strokeStyle = 'rgba(255,255,255,0.34)'; ctx.lineWidth = Math.max(1, size / 220);
-      for (let i = 0; i <= 6; i++) {
-        const p = Math.round(i * size / 6) + 0.5;
-        ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, size); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(size, p); ctx.stroke();
+    const variants = [];
+    const variantCount = this.lowMemoryMode ? 2 : 3;
+    for (let i = 0; i < variantCount; i++) {
+      const t = TextureGen.createBuilding();
+      t.map.wrapS = t.map.wrapT = THREE.RepeatWrapping;
+      t.emissive.wrapS = t.emissive.wrapT = THREE.RepeatWrapping;
+      t.map.repeat.set(1, 8); t.emissive.repeat.set(1, 8);
+      if (this.lowMemoryMode) {
+        [t.map, t.emissive].forEach(tex => { tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; });
       }
-
-      ctx.fillStyle = 'rgba(9,24,47,0.28)';
-      for (let i = 0; i < 13; i++) {
-        const x = (i * 43) % size;
-        const y = (i * 71) % size;
-        ctx.fillRect(x, y, size * 0.09, size * 0.025);
+      variants.push(new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.emissive, emissive: 0xffffff,
+        emissiveIntensity: this.lowMemoryMode ? 0.95 : 1.25, roughness: 0.32, metalness: 0.48 }));
+    }
+    const bldgGeo = new THREE.BoxGeometry(10, 1, 10);
+    const billboards = []; const blockSize = 28;
+    const ring = this.lowMemoryMode ? 4 : 5;
+    for (let x = -ring; x <= ring; x++) for (let z = -ring; z <= ring; z++) {
+      if (Math.abs(x) < 2 && Math.abs(z) < 2) continue;
+      const avenue = Math.abs(x) <= 1 || Math.abs(z) <= 1;
+      if (avenue && Math.random() < 0.42) continue;
+      if (Math.random() > (this.lowMemoryMode ? 0.46 : 0.34)) {
+        const h = 18 + Math.random() * (this.lowMemoryMode ? 36 : 52);
+        const m = new THREE.Mesh(bldgGeo, variants[(Math.random() * variants.length) | 0]);
+        m.position.set(x * blockSize + (Math.random() - 0.5) * 4, h / 2, z * blockSize + (Math.random() - 0.5) * 4);
+        m.scale.set(0.8 + Math.random() * 0.55, h, 0.8 + Math.random() * 0.55);
+        m.castShadow = false; m.receiveShadow = true; W.add(m); this.objects.push(m);
+        if (!this.lowMemoryMode && Math.random() > 0.72) billboards.push(m);
       }
+    }
+    billboards.slice(0, 12).forEach(b => {
+      const bw = 5.5 + Math.random() * 4, bh = bw * 0.55;
+      const bm = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh),
+        new THREE.MeshBasicMaterial({ map: TextureGen.createBillboard(), transparent: true, fog: true }));
+      const face = (Math.random() * 4) | 0; const half = (b.scale.x * 10) / 2 + 0.3;
+      const y = 6 + Math.random() * Math.max(2, b.scale.y - 14);
+      if (face === 0) bm.position.set(b.position.x, y, b.position.z + half);
+      else if (face === 1) { bm.position.set(b.position.x, y, b.position.z - half); bm.rotation.y = Math.PI; }
+      else if (face === 2) { bm.position.set(b.position.x + half, y, b.position.z); bm.rotation.y = -Math.PI / 2; }
+      else { bm.position.set(b.position.x - half, y, b.position.z); bm.rotation.y = Math.PI / 2; }
+      W.add(bm);
+    });
 
-      const neon = ['#49d7ff', '#ff2d95', '#ffd166'];
-      for (let tower = 0; tower < 8; tower++) {
-        const tw = size * (0.055 + (tower % 3) * 0.018);
-        const th = size * (0.32 + ((tower * 37) % 35) / 100);
-        const tx = (tower * size / 8) + size * 0.018;
-        const ty = size - th;
-        ctx.fillStyle = tower % 2 ? 'rgba(17,35,62,0.74)' : 'rgba(25,54,86,0.7)';
-        ctx.fillRect(tx, ty, tw, th);
-        ctx.fillStyle = neon[tower % neon.length];
-        for (let wy = ty + size * 0.035; wy < size - size * 0.03; wy += size * 0.09) {
-          ctx.globalAlpha = 0.58;
-          ctx.fillRect(tx + tw * 0.22, wy, tw * 0.16, size * 0.016);
-          ctx.fillRect(tx + tw * 0.58, wy, tw * 0.16, size * 0.016);
-        }
-        ctx.globalAlpha = 1;
+    const cityStyle = () => ({
+      wall: new THREE.MeshStandardMaterial({ color: 0x20242e, roughness: 0.74, metalness: 0.22 }),
+      floor: new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.66, metalness: 0.28 }),
+      roof: new THREE.MeshStandardMaterial({ color: 0x16181f, roughness: 0.82 }),
+      win: new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0x19f0ff : 0xff2d95, side: THREE.DoubleSide }),
+      lamp: 0x19f0ff
+    });
+    const spots = this.lowMemoryMode ? [[-22, 18], [24, 16], [-26, -20], [20, -24]] : [[-22, 18], [24, 16], [-26, -20], [20, -24], [0, 30], [38, -4]];
+    spots.forEach(([sx, sz]) => this.buildEnterable(W, sx, sz, 8.5 + Math.random() * 2.5, 8.5 + Math.random() * 2.5, cityStyle()));
+
+    // Keep the current FPS mechanics: playable stairs, support boxes, balcony collision, and skybridge lanes remain active.
+    this.addCityPlayableStructures(W);
+
+    const crateGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0x2a2620, roughness: 0.84 });
+    const crateCount = this.lowMemoryMode ? 16 : 26;
+    for (let i = 0; i < crateCount; i++) {
+      const m = new THREE.Mesh(crateGeo, crateMat);
+      m.position.set((Math.random() - 0.5) * 210, 0.8, (Math.random() - 0.5) * 210);
+      m.rotation.y = Math.random() * Math.PI; m.castShadow = false; m.receiveShadow = true;
+      let ok = m.position.length() > 8;
+      for (const b of this.objects) if (ok && m.position.distanceTo(b.position) < 7.5) { ok = false; break; }
+      if (ok) {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.08, 1.62), new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0x19f0ff : 0xff2d95 }));
+        strip.position.y = 0.82; m.add(strip); W.add(m); this.objects.push(m);
       }
+    }
 
-      ctx.strokeStyle = 'rgba(73,215,255,0.7)'; ctx.lineWidth = Math.max(2, size / 128);
-      ctx.strokeRect(2, 2, size - 4, size - 4);
-      return finishCanvasTexture(c);
-    };
+    const hues = [0x19f0ff, 0xff2d95, 0x9b5cff, 0xffb347, 0x39ff14];
+    const lightCount = this.lowMemoryMode ? 4 : 8;
+    for (let i = 0; i < lightCount; i++) {
+      const hue = hues[(Math.random() * hues.length) | 0];
+      const pl = new THREE.PointLight(hue, this.lowMemoryMode ? 1.35 : 2.1, 18, 1.8);
+      pl.position.set((Math.random() - 0.5) * 170, 2.3 + Math.random() * 1.6, (Math.random() - 0.5) * 170);
+      W.add(pl);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshBasicMaterial({ color: hue }));
+      bulb.position.copy(pl.position); W.add(bulb);
+    }
 
-    const makeCityscapeTexture = () => {
-      const w = this.lowMemoryMode ? 512 : 768, h = this.lowMemoryMode ? 192 : 256;
-      const c = document.createElement('canvas'); c.width = w; c.height = h;
-      const ctx = c.getContext('2d');
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-      skyGrad.addColorStop(0, '#9fd3ff');
-      skyGrad.addColorStop(0.62, '#5f99d2');
-      skyGrad.addColorStop(1, '#19304f');
-      ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, w, h);
-      const colors = ['#142844', '#1e3b5b', '#244b70', '#10223b'];
-      for (let x = -12, i = 0; x < w + 20; i++) {
-        const bw = 24 + (i * 17) % 42;
-        const bh = 64 + (i * 31) % 128;
-        const y = h - bh;
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.fillRect(x, y, bw, bh);
-        ctx.fillStyle = i % 3 === 0 ? '#49d7ff' : (i % 3 === 1 ? '#ff2d95' : '#ffd166');
-        ctx.globalAlpha = 0.72;
-        for (let wy = y + 12; wy < h - 10; wy += 18) {
-          for (let wx = x + 6; wx < x + bw - 5; wx += 13) {
-            if (((wx + wy + i) % 4) !== 0) ctx.fillRect(wx, wy, 4, 3);
-          }
-        }
-        ctx.globalAlpha = 1;
-        if (i % 4 === 0) {
-          ctx.strokeStyle = '#49d7ff'; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.moveTo(x + bw * 0.5, y); ctx.lineTo(x + bw * 0.5, y - 22); ctx.stroke();
-        }
-        x += bw + 8;
-      }
-      return finishCanvasTexture(c);
-    };
+    W.add(new THREE.AmbientLight(0x3a4a60, 0.78));
+    W.add(new THREE.HemisphereLight(0x2040a0, 0x101018, 0.52));
+    const moon = new THREE.DirectionalLight(0x8899cc, this.lowMemoryMode ? 0.45 : 0.65);
+    moon.position.set(120, 170, -80); moon.castShadow = !this.lowMemoryMode; moon.shadow.bias = -0.0002;
+    moon.shadow.camera.left = -150; moon.shadow.camera.right = 150; moon.shadow.camera.top = 150; moon.shadow.camera.bottom = -150;
+    moon.shadow.camera.far = 420; moon.shadow.mapSize.set(512, 512); W.add(moon);
 
-    const materialFromGrid = (repeatX, repeatY, color = 0xffffff, emissive = 0x0a294d, intensity = 0.08) => {
-      const tex = makeFpsGridTexture();
-      tex.repeat.set(repeatX, repeatY);
-      return new THREE.MeshStandardMaterial({
-        map: tex,
-        color,
-        emissive,
-        emissiveIntensity: intensity,
-        roughness: 0.74,
-        metalness: 0.04
-      });
-    };
-
-    const materialFromCanvas = (builder, repeatX, repeatY, color = 0xffffff, emissive = 0x0a294d, intensity = 0.1, roughness = 0.68, metalness = 0.08) => {
-      const tex = builder();
-      tex.repeat.set(repeatX, repeatY);
-      return new THREE.MeshStandardMaterial({ map: tex, color, emissive, emissiveIntensity: intensity, roughness, metalness });
-    };
-
-    const floorMat = materialFromGrid(46, 46, 0xd7ecff, 0x0f3d72, 0.05);
-    const wallMat = materialFromCanvas(makeCityWallTexture, 3.2, 1.45, 0xd7ecff, 0x123a62, 0.18, 0.66, 0.08);
-    const platformMat = materialFromGrid(4, 2, 0xc8e6ff, 0x0c3760, 0.1);
-    const darkGridMat = materialFromCanvas(makeCityWallTexture, 1.6, 1.0, 0x8dbde8, 0x071a33, 0.08, 0.72, 0.1);
-    const cityscapeMat = materialFromCanvas(makeCityscapeTexture, 1.0, 1.0, 0xffffff, 0x0b2848, 0.18, 0.86, 0.02);
-    cityscapeMat.side = THREE.DoubleSide;
-    const railMat = new THREE.MeshStandardMaterial({ color: 0x244a72, emissive: 0x0f4d85, emissiveIntensity: 0.18, roughness: 0.55, metalness: 0.18 });
-    const neonCyan = new THREE.MeshBasicMaterial({ color: 0x49d7ff, transparent: true, opacity: 0.78, blending: THREE.AdditiveBlending, depthWrite: false });
-    const neonAmber = new THREE.MeshBasicMaterial({ color: 0xffd166, transparent: true, opacity: 0.72, blending: THREE.AdditiveBlending, depthWrite: false });
-
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(760, this.lowMemoryMode ? 20 : 32, this.lowMemoryMode ? 12 : 20),
-      new THREE.MeshBasicMaterial({ map: TextureGen.createDaySky('#7fb7f5', '#d8f1ff'), side: THREE.BackSide, fog: false }));
-    W.add(sky);
-
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), floorMat);
-    floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
-
-    const addSolid = (w, h, d, x, y, z, mat = wallMat) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-      m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; W.add(m); this.objects.push(m);
-      return m;
-    };
-    const addSupport = (w, h, d, x, y, z, mat = platformMat) => this.structureBox(W, w, h, d, x, y, z, mat, false, true);
-    const addVisualPanel = (w, h, x, y, z, rot = 0, mat = neonCyan) => {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-      p.position.set(x, y, z); p.rotation.y = rot; W.add(p); return p;
-    };
-
-    // Arena shell: four tall textured walls with skyline murals, preserving the readable FPS collision world.
-    const bounds = 82;
-    addSolid(168, 12, 2.4, 0, 6, -bounds);
-    addSolid(168, 12, 2.4, 0, 6, bounds);
-    addSolid(2.4, 12, 168, -bounds, 6, 0);
-    addSolid(2.4, 12, 168, bounds, 6, 0);
-
-    const addCityscapePanel = (w, h, x, y, z, rot = 0) => {
-      const panel = new THREE.Mesh(new THREE.PlaneGeometry(w, h), cityscapeMat);
-      panel.position.set(x, y, z); panel.rotation.y = rot; panel.renderOrder = 2; W.add(panel);
-      return panel;
-    };
-    addCityscapePanel(152, 18, 0, 10, -bounds + 1.26, 0);
-    addCityscapePanel(152, 18, 0, 10, bounds - 1.26, Math.PI);
-    addCityscapePanel(152, 18, -bounds + 1.26, 10, 0, Math.PI / 2);
-    addCityscapePanel(152, 18, bounds - 1.26, 10, 0, -Math.PI / 2);
-
-    // Orthogonal maze blocks and cover. Wide corridors keep wave combat clear while preserving the example's blocky world feel.
-    [
-      [-44, -32, 18, 5.4, 9], [-12, -32, 24, 5.4, 9], [32, -32, 18, 5.4, 9],
-      [-56, 0, 5.4, 34, 8], [-22, 10, 5.4, 30, 7], [22, -10, 5.4, 30, 7], [56, 0, 5.4, 34, 8],
-      [-34, 38, 30, 5.4, 8], [22, 38, 34, 5.4, 8], [0, -58, 42, 5.4, 8],
-      [-58, 52, 18, 5.4, 7], [58, -52, 18, 5.4, 7]
-    ].forEach(([x, z, w, d, h]) => addSolid(w, h, d, x, h / 2, z, wallMat));
-
-    // Low cover blocks arranged as FPS lanes rather than random city clutter.
-    [
-      [-38, -8, 7, 2.2, 7], [-8, -18, 10, 2.2, 5], [34, 14, 9, 2.2, 6], [8, 24, 7, 2.2, 7],
-      [-44, 28, 5, 1.7, 12], [44, -28, 5, 1.7, 12], [0, 54, 13, 1.9, 5], [0, -6, 8, 1.5, 8]
-    ].forEach(([x, z, w, h, d]) => addSolid(w, h, d, x, h / 2, z, darkGridMat));
-
-    // Example-inspired vertical traversal: two walkable upper decks, a central bridge, and individual stair treads.
-    const deckA = addSupport(24, 0.24, 18, -42, 4.2, 48, platformMat);
-    const deckB = addSupport(24, 0.24, 18, 42, 4.2, -48, platformMat);
-    const midDeck = addSupport(26, 0.24, 16, 0, 3.25, 0, platformMat);
-    const bridge = addSupport(48, 0.18, 5.4, 0, 4.28, 48, platformMat);
-    this.buildPlayableStairs(W, -42, 33.8, 20, 4.2, 4.2, 12, platformMat, 'z', 1);
-    this.buildPlayableStairs(W, 42, -33.8, 20, 4.2, 4.2, 12, platformMat, 'z', -1);
-    this.buildPlayableStairs(W, -12.5, 0, 16, 3.4, 3.25, 10, platformMat, 'x', 1);
-    this.buildPlayableStairs(W, 12.5, 0, 16, 3.4, 3.25, 10, platformMat, 'x', -1);
-
-    [[deckA, -42, 5.05, 39.0, 23, 'x'], [deckA, -54, 5.05, 48, 18, 'z'], [deckA, -30, 5.05, 48, 18, 'z'],
-     [deckB, 42, 5.05, -39.0, 23, 'x'], [deckB, 54, 5.05, -48, 18, 'z'], [deckB, 30, 5.05, -48, 18, 'z'],
-     [midDeck, 0, 4.1, -8.2, 24, 'x'], [midDeck, 0, 4.1, 8.2, 24, 'x'], [bridge, 0, 5.12, 45.0, 46, 'x'], [bridge, 0, 5.12, 51.0, 46, 'x']]
-      .forEach(([, x, y, z, len, axis]) => this.buildStructureRail(W, x, y, z, len, axis, railMat));
-
-    // Blue translucent panels and glowing lane labels echo the clean debug-aesthetic of the Three.js FPS demo.
-    addVisualPanel(18, 4.5, 0, 4.4, -80.75, 0, neonCyan);
-    addVisualPanel(18, 4.5, 0, 4.4, 80.75, Math.PI, neonCyan);
-    addVisualPanel(12, 3.2, -80.75, 4.0, 0, Math.PI / 2, neonAmber);
-    addVisualPanel(12, 3.2, 80.75, 4.0, 0, -Math.PI / 2, neonAmber);
-
-    const addPad = (x, z, color) => {
-      const pad = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 0.09, this.lowMemoryMode ? 20 : 36),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending }));
-      pad.position.set(x, 0.055, z); pad.rotation.x = Math.PI / 2; W.add(pad);
-      const light = new THREE.PointLight(color, 1.4, 18, 2.0); light.position.set(x, 2.1, z); W.add(light);
-    };
-    [[0, 0, 0x49d7ff], [-42, 48, 0xffd166], [42, -48, 0xff2d95], [0, -58, 0x39ff14]].forEach(p => addPad(p[0], p[1], p[2]));
-
-    // Distant textured skyline keeps the Neon City identity without reintroducing expensive dense-building clutter.
-    const skylineMat = materialFromCanvas(makeCityWallTexture, 1.0, 2.4, 0x91bbe0, 0x071d34, 0.22, 0.7, 0.12);
-    [[-112, -112, 13], [-94, -112, 18], [-76, -112, 10], [112, -110, 16], [94, -112, 11], [76, -112, 20],
-     [-112, 112, 15], [-94, 112, 10], [112, 112, 18], [94, 112, 12], [-112, 72, 11], [112, -72, 13],
-     [-132, -40, 16], [132, 44, 18], [-126, 38, 12], [126, -34, 14]]
-      .forEach(([x, z, h], i) => {
-        const tower = new THREE.Mesh(new THREE.BoxGeometry(10 + (i % 3) * 3, h, 10), skylineMat);
-        tower.position.set(x, h / 2, z); tower.castShadow = false; tower.receiveShadow = true; W.add(tower);
-        if (!this.lowMemoryMode && i % 4 === 0) {
-          const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 6), railMat);
-          mast.position.set(x, h + 2.5, z); W.add(mast);
-        }
-      });
-
-    // Lighting matches the official example's brighter sky/fog while retaining subtle neon accents.
-    W.add(new THREE.HemisphereLight(0xb9dbff, 0x3a5674, 1.05));
-    W.add(new THREE.AmbientLight(0x91b8df, 0.55));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.15);
-    sun.position.set(-48, 96, 36); sun.castShadow = true; sun.shadow.bias = -0.00025;
-    sun.shadow.camera.left = -120; sun.shadow.camera.right = 120; sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
-    sun.shadow.camera.far = 260; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
-
-    this._citySpawn = new THREE.Vector3(0, this.player.height, 20);
-    this.cityArenaProps = { bounds, respawn: this._citySpawn.clone(), decks: [deckA, deckB, midDeck, bridge] };
+    this._citySpawn = new THREE.Vector3(0, this.player.height, 14);
+    this.cityArenaProps = { bounds: 245, respawn: this._citySpawn.clone(), restoredCity: true };
   }
 
   // ================= COLORFUL HOUSE YARD BOSS ARENA =================
@@ -2908,7 +2797,7 @@ class Game {
   initUI() {
     const levelSelect = document.getElementById('level-select');
     const levels = [
-      { id: 'city',   name: 'NEON CITY',   desc: 'Three.js-style blue-grid FPS arena.', art: 'city' },
+      { id: 'city',   name: 'NEON CITY',   desc: 'Restored neon downtown, streets & rooftops.', art: 'city' },
       { id: 'fields', name: 'COUNTRYSIDE', desc: 'Sunlit fields, hills & houses.',   art: 'fields' },
       { id: 'megacity', name: 'MEGAWATT CITY 1', desc: 'Dense grid, live traffic & neon.', art: 'mega' },
       { id: 'rail', name: 'RAIL CITY', desc: 'Ride the monorail · day to night.', art: 'rail' },

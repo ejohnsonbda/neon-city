@@ -3,20 +3,48 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Neon City Nightfall</title>
-  <meta http-equiv="refresh" content="0; url=./Neon%20City%20Nightfall.html" />
+  <title>Neon City: Nightfall — Browser FPS</title>
+  <meta name="description" content="Neon City: Nightfall is a browser-based neon FPS with wave survival, scoped weapons, playable city structures, and performance-focused rendering." />
   <style>
-    body { margin:0; min-height:100vh; display:grid; place-items:center; background:#05060c; color:white; font-family:Inter,system-ui,Segoe UI,Arial,sans-serif; }
-    main { text-align:center; width:min(720px,calc(100vw - 40px)); padding:34px; border:1px solid rgba(25,240,255,.38); border-radius:22px; background:linear-gradient(135deg,rgba(4,10,18,.88),rgba(16,8,28,.78)); box-shadow:0 0 54px rgba(25,240,255,.16); }
-    h1 { margin:0 0 8px; letter-spacing:.16em; text-transform:uppercase; text-shadow:0 0 18px #19f0ff; }
-    p { color:#c8d4df; line-height:1.55; }
-    a { color:#19f0ff; font-weight:800; }
+    :root{--cyan:#19f0ff;--mag:#ff2d95;--purple:#9b5cff;--bg:#05060c;--text:#e8f7ff;}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:
+      radial-gradient(circle at 18% 12%,rgba(25,240,255,.22),transparent 30%),
+      radial-gradient(circle at 82% 18%,rgba(255,45,149,.18),transparent 28%),
+      linear-gradient(rgba(25,240,255,.07) 1px,transparent 1px) 0 0/100% 44px,
+      linear-gradient(90deg,rgba(255,45,149,.06) 1px,transparent 1px) 0 0/44px 100%,var(--bg);
+      color:var(--text);font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;line-height:1.55;}
+    a{color:inherit}.wrap{width:min(1160px,calc(100vw - 34px));margin:0 auto;padding:42px 0 52px}.hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:28px;align-items:center;min-height:70vh}.badge{display:inline-block;color:var(--cyan);border:1px solid rgba(25,240,255,.45);padding:8px 12px;font:800 12px/1 Inter,system-ui;letter-spacing:.18em;text-transform:uppercase;background:rgba(25,240,255,.07)}h1{font-size:clamp(48px,9vw,104px);line-height:.9;margin:22px 0 18px;letter-spacing:.04em;text-transform:uppercase;text-shadow:0 0 30px rgba(25,240,255,.42)}.sub{font-size:clamp(18px,2.2vw,25px);color:#c7e7f2;max-width:760px}.actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:28px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 24px;border:1px solid rgba(25,240,255,.5);text-decoration:none;font-weight:900;letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(135deg,var(--cyan),#2a8cff);color:#001019;box-shadow:0 0 28px rgba(25,240,255,.28)}.btn.secondary{background:rgba(255,255,255,.05);color:var(--cyan);border-color:rgba(255,255,255,.18)}.panel{border:1px solid rgba(255,255,255,.16);background:linear-gradient(145deg,rgba(7,14,26,.84),rgba(24,9,36,.72));box-shadow:0 0 54px rgba(25,240,255,.13);padding:24px;clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px)}.city-card{min-height:420px;display:grid;align-content:end;background:
+      linear-gradient(to top,rgba(5,6,12,.96),rgba(5,6,12,.12)),
+      repeating-linear-gradient(90deg,transparent 0 22px,rgba(25,240,255,.28) 22px 24px,transparent 24px 42px),
+      linear-gradient(135deg,rgba(25,240,255,.2),rgba(255,45,149,.16));position:relative;overflow:hidden}.skyline{position:absolute;inset:auto 0 0;height:62%;background:
+      linear-gradient(to top,#060912 0 22%,transparent 22%),
+      linear-gradient(90deg,#0b1730 0 8%,transparent 8% 10%,#111a33 10% 18%,transparent 18% 22%,#071326 22% 31%,transparent 31% 34%,#12162e 34% 48%,transparent 48% 52%,#071326 52% 63%,transparent 63% 67%,#111a33 67% 78%,transparent 78% 82%,#0b1730 82% 100%);filter:drop-shadow(0 0 18px rgba(25,240,255,.28))}.city-card h2{position:relative;margin:0;color:white;text-transform:uppercase;font-size:32px;text-shadow:0 0 18px var(--mag)}.city-card p{position:relative;color:#dcecff}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:28px}.tile{padding:20px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.045)}.tile h3{margin:0 0 8px;color:var(--cyan);font-size:14px;letter-spacing:.15em;text-transform:uppercase}.tile p{margin:0;color:#b9c9d6}.note{margin-top:24px;color:#a7bbc8;font-size:14px}@media(max-width:860px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr}h1{font-size:52px}}
   </style>
 </head>
 <body>
-  <main>
-    <h1>Neon City Nightfall</h1>
-    <p>Opening the Nightfall main page. If it does not redirect automatically, <a href="./Neon%20City%20Nightfall.html">enter Nightfall here</a>.</p>
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <span class="badge">Browser FPS · Nightfall Protocol</span>
+        <h1>Neon City: Nightfall</h1>
+        <p class="sub">Fight through a neon downtown overrun by golems. The game combines fast first-person movement, wave survival, scoped weapons, playable rooftops, and a restored city level tuned for smoother browser performance.</p>
+        <div class="actions">
+          <a class="btn" href="./Neon%20City%20Nightfall.html">Play the game</a>
+          <a class="btn secondary" href="./Golem%20Bestiary.html">View bestiary</a>
+        </div>
+        <p class="note">For better performance, the game now renders at a lower internal resolution while keeping the full-screen HUD and controls readable.</p>
+      </div>
+      <aside class="panel city-card" aria-label="Neon city illustration">
+        <div class="skyline"></div>
+        <h2>Restored Neon Downtown</h2>
+        <p>Night streets, signs, storefronts, elevated routes, and cityscape cover return to the first level.</p>
+      </aside>
+    </section>
+    <section class="grid" aria-label="Game features">
+      <article class="tile"><h3>Fast FPS Controls</h3><p>Move with WASD, sprint, jump, aim down sights, scope precision weapons, reload, and swap weapons with number keys.</p></article>
+      <article class="tile"><h3>Wave Survival</h3><p>Hold the line against escalating enemy waves, projectile attackers, bosses, and multiple arena themes.</p></article>
+      <article class="tile"><h3>Optimized Browser Play</h3><p>Lower render scale, capped city detail, and lighter lighting reduce lag without removing the core mechanics.</p></article>
+    </section>
   </main>
 </body>
 </html>
