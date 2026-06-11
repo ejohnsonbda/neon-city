@@ -1581,6 +1581,7 @@ class Game {
         document.querySelectorAll('#level-select .lvl-card').forEach(b => b.classList.remove('sel'));
         c.classList.add('sel');
         this.level = l.id;
+        this.start();
       };
       levelSelect.appendChild(c);
     });
