@@ -1,7 +1,8 @@
 // ============================================================
-//  ENEMY FACTORY — faceted rock golems
-//  Low-poly slate-purple boulders, glowing magenta eyes, mossy
-//  brows with sprouts, green moss drips, big stone knuckle-fists.
+//  ENEMY FACTORY — violet crystal & gray stone golems
+//  Jagged toon-shaded rock bodies (from the Golem Roster variant
+//  pack): cracked stone textures, glowing stretched-oval eyes,
+//  floating core shards on the boss.
 //  Each builder returns a THREE.Group with:
 //    userData.parts  { legs[], arms[], head, orb? }  (for animation)
 //    userData.cores  [materials]                      (for hit-flash)
@@ -16,7 +17,73 @@ function _geos() {
   _G.box = new THREE.BoxGeometry(1, 1, 1);
   _G.cone = new THREE.ConeGeometry(1, 1, 5);
   _G.cyl = new THREE.CylinderGeometry(1, 1, 1, 6);
+  _G.eye = new THREE.SphereGeometry(1, 12, 8);
+  // pre-displaced jagged rock variants (shared across all golems)
+  const jag = (detail, amp) => {
+    const geo = new THREE.IcosahedronGeometry(1, detail);
+    const pos = geo.attributes.position;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const n = v.clone().normalize();
+      const noise = Math.sin(v.x * 5.5 + v.y * 3.1) * amp * 0.5 + Math.cos(v.z * 6.8 - v.y * 2.4) * amp * 0.35 + (Math.random() - 0.5) * amp;
+      v.addScaledVector(n, noise);
+      pos.setXYZ(i, v.x, v.y, v.z);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  };
+  _G.jag1 = []; _G.jag0 = [];
+  for (let i = 0; i < 6; i++) _G.jag1.push(jag(1, 0.13));
+  for (let i = 0; i < 4; i++) _G.jag0.push(jag(0, 0.16));
   return _G;
+}
+
+// cracked stone canvas texture (one per palette, shared by every golem)
+function _stoneTexture(baseA, baseB, crackColor) {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, baseA); grad.addColorStop(1, baseB);
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 2500; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${0.03 + Math.random() * 0.06})`;
+    ctx.fillRect(Math.random() * size, Math.random() * size, 1.5, 1.5);
+  }
+  for (let i = 0; i < 18; i++) {
+    let x = Math.random() * size, y = Math.random() * size;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    const steps = 5 + Math.floor(Math.random() * 7);
+    for (let s = 0; s < steps; s++) { x += (Math.random() - 0.5) * 60; y += (Math.random() - 0.5) * 60; ctx.lineTo(x, y); }
+    ctx.strokeStyle = crackColor; ctx.lineWidth = 1.2 + Math.random() * 1.6; ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1.4, 1.4);
+  if ('encoding' in tex && THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+  return tex;
+}
+
+let _golemMats = null;
+function _palettes() {
+  if (_golemMats) return _golemMats;
+  // 4-step toon gradient
+  const data = new Uint8Array([38, 31, 53, 96, 85, 122, 165, 156, 194, 238, 235, 255]);
+  const gradientMap = new THREE.DataTexture(data, 4, 1, THREE.RGBFormat);
+  gradientMap.needsUpdate = true;
+  gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
+  const violetTex = _stoneTexture('#7a73a0', '#2c2742', '#bb6bff');
+  const grayTex = _stoneTexture('#c5c7cf', '#6f7583', '#d9d7ff');
+  const desertTex = _stoneTexture('#d8b87e', '#8a6a3a', '#ffd35a');
+  const mk = (color, map, emissive, ei) => new THREE.MeshToonMaterial({ color, map, gradientMap, emissive, emissiveMap: map, emissiveIntensity: ei });
+  _golemMats = {
+    violet:     { main: mk(0x6f6797, violetTex, 0x54128c, 0.34), dark: mk(0x3e3958, violetTex, 0x2c0a55, 0.28), eye: 0xcd6bff },
+    gray:       { main: mk(0xb6bac6, grayTex,   0x7877b1, 0.12), dark: mk(0x8f94a3, grayTex,   0x68679f, 0.10), eye: 0xdedbff },
+    desert:     { main: mk(0xd8b87e, desertTex, 0x6a4e0c, 0.22), dark: mk(0xa8854e, desertTex, 0x4a350a, 0.18), eye: 0xffd35a },
+  };
+  return _golemMats;
 }
 
 const EnemyFactory = {
@@ -143,174 +210,162 @@ const EnemyFactory = {
   // pick a rock material
   _r(i) { return this._rock(this._shades[i % this._shades.length]); },
 
-  // ---- GRUNT: canonical knuckle-walking boulder golem ----
-  _grunt() {
-    const g = _geos();
-    const grp = new THREE.Group();
-    const cores = [];
-    const glow = this.TYPES.grunt.glow;
-
-    // legs (short rock stumps)
-    const legL = this._chunk(grp, this._r(3), -0.26, 0.32, 0, 0.26, 0.34, 0.26);
-    const legR = this._chunk(grp, this._r(3), 0.26, 0.32, 0, 0.26, 0.34, 0.26);
-
-    // main body boulder + back/shoulder chunks
-    this._chunk(grp, this._r(0), 0, 1.0, -0.05, 0.66, 0.6, 0.6, 0, 0.6, 0, g.dod);
-    this._chunk(grp, this._r(2), -0.4, 1.2, -0.25, 0.3, 0.34, 0.3, 0.5, 1, 0);
-    this._chunk(grp, this._r(4), 0.42, 1.25, -0.2, 0.28, 0.3, 0.28, 0, 0.4, 0.3);
-
-    // face block (forward-leaning) + brow recess
-    const face = this._chunk(grp, this._r(1), 0, 1.18, 0.42, 0.5, 0.44, 0.34, -0.12, 0, 0, g.box);
-    this._chunk(grp, this._r(3), 0, 1.42, 0.46, 0.56, 0.16, 0.3, -0.2, 0, 0, g.box); // brow
-    this._eyes(grp, cores, this._eyeMat(glow), 1.26, 0.62, 0.16, 0.12);
-    this._mossCrown(grp, 1.56, -0.05, 0.5, 3);
-    this._mossDrips(grp, 1.0, 0.55, 0.4, 5);
-
-    // big arms / knuckle fists reaching to the ground
-    const armL = this._makeArm(grp, -0.62, 1.15, 0.05, 1);
-    const armR = this._makeArm(grp, 0.62, 1.15, 0.05, -1);
-
-    grp.userData.parts = { legs: [legL, legR], arms: [armL, armR], head: face };
-    grp.userData.cores = cores;
-    grp.userData.eyeHeight = 1.26;
-    return grp;
+  // ---- new golem-variant helpers (Golem Roster pack) ----
+  _pal() {
+    const p = _palettes();
+    if (this._skin === 'desert') return p.desert;
+    return p[this._variantPalette || 'violet'];
   },
-
-  _makeArm(parent, x, y, z, side) {
+  // jagged toon rock chunk
+  _jrock(parent, dark, x, y, z, sx, sy, sz, rx, ry, rz, lowDetail) {
     const g = _geos();
+    const pool = lowDetail ? g.jag0 : g.jag1;
+    const geo = pool[(Math.random() * pool.length) | 0];
+    const m = new THREE.Mesh(geo, dark ? this._pal().dark : this._pal().main);
+    m.position.set(x, y, z);
+    m.scale.set(sx, sy === undefined ? sx : sy, sz === undefined ? sx : sz);
+    m.rotation.set(rx || 0, ry || 0, rz || 0);
+    m.castShadow = !window.__NEON_LOW_MEMORY;
+    parent.add(m);
+    return m;
+  },
+  // glowing stretched-oval eyes; material pushed into cores for hit-flash
+  _ovalEyes(parent, cores, y, z, sep, sz) {
+    const g = _geos();
+    const mat = new THREE.MeshStandardMaterial({ color: this._pal().eye, emissive: this._pal().eye, emissiveIntensity: 2.4, roughness: 0.4 });
+    cores.push(mat);
+    [-sep, sep].forEach(x => {
+      const e = new THREE.Mesh(g.eye, mat);
+      e.position.set(x, y, z);
+      e.scale.set(sz * 1.9, sz * 0.45, sz * 0.45);
+      parent.add(e);
+    });
+    return mat;
+  },
+  // a swingable leg group: thigh + shin hanging from the hip
+  _vLeg(parent, x, hipY, thigh, shin) {
+    const leg = new THREE.Group();
+    leg.position.set(x, hipY, 0);
+    this._jrock(leg, false, 0, -thigh * 0.45, 0, thigh * 0.42, thigh * 0.62, thigh * 0.38, 0, 0, 0, true);
+    this._jrock(leg, false, 0, -hipY * 0.62, 0.03, shin * 0.46, shin * 0.78, shin * 0.42, 0, 0, 0, true);
+    parent.add(leg);
+    return leg;
+  },
+  // a swingable arm group: upper + forearm + fist
+  _vArm(parent, x, y, side, s) {
     const arm = new THREE.Group();
-    arm.position.set(x, y, z);
-    // upper arm chunk
-    this._chunk(arm, this._r(2), 0, -0.25, 0, 0.2, 0.4, 0.2, 0, 0, side * 0.15);
-    // big fist near ground
-    this._chunk(arm, this._r(0), side * 0.05, -0.62, 0.12, 0.32, 0.32, 0.32, 0.3, 0.5, 0, g.dod);
+    arm.position.set(x, y, 0.04);
+    this._jrock(arm, false, side * 0.05 * s, -0.32 * s, 0.02, 0.3 * s, 0.5 * s, 0.26 * s, 0.1, 0, side * 0.14, true);
+    this._jrock(arm, false, side * 0.12 * s, -0.78 * s, 0.06, 0.34 * s, 0.55 * s, 0.3 * s, 0.04, 0, side * 0.1, true);
+    this._jrock(arm, true, side * 0.14 * s, -1.16 * s, 0.1, 0.4 * s, 0.3 * s, 0.36 * s, 0, 0, side * 0.08, true);
     arm.castShadow = true;
     parent.add(arm);
     return arm;
   },
 
-  // ---- RUNNER: small fast rolling boulder ----
-  _runner() {
-    const g = _geos();
+  // generic golem variant body (torso/waist/head/shoulders/limbs)
+  _variant(o) {
     const grp = new THREE.Group();
     const cores = [];
-    const glow = this.TYPES.runner.glow;
+    this._variantPalette = o.palette;
 
-    this._chunk(grp, this._r(0), 0, 0.5, 0, 0.5, 0.46, 0.5, 0.3, 0.8, 0.2, g.dod);
-    this._chunk(grp, this._r(2), -0.25, 0.62, -0.1, 0.22, 0.24, 0.22);
-    this._chunk(grp, this._r(4), 0.22, 0.4, 0.18, 0.2, 0.2, 0.2);
-    // face front
-    this._chunk(grp, this._r(3), 0, 0.5, 0.4, 0.34, 0.12, 0.2, -0.2, 0, 0, g.box); // brow
-    this._eyes(grp, cores, this._eyeMat(glow), 0.46, 0.5, 0.12, 0.09);
-    this._mossCrown(grp, 0.78, -0.05, 0.32, 2);
-    this._mossDrips(grp, 0.34, 0.46, 0.26, 3);
+    // torso cluster + waist + chest shard
+    this._jrock(grp, false, 0, o.torsoY, -0.02, o.torsoW, o.torsoH, o.torsoD, 0.05, Math.random() * 3, 0);
+    this._jrock(grp, true, 0, o.torsoY - o.torsoH * 0.8, 0.06, o.torsoW * 0.55, o.torsoH * 0.5, o.torsoD * 0.6, 0.03, 0, 0);
+    this._jrock(grp, true, 0, o.torsoY + o.torsoH * 0.1, o.torsoD * 0.92, o.torsoW * 0.22, o.torsoH * 0.32, 0.1, 0.2, 0, 0, true);
 
-    // four stubby rock legs
-    const legs = [];
-    [[-0.28, 0.22], [0.28, 0.22], [-0.26, -0.18], [0.26, -0.18]].forEach(([lx, lz]) => {
-      legs.push(this._chunk(grp, this._r(3), lx, 0.16, lz, 0.13, 0.22, 0.13));
+    // head + crown chunk + jaw
+    const head = this._jrock(grp, false, 0, o.headY, 0, o.headS, o.headS * 0.95, o.headS * 0.85, 0.03, Math.random() * 3, 0);
+    this._jrock(grp, true, 0, o.headY - o.headS * 0.5, o.headS * 0.18, o.headS * 0.6, o.headS * 0.5, o.headS * 0.5, 0.13, 0, 0, true);
+    this._jrock(grp, false, 0, o.headY + o.headS * 0.55, -o.headS * 0.2, o.headS * 0.6, o.headS * 0.8, o.headS * 0.5, 0.22, 0, 0.08, true);
+    this._ovalEyes(grp, cores, o.headY + o.headS * 0.02, o.headS * 0.72, o.headS * 0.32, o.eyeSz);
+
+    // shoulder boulders
+    this._jrock(grp, false, -o.shoulderX, o.shoulderY, 0, o.shoulderS, o.shoulderS * 0.82, o.shoulderS, 0.18, 0, 0.35);
+    this._jrock(grp, false, o.shoulderX, o.shoulderY, 0, o.shoulderS, o.shoulderS * 0.82, o.shoulderS, 0.18, 0, -0.35);
+
+    // limbs
+    const armL = this._vArm(grp, -o.armX, o.armY, -1, o.armS);
+    const armR = this._vArm(grp, o.armX, o.armY, 1, o.armS);
+    const legL = this._vLeg(grp, -o.legX, o.hipY, o.thigh, o.shin);
+    const legR = this._vLeg(grp, o.legX, o.hipY, o.thigh, o.shin);
+
+    // floating torso fragments (bosses get a halo of shards)
+    for (let i = 0; i < (o.floaters || 0); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = o.torsoW * (1.3 + Math.random() * 0.6);
+      this._jrock(grp, false, Math.cos(a) * r, o.torsoY + (Math.random() - 0.5) * o.torsoH * 1.6, Math.sin(a) * r,
+        0.14 + Math.random() * 0.1, 0.2 + Math.random() * 0.12, 0.14 + Math.random() * 0.08, Math.random() * 2, Math.random() * 2, Math.random() * 2, true);
+    }
+
+    grp.userData.parts = { legs: [legL, legR], arms: [armL, armR], head };
+    grp.userData.cores = cores;
+    grp.userData.eyeHeight = o.headY;
+    this._variantPalette = null;
+    return grp;
+  },
+
+  // ---- GRUNT: "Scout Golem" — compact gray stone walker ----
+  _grunt() {
+    return this._variant({
+      palette: 'gray',
+      torsoY: 1.06, torsoW: 0.52, torsoH: 0.56, torsoD: 0.4,
+      headY: 1.62, headS: 0.34, eyeSz: 0.11,
+      shoulderX: 0.55, shoulderY: 1.32, shoulderS: 0.3,
+      armX: 0.66, armY: 1.3, armS: 0.62,
+      legX: 0.26, hipY: 0.72, thigh: 0.5, shin: 0.55,
     });
+  },
 
-    grp.userData.parts = { legs, arms: [], head: null };
-    grp.userData.cores = cores;
-    grp.userData.eyeHeight = 0.5;
-    grp.userData.crawl = true;
+  // ---- RUNNER: "Wraith Shard" — slim fast violet shard ----
+  _runner() {
+    const grp = this._variant({
+      palette: 'violet',
+      torsoY: 0.72, torsoW: 0.32, torsoH: 0.4, torsoD: 0.26,
+      headY: 1.12, headS: 0.25, eyeSz: 0.085,
+      shoulderX: 0.36, shoulderY: 0.92, shoulderS: 0.2,
+      armX: 0.44, armY: 0.9, armS: 0.42,
+      legX: 0.17, hipY: 0.48, thigh: 0.34, shin: 0.4,
+    });
+    grp.userData.eyeHeight = 1.1;
     return grp;
   },
 
-  // ---- TANK: hulking mountain golem ----
+  // ---- TANK: "Brute Core" — wide violet bruiser ----
   _tank() {
-    const g = _geos();
-    const grp = new THREE.Group();
-    const cores = [];
-    const glow = this.TYPES.tank.glow;
-
-    const legL = this._chunk(grp, this._r(3), -0.42, 0.4, 0, 0.36, 0.42, 0.36);
-    const legR = this._chunk(grp, this._r(3), 0.42, 0.4, 0, 0.36, 0.42, 0.36);
-
-    // massive body with many chunks
-    this._chunk(grp, this._r(0), 0, 1.3, -0.1, 0.95, 0.85, 0.85, 0, 0.5, 0, g.dod);
-    this._chunk(grp, this._r(2), -0.62, 1.7, -0.3, 0.42, 0.5, 0.42, 0.4, 1, 0);
-    this._chunk(grp, this._r(4), 0.66, 1.75, -0.25, 0.4, 0.46, 0.4, 0, 0.6, 0.3);
-    this._chunk(grp, this._r(1), 0, 2.0, -0.15, 0.4, 0.36, 0.4, 0.3, 0.2, 0.2);
-
-    // face
-    this._chunk(grp, this._r(1), 0, 1.42, 0.66, 0.7, 0.6, 0.42, -0.12, 0, 0, g.box);
-    this._chunk(grp, this._r(3), 0, 1.74, 0.7, 0.78, 0.2, 0.36, -0.2, 0, 0, g.box); // brow
-    this._eyes(grp, cores, this._eyeMat(glow), 1.52, 0.92, 0.22, 0.16);
-    this._mossCrown(grp, 1.96, -0.1, 0.7, 4);
-    this._mossDrips(grp, 1.18, 0.78, 0.56, 6);
-
-    const armL = this._makeBigArm(grp, -0.95, 1.5, 0.08, 1);
-    const armR = this._makeBigArm(grp, 0.95, 1.5, 0.08, -1);
-
-    grp.userData.parts = { legs: [legL, legR], arms: [armL, armR], head: null };
-    grp.userData.cores = cores;
-    grp.userData.eyeHeight = 1.52;
-    return grp;
+    return this._variant({
+      palette: 'violet',
+      torsoY: 1.55, torsoW: 0.95, torsoH: 0.85, torsoD: 0.62,
+      headY: 2.35, headS: 0.44, eyeSz: 0.15,
+      shoulderX: 0.98, shoulderY: 1.95, shoulderS: 0.52,
+      armX: 1.2, armY: 1.9, armS: 1.05,
+      legX: 0.46, hipY: 1.0, thigh: 0.7, shin: 0.78,
+      floaters: 3,
+    });
   },
 
-  _makeBigArm(parent, x, y, z, side) {
-    const g = _geos();
-    const arm = new THREE.Group(); arm.position.set(x, y, z);
-    this._chunk(arm, this._r(2), 0, -0.35, 0, 0.32, 0.6, 0.32, 0, 0, side * 0.12);
-    this._chunk(arm, this._r(0), side * 0.08, -0.92, 0.14, 0.5, 0.5, 0.5, 0.3, 0.5, 0, g.dod);
-    parent.add(arm);
-    return arm;
-  },
-
-  // ---- SHOOTER: golem that charges a glowing core in its hands ----
+  // ---- SHOOTER: "Gray Sentinel" — tall caster with a charge orb ----
   _shooter() {
     const g = _geos();
-    const grp = new THREE.Group();
-    const cores = [];
-    const glow = this.TYPES.shooter.glow;
-
-    // tall, elongated legs (digitigrade stance)
-    const legL = this._chunk(grp, this._r(3), -0.26, 0.62, 0.02, 0.2, 0.66, 0.2, -0.12, 0, 0);
-    const legR = this._chunk(grp, this._r(3), 0.26, 0.62, 0.02, 0.2, 0.66, 0.2, -0.12, 0, 0);
-    // clawed feet
-    this._chunk(grp, this._r(4), -0.26, 0.12, 0.16, 0.22, 0.14, 0.32);
-    this._chunk(grp, this._r(4), 0.26, 0.12, 0.16, 0.22, 0.14, 0.32);
-
-    // tapering robe / lower body
-    this._chunk(grp, this._r(2), 0, 1.18, -0.04, 0.5, 0.5, 0.46, 0, 0.4, 0, g.dod);
-    // slender elongated torso, slightly hunched forward
-    this._chunk(grp, this._r(0), 0, 1.92, 0.04, 0.42, 0.66, 0.4, 0.12, 0.6, 0, g.dod);
-    // hunched shoulder / cloak chunks rising behind the head
-    this._chunk(grp, this._r(2), -0.46, 2.32, -0.22, 0.3, 0.42, 0.3, 0.3, 1, 0);
-    this._chunk(grp, this._r(4), 0.46, 2.36, -0.2, 0.3, 0.46, 0.3, 0, 0.6, 0.3);
-    this._chunk(grp, this._r(1), 0, 2.5, -0.26, 0.34, 0.4, 0.3, 0.4, 0.2, 0.2);
-
-    // long neck
-    this._chunk(grp, this._r(3), 0, 2.5, 0.1, 0.2, 0.4, 0.2, 0.2, 0, 0);
-    // tall narrow head raised high, leaning forward
-    const head = this._chunk(grp, this._r(1), 0, 2.92, 0.18, 0.34, 0.5, 0.32, -0.1, 0, 0, g.box);
-    // deep brow ridge
-    this._chunk(grp, this._r(3), 0, 3.18, 0.22, 0.4, 0.16, 0.3, -0.22, 0, 0, g.box);
-    // glowing eyes up high
-    this._eyes(grp, cores, this._eyeMat(glow), 3.0, 0.38, 0.12, 0.1);
-    // tall horned crown
-    this._mossCrown(grp, 3.42, 0.0, 0.4, 4);
-    this._chunk(grp, this._r(4), 0, 3.62, -0.02, 0.06, 0.4, 0.06, 0, 0, 0.18, g.cone);
-    // hanging vine drips from the jaw
-    this._mossDrips(grp, 2.7, 0.32, 0.32, 4);
-
-    // long arms cupped forward holding a charge orb at chest height
-    this._chunk(grp, this._r(2), -0.5, 1.9, 0.12, 0.16, 0.5, 0.16, 0.5, 0, 0.28);
-    this._chunk(grp, this._r(2), 0.5, 1.9, 0.12, 0.16, 0.5, 0.16, 0.5, 0, -0.28);
-    // forearms reaching in toward the orb
-    this._chunk(grp, this._r(4), -0.34, 1.52, 0.42, 0.13, 0.34, 0.13, 1.1, 0, 0.3);
-    this._chunk(grp, this._r(4), 0.34, 1.52, 0.42, 0.13, 0.34, 0.13, 1.1, 0, -0.3);
-
-    // glowing charge orb
-    const orbMat = this._eyeMat(glow); orbMat.emissiveIntensity = 2.2;
-    cores.push(orbMat);
-    const orb = this._chunk(grp, orbMat, 0, 1.46, 0.62, 0.22, 0.22, 0.22, 0, 0, 0, g.ico);
-
-    grp.userData.parts = { legs: [legL, legR], arms: [], head, orb };
-    grp.userData.cores = cores;
+    const grp = this._variant({
+      palette: 'gray',
+      torsoY: 1.9, torsoW: 0.46, torsoH: 0.66, torsoD: 0.38,
+      headY: 2.85, headS: 0.36, eyeSz: 0.1,
+      shoulderX: 0.52, shoulderY: 2.38, shoulderS: 0.32,
+      armX: 0.6, armY: 2.3, armS: 0.7,
+      legX: 0.26, hipY: 1.25, thigh: 0.66, shin: 0.85,
+      floaters: 2,
+    });
+    // glowing charge orb cupped at chest height (flares before firing)
+    this._variantPalette = 'gray';
+    const orbMat = new THREE.MeshStandardMaterial({ color: this._pal().eye, emissive: this._pal().eye, emissiveIntensity: 2.2, roughness: 0.4 });
+    grp.userData.cores.push(orbMat);
+    const orb = new THREE.Mesh(g.ico, orbMat);
+    orb.position.set(0, 1.46, 0.62); orb.scale.setScalar(0.22);
+    grp.add(orb);
+    grp.userData.parts.orb = orb;
     grp.userData.eyeHeight = 2.55;
+    this._variantPalette = null;
     return grp;
   },
 
@@ -592,51 +647,30 @@ const EnemyFactory = {
     return grp;
   },
 
-  // ---- BOSS: colossal four-eyed, four-armed golem on long legs ----
+  // ---- BOSS: "Violet Titan" — colossal crystal golem with shard halo ----
   _boss() {
     const g = _geos();
-    const grp = new THREE.Group();
-    const cores = [];
-    const glow = this.TYPES.boss.glow;
-
-    // ----- long towering legs -----
-    const legL = this._chunk(grp, this._r(3), -0.62, 1.5, 0, 0.46, 1.5, 0.46);
-    const legR = this._chunk(grp, this._r(3), 0.62, 1.5, 0, 0.46, 1.5, 0.46);
-    // knee joints
-    this._chunk(grp, this._r(4), -0.62, 1.55, 0.12, 0.34, 0.34, 0.34);
-    this._chunk(grp, this._r(4), 0.62, 1.55, 0.12, 0.34, 0.34, 0.34);
-    // splayed talon feet
-    this._chunk(grp, this._r(4), -0.62, 0.18, 0.28, 0.5, 0.22, 0.6);
-    this._chunk(grp, this._r(4), 0.62, 0.18, 0.28, 0.5, 0.22, 0.6);
-
-    // enormous body (lifted to sit atop the long legs)
-    this._chunk(grp, this._r(0), 0, 3.7, -0.15, 1.5, 1.4, 1.3, 0, 0.5, 0, g.dod);
-    this._chunk(grp, this._r(2), -1.0, 4.4, -0.4, 0.66, 0.8, 0.66, 0.4, 1, 0);
-    this._chunk(grp, this._r(4), 1.05, 4.45, -0.35, 0.64, 0.74, 0.64, 0, 0.6, 0.3);
-    this._chunk(grp, this._r(1), 0, 4.8, -0.2, 0.7, 0.6, 0.7, 0.3, 0.2, 0.2);
-    // pelvis blending body to legs
-    this._chunk(grp, this._r(2), 0, 2.9, -0.05, 0.95, 0.6, 0.85, 0, 0.3, 0, g.dod);
-
-    // face
-    this._chunk(grp, this._r(1), 0, 3.9, 1.05, 1.1, 0.95, 0.6, -0.1, 0, 0, g.box);
-    this._chunk(grp, this._r(3), 0, 4.35, 1.1, 1.2, 0.3, 0.5, -0.2, 0, 0, g.box); // heavy brow
-    // four eyes (two pairs)
-    const eMat = this._eyeMat(glow); cores.push(eMat);
-    [[-0.5, 4.08], [0.5, 4.08], [-0.26, 3.8], [0.26, 3.8]].forEach(([ex, ey]) => {
-      this._chunk(grp, eMat, ex, ey, 1.45, 0.2, 0.13, 0.1, 0, 0, Math.PI / 4, g.oct);
+    const grp = this._variant({
+      palette: 'violet',
+      torsoY: 3.6, torsoW: 1.5, torsoH: 1.5, torsoD: 0.95,
+      headY: 5.15, headS: 0.78, eyeSz: 0.22,
+      shoulderX: 1.6, shoulderY: 4.45, shoulderS: 0.85,
+      armX: 1.95, armY: 4.35, armS: 1.7,
+      legX: 0.75, hipY: 2.35, thigh: 1.3, shin: 1.5,
+      floaters: 8,
     });
-    this._mossCrown(grp, 4.75, -0.15, 1.2, 7);
-    this._mossDrips(grp, 3.4, 1.2, 0.95, 9);
-
-    // ----- four arms: upper pair + lower pair -----
-    const armUL = this._makeBigArm(grp, -1.55, 4.0, 0.1, 1); armUL.scale.setScalar(1.5);
-    const armUR = this._makeBigArm(grp, 1.55, 4.0, 0.1, -1); armUR.scale.setScalar(1.5);
-    const armLL = this._makeBigArm(grp, -1.42, 3.05, 0.35, 1); armLL.scale.setScalar(1.2);
-    const armLR = this._makeBigArm(grp, 1.42, 3.05, 0.35, -1); armLR.scale.setScalar(1.2);
-
-    grp.userData.parts = { legs: [legL, legR], arms: [armUL, armUR, armLL, armLR], head: null };
-    grp.userData.cores = cores;
+    // extra lower eye pair (four-eyed titan) sharing the hit-flash material
+    this._variantPalette = 'violet';
+    const eMat = new THREE.MeshStandardMaterial({ color: this._pal().eye, emissive: this._pal().eye, emissiveIntensity: 2.4, roughness: 0.4 });
+    grp.userData.cores.push(eMat);
+    [[-0.26, 4.85], [0.26, 4.85]].forEach(([ex, ey]) => {
+      const e = new THREE.Mesh(g.eye, eMat);
+      e.position.set(ex, ey, 0.55);
+      e.scale.set(0.26, 0.07, 0.07);
+      grp.add(e);
+    });
     grp.userData.eyeHeight = 3.9;
+    this._variantPalette = null;
     return grp;
   }
 };
