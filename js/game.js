@@ -141,10 +141,20 @@ class Game {
   // every top-level world object (sky domes excluded), stretches fog and
   // re-scales the coordinate systems of moving props (trains, traffic).
   _expandWorld(f) {
+    // moving props (train cars, traffic, birds) keep their true proportions —
+    // only their positions/coordinate systems scale, never their shape
+    const noStretch = new Set();
+    [this.railProps, this.megaProps].forEach(pr => {
+      if (!pr) return;
+      (pr.cars || []).forEach(c => noStretch.add(c));
+      (pr.vehicles || []).forEach(v => noStretch.add(v.mesh));
+      (pr.birds || []).forEach(b => noStretch.add(b));
+    });
     this.worldGroup.children.forEach(c => {
       const r = c.geometry && c.geometry.parameters && c.geometry.parameters.radius;
       if (r && r >= 700) return; // sky dome stays a sphere
       c.position.x *= f; c.position.z *= f;
+      if (noStretch.has(c)) return;
       c.scale.x *= f; c.scale.z *= f;
     });
     if (this.scene.fog) {
@@ -356,6 +366,44 @@ class Game {
     return t;
   }
 
+  // proper car model (body, hood, cabin with glass, trunk, wheels, lights) — forward is -z
+  _makeCar(S, color) {
+    const car = new THREE.Group();
+    const paint = new THREE.MeshStandardMaterial({ color, metalness: 0.75, roughness: 0.28 });
+    this._carGlass = this._carGlass || new THREE.MeshStandardMaterial({ color: 0x0e141c, metalness: 0.4, roughness: 0.08 });
+    this._carTrim = this._carTrim || new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.7, metalness: 0.4 });
+    this._carTire = this._carTire || new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.95 });
+    this._carHead = this._carHead || new THREE.MeshBasicMaterial({ color: 0xfff2cc });
+    this._carTail = this._carTail || new THREE.MeshBasicMaterial({ color: 0xff2222 });
+    const W = 0.56 * S, H = 0.16 * S, L = 1.05 * S;
+    const part = (geo, mat, x, y, z, rx, ry, rz) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0);
+      car.add(m); return m;
+    };
+    // chassis + hood + trunk
+    const body = part(new THREE.BoxGeometry(W, H, L * 0.94), paint, 0, 0, 0); body.castShadow = true;
+    part(new THREE.BoxGeometry(W * 0.94, H * 0.5, L * 0.26), paint, 0, H * 0.55, -L * 0.3);
+    part(new THREE.BoxGeometry(W * 0.94, H * 0.45, L * 0.18), paint, 0, H * 0.52, L * 0.36);
+    // cabin with wrap-around glass
+    part(new THREE.BoxGeometry(W * 0.86, H * 0.85, L * 0.4), paint, 0, H * 0.85, L * 0.04);
+    part(new THREE.BoxGeometry(W * 0.88, H * 0.55, L * 0.36), this._carGlass, 0, H * 0.95, L * 0.04);
+    // skirt / bumpers
+    part(new THREE.BoxGeometry(W * 1.02, H * 0.35, 0.05 * S), this._carTrim, 0, -H * 0.2, -L * 0.46);
+    part(new THREE.BoxGeometry(W * 1.02, H * 0.35, 0.05 * S), this._carTrim, 0, -H * 0.2, L * 0.46);
+    // wheels
+    [[-1, -0.32], [1, -0.32], [-1, 0.34], [1, 0.34]].forEach(([sx, fz]) => {
+      const wh = part(new THREE.CylinderGeometry(H * 0.62, H * 0.62, W * 0.14, 10), this._carTire, sx * W * 0.5, -H * 0.42, fz * L);
+      wh.rotation.z = Math.PI / 2;
+    });
+    // headlights / taillights
+    [-1, 1].forEach(sx => {
+      part(new THREE.BoxGeometry(W * 0.18, H * 0.22, 0.02), this._carHead, sx * W * 0.3, H * 0.12, -L * 0.485);
+      part(new THREE.BoxGeometry(W * 0.2, H * 0.18, 0.02), this._carTail, sx * W * 0.3, H * 0.12, L * 0.485);
+    });
+    return car;
+  }
+
   // ================= RAIL CITY (rideable monorail, day↔night cycle, parks & birds) =================
   buildRailCity(W) {
     const S = 7;
@@ -461,22 +509,56 @@ class Game {
     const carW = 2.0 * S * 0.7, carH = 1.4 * S * 0.7, carL = 2.6 * S * 0.8;
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdd44aa, metalness: 0.5, roughness: 0.4, emissive: 0x331122, emissiveIntensity: 0.3 });
     const cars = [];
+    const trainTrim = new THREE.MeshStandardMaterial({ color: 0x1a2030, roughness: 0.6, metalness: 0.5 });
+    const trainGlass = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x2288aa, emissiveIntensity: 0.4, metalness: 0.3, roughness: 0.1 });
+    const headLightMat = new THREE.MeshBasicMaterial({ color: 0xfff6d8 });
+    const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xff3344 });
     for (let i = 0; i < 4; i++) {
       const car = new THREE.Group();
       const shell = new THREE.Mesh(new THREE.BoxGeometry(carW, carH, carL), bodyMat);
       shell.castShadow = true; car.add(shell);
+      // streamlined pyramidal noses on both ends
+      [-1, 1].forEach(sz => {
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(carW * 0.5, 0.9 * S * 0.5, 4), bodyMat);
+        nose.rotation.x = sz * Math.PI / 2; nose.rotation.y = Math.PI / 4;
+        nose.scale.y = 1; nose.scale.x = 1; nose.scale.z = carH / carW;
+        nose.position.set(0, 0, sz * (carL / 2 + 0.9 * S * 0.25)); car.add(nose);
+        // head/tail light strips on the nose
+        const hl = new THREE.Mesh(new THREE.BoxGeometry(carW * 0.5, 0.12, 0.06), sz < 0 ? headLightMat : tailLightMat);
+        hl.position.set(0, -carH * 0.18, sz * (carL / 2 + 0.32 * S)); car.add(hl);
+      });
+      // continuous window band with mullions
+      const win = new THREE.Mesh(new THREE.BoxGeometry(carW + 0.04, carH * 0.36, carL * 0.84), trainGlass);
+      win.position.y = 0.08; car.add(win);
+      for (let mzi = -2; mzi <= 2; mzi++) {
+        const mull = new THREE.Mesh(new THREE.BoxGeometry(carW + 0.06, carH * 0.38, 0.07 * S), trainTrim);
+        mull.position.set(0, 0.08, mzi * carL * 0.19); car.add(mull);
+      }
+      // recessed door panels on each side
+      [-1, 1].forEach(sx => [-0.24, 0.24].forEach(fz => {
+        const door = new THREE.Mesh(new THREE.BoxGeometry(0.03, carH * 0.62, 0.34 * S), trainTrim);
+        door.position.set(sx * (carW / 2 + 0.005), -carH * 0.08, fz * carL); car.add(door);
+      }));
+      // under-skirt + accent stripe
+      const skirt = new THREE.Mesh(new THREE.BoxGeometry(carW * 0.92, 0.22 * S, carL * 0.9), trainTrim);
+      skirt.position.y = -carH / 2 - 0.06 * S; car.add(skirt);
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(carW + 0.05, 0.07, carL * 0.92),
+        new THREE.MeshStandardMaterial({ color: 0x19f0ff, emissive: 0x19f0ff, emissiveIntensity: 0.9 }));
+      stripe.position.y = -carH * 0.32; car.add(stripe);
       // flat ride-on roof deck
       const roof = new THREE.Mesh(new THREE.BoxGeometry(carW + 0.3, 0.25, carL + 0.3),
         new THREE.MeshStandardMaterial({ color: 0xb8c6d8, metalness: 0.4, roughness: 0.5 }));
       roof.position.y = carH / 2 + 0.12; car.add(roof);
+      // roof AC pods at both ends of the deck
+      [-1, 1].forEach(sz => {
+        const pod = new THREE.Mesh(new THREE.BoxGeometry(carW * 0.45, 0.18 * S, 0.3 * S), trainTrim);
+        pod.position.set(0, carH / 2 + 0.32, sz * (carL / 2 - 0.28 * S)); car.add(pod);
+      });
       // rails so you don't slide off
       [[-1, 0], [1, 0]].forEach(([sx]) => {
         const r = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.6, carL), new THREE.MeshStandardMaterial({ color: 0x99aabb, metalness: 0.6 }));
         r.position.set(sx * (carW / 2), carH / 2 + 0.4, 0); car.add(r);
       });
-      const win = new THREE.Mesh(new THREE.BoxGeometry(carW + 0.04, carH * 0.4, carL * 0.8),
-        new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x2288aa, emissiveIntensity: 0.4 }));
-      win.position.y = 0.05; car.add(win);
       W.add(car); cars.push(car);
       car.userData.prevPos = new THREE.Vector3();
       car.userData.delta = new THREE.Vector3();
@@ -548,11 +630,11 @@ class Game {
     for (let x = -30; x <= 30; x += 12) { if (Math.abs(x) < 4) continue; lanes.push({ axis: 'z', fixed: x * S }); }
     lanes.forEach(lane => {
       for (let k = 0; k < 2; k++) {
-        const car = new THREE.Mesh(new THREE.BoxGeometry(0.6 * S, 0.28 * S, 1.05 * S),
-          new THREE.MeshStandardMaterial({ color: vColors[(Math.random() * vColors.length) | 0], metalness: 0.4, roughness: 0.4 }));
+        const car = this._makeCar(S, vColors[(Math.random() * vColors.length) | 0]);
         const dir = Math.random() > 0.5 ? 1 : -1, pos = -42 * S + Math.random() * 84 * S;
-        if (lane.axis === 'x') { car.position.set(pos, 0.4 * S, lane.fixed); car.rotation.y = dir > 0 ? 0 : Math.PI; }
-        else { car.position.set(lane.fixed, 0.4 * S, pos); car.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2; }
+        // car forward is -z: orient the nose along the direction of travel
+        if (lane.axis === 'x') { car.position.set(pos, 0.32 * S, lane.fixed); car.rotation.y = dir > 0 ? -Math.PI / 2 : Math.PI / 2; }
+        else { car.position.set(lane.fixed, 0.32 * S, pos); car.rotation.y = dir > 0 ? Math.PI : 0; }
         W.add(car); vehicles.push({ mesh: car, lane, dir, pos, speed: 9 + Math.random() * 8 });
       }
     });
@@ -715,15 +797,12 @@ class Game {
     lanes.forEach(lane => {
       const n = 2 + (Math.random() * 2 | 0);
       for (let k = 0; k < n; k++) {
-        const mat = new THREE.MeshStandardMaterial({ color: vColors[(Math.random() * vColors.length) | 0], metalness: 0.4, roughness: 0.4, emissive: 0x110000 });
-        const car = new THREE.Mesh(new THREE.BoxGeometry(0.7 * S, 0.32 * S, 1.2 * S), mat);
+        const car = this._makeCar(S * 1.15, vColors[(Math.random() * vColors.length) | 0]);
         const dir = Math.random() > 0.5 ? 1 : -1;
         const pos = -38 * S + Math.random() * 76 * S;
-        const head = new THREE.Mesh(new THREE.BoxGeometry(0.72 * S, 0.12 * S, 0.1 * S),
-          new THREE.MeshBasicMaterial({ color: 0xffffcc }));
-        head.position.z = (lane.axis === 'z' ? 1 : 1) * 0.6 * S * dir; car.add(head);
-        if (lane.axis === 'x') { car.position.set(pos, 0.5 * S, lane.fixed); car.rotation.y = dir > 0 ? 0 : Math.PI; }
-        else { car.position.set(lane.fixed, 0.5 * S, pos); car.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2; }
+        // car forward is -z: orient the nose along the direction of travel
+        if (lane.axis === 'x') { car.position.set(pos, 0.4 * S, lane.fixed); car.rotation.y = dir > 0 ? -Math.PI / 2 : Math.PI / 2; }
+        else { car.position.set(lane.fixed, 0.4 * S, pos); car.rotation.y = dir > 0 ? Math.PI : 0; }
         W.add(car);
         vehicles.push({ mesh: car, lane, dir, pos, speed: (8 + Math.random() * 9) });
       }
@@ -1088,6 +1167,9 @@ class Game {
     this._matDark = new THREE.MeshStandardMaterial({ color: 0x16181d, roughness: 0.45, metalness: 0.6 });
     this._matMetal = new THREE.MeshStandardMaterial({ color: 0x4a505c, metalness: 0.9, roughness: 0.25 });
     this._matPoly = new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.6, metalness: 0.4 });
+    this._matSteel = new THREE.MeshStandardMaterial({ color: 0x282c34, metalness: 0.95, roughness: 0.18 });
+    this._matWood = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.75, metalness: 0.05 });
+    this._matBrass = new THREE.MeshStandardMaterial({ color: 0xb89230, metalness: 0.9, roughness: 0.3 });
     this.gltfLoader = null;
 
     this.gunModels = {
@@ -1204,38 +1286,98 @@ class Game {
   // ---- PISTOL: compact sidearm ----
   _buildPistol(c) {
     const g = new THREE.Group();
-    this._part(g, new THREE.BoxGeometry(0.1, 0.13, 0.36), this._matDark, 0, 0, -0.05);
-    const bar = this._part(g, new THREE.CylinderGeometry(0.022, 0.022, 0.34, 12), this._matMetal, 0, 0.03, -0.26); bar.rotation.x = Math.PI / 2;
-    this._part(g, new THREE.BoxGeometry(0.08, 0.18, 0.1), this._matDark, 0, -0.15, 0.07, 0.28);
-    this._part(g, new THREE.BoxGeometry(0.11, 0.015, 0.2), this._accent(c), 0, 0.02, 0.02);
-    g.userData.muzzle = new THREE.Vector3(0, 0.03, -0.45);
+    // polymer frame (lower)
+    this._part(g, new THREE.BoxGeometry(0.085, 0.06, 0.32), this._matPoly, 0, -0.025, -0.06);
+    // steel slide (upper) with rear cocking serrations
+    this._part(g, new THREE.BoxGeometry(0.09, 0.07, 0.36), this._matSteel, 0, 0.04, -0.07);
+    for (let i = 0; i < 4; i++) this._part(g, new THREE.BoxGeometry(0.094, 0.05, 0.008), this._matDark, 0, 0.045, 0.07 + i * 0.018);
+    // ejection port recess
+    this._part(g, new THREE.BoxGeometry(0.02, 0.03, 0.07), this._matDark, 0.038, 0.05, -0.1);
+    // barrel + recoil guide protruding from the slide
+    let bar = this._part(g, new THREE.CylinderGeometry(0.018, 0.018, 0.1, 12), this._matMetal, 0, 0.045, -0.28); bar.rotation.x = Math.PI / 2;
+    bar = this._part(g, new THREE.CylinderGeometry(0.01, 0.01, 0.08, 8), this._matMetal, 0, 0.012, -0.28); bar.rotation.x = Math.PI / 2;
+    // sights: front post + rear notch blocks
+    this._part(g, new THREE.BoxGeometry(0.012, 0.018, 0.012), this._matDark, 0, 0.085, -0.235);
+    [-0.016, 0.016].forEach(dx => this._part(g, new THREE.BoxGeometry(0.012, 0.016, 0.012), this._matDark, dx, 0.084, 0.1));
+    // angled grip with backstrap + stippled side panels
+    this._part(g, new THREE.BoxGeometry(0.08, 0.18, 0.095), this._matPoly, 0, -0.135, 0.075, 0.3);
+    [-0.043, 0.043].forEach(dx => this._part(g, new THREE.BoxGeometry(0.004, 0.13, 0.07), this._matDark, dx, -0.13, 0.075, 0.3));
+    // magazine baseplate
+    this._part(g, new THREE.BoxGeometry(0.075, 0.022, 0.1), this._matDark, 0, -0.225, 0.105, 0.3);
+    // trigger guard loop + trigger blade
+    this._part(g, new THREE.BoxGeometry(0.016, 0.012, 0.1), this._matPoly, 0, -0.095, -0.03);
+    this._part(g, new THREE.BoxGeometry(0.016, 0.05, 0.012), this._matPoly, 0, -0.07, -0.075);
+    this._part(g, new THREE.BoxGeometry(0.012, 0.035, 0.01), this._matSteel, 0, -0.065, -0.03, 0.25);
+    // subtle energy accent line along the slide
+    this._part(g, new THREE.BoxGeometry(0.094, 0.006, 0.2), this._accent(c), 0, 0.02, -0.08);
+    g.userData.muzzle = new THREE.Vector3(0, 0.045, -0.36);
     return g;
   }
 
-  // ---- SMG: stocked auto ----
+  // ---- SMG: suppressed compact carbine ----
   _buildSMG(c) {
     const g = new THREE.Group();
-    this._part(g, new THREE.BoxGeometry(0.11, 0.13, 0.5), this._matDark, 0, 0, -0.08);
-    const bar = this._part(g, new THREE.CylinderGeometry(0.02, 0.02, 0.34, 12), this._matMetal, 0, 0.03, -0.42); bar.rotation.x = Math.PI / 2;
-    this._part(g, new THREE.BoxGeometry(0.07, 0.2, 0.09), this._matMetal, 0, -0.17, -0.05, -0.12); // mag
-    this._part(g, new THREE.BoxGeometry(0.09, 0.16, 0.1), this._matDark, 0, -0.13, 0.14, 0.3); // grip
-    this._part(g, new THREE.BoxGeometry(0.05, 0.05, 0.16), this._matPoly, 0, 0.0, 0.26); // stock
-    this._part(g, new THREE.BoxGeometry(0.12, 0.012, 0.34), this._accent(c), 0, 0.08, -0.05);
-    g.userData.muzzle = new THREE.Vector3(0, 0.03, -0.6);
+    // receiver + top picatinny rail with notches
+    this._part(g, new THREE.BoxGeometry(0.095, 0.11, 0.42), this._matDark, 0, 0, -0.04);
+    this._part(g, new THREE.BoxGeometry(0.05, 0.016, 0.44), this._matSteel, 0, 0.065, -0.05);
+    for (let i = 0; i < 7; i++) this._part(g, new THREE.BoxGeometry(0.054, 0.01, 0.012), this._matDark, 0, 0.072, -0.24 + i * 0.06);
+    // vented handguard around the barrel
+    this._part(g, new THREE.BoxGeometry(0.075, 0.075, 0.2), this._matPoly, 0, 0.01, -0.33);
+    [-0.04, 0.04].forEach(dx => { for (let i = 0; i < 3; i++) this._part(g, new THREE.BoxGeometry(0.004, 0.03, 0.035), this._matDark, dx, 0.012, -0.27 - i * 0.055); });
+    // barrel + suppressor can
+    let bar = this._part(g, new THREE.CylinderGeometry(0.014, 0.014, 0.12, 10), this._matMetal, 0, 0.02, -0.48); bar.rotation.x = Math.PI / 2;
+    bar = this._part(g, new THREE.CylinderGeometry(0.026, 0.026, 0.14, 12), this._matSteel, 0, 0.02, -0.56); bar.rotation.x = Math.PI / 2;
+    // front sight post + flip-up rear
+    this._part(g, new THREE.BoxGeometry(0.01, 0.03, 0.01), this._matDark, 0, 0.09, -0.4);
+    this._part(g, new THREE.BoxGeometry(0.026, 0.024, 0.012), this._matDark, 0, 0.09, 0.13);
+    // curved magazine (two angled segments)
+    this._part(g, new THREE.BoxGeometry(0.058, 0.13, 0.07), this._matMetal, 0, -0.12, -0.06, -0.1);
+    this._part(g, new THREE.BoxGeometry(0.056, 0.11, 0.068), this._matMetal, 0, -0.215, -0.035, -0.32);
+    // pistol grip + trigger guard
+    this._part(g, new THREE.BoxGeometry(0.075, 0.15, 0.09), this._matPoly, 0, -0.12, 0.13, 0.32);
+    this._part(g, new THREE.BoxGeometry(0.014, 0.01, 0.09), this._matPoly, 0, -0.083, 0.04);
+    this._part(g, new THREE.BoxGeometry(0.012, 0.032, 0.01), this._matSteel, 0, -0.06, 0.02, 0.25);
+    // charging handle knob (left side)
+    this._part(g, new THREE.CylinderGeometry(0.012, 0.012, 0.03, 8), this._matSteel, -0.06, 0.03, -0.02, 0, 0, Math.PI / 2);
+    // collapsing stock: twin rails + butt pad
+    [-0.022, 0.022].forEach(dx => this._part(g, new THREE.BoxGeometry(0.01, 0.012, 0.18), this._matMetal, dx, 0.01, 0.3));
+    this._part(g, new THREE.BoxGeometry(0.06, 0.1, 0.03), this._matPoly, 0, -0.01, 0.4);
+    // energy accent strip
+    this._part(g, new THREE.BoxGeometry(0.1, 0.006, 0.26), this._accent(c), 0, -0.058, -0.08);
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.66);
     return g;
   }
 
-  // ---- SHOTGUN: wide double-barrel ----
+  // ---- SHOTGUN: side-by-side coach gun with wood furniture ----
   _buildShotgun(c) {
     const g = new THREE.Group();
-    this._part(g, new THREE.BoxGeometry(0.16, 0.12, 0.42), this._matDark, 0, 0, -0.02);
-    [-0.045, 0.045].forEach(dx => {
-      const b = this._part(g, new THREE.CylinderGeometry(0.04, 0.04, 0.56, 14), this._matMetal, dx, 0.03, -0.34); b.rotation.x = Math.PI / 2;
+    // steel receiver with break-action hinge line + twin hammer spurs
+    this._part(g, new THREE.BoxGeometry(0.13, 0.1, 0.2), this._matSteel, 0, 0, 0.0);
+    this._part(g, new THREE.BoxGeometry(0.135, 0.012, 0.012), this._matDark, 0, 0.02, -0.1);
+    [-0.03, 0.03].forEach(dx => this._part(g, new THREE.BoxGeometry(0.018, 0.04, 0.025), this._matSteel, dx, 0.065, 0.06, -0.5));
+    // side-by-side barrels with muzzle rings + top rib & brass bead
+    [-0.042, 0.042].forEach(dx => {
+      let b = this._part(g, new THREE.CylinderGeometry(0.034, 0.036, 0.52, 14), this._matMetal, dx, 0.03, -0.36); b.rotation.x = Math.PI / 2;
+      b = this._part(g, new THREE.CylinderGeometry(0.038, 0.038, 0.025, 14), this._matSteel, dx, 0.03, -0.61); b.rotation.x = Math.PI / 2;
     });
-    this._part(g, new THREE.BoxGeometry(0.14, 0.05, 0.16), this._matPoly, 0, -0.07, -0.1); // pump
-    this._part(g, new THREE.BoxGeometry(0.1, 0.18, 0.11), this._matDark, 0, -0.14, 0.16, 0.32);
-    this._part(g, new THREE.BoxGeometry(0.05, 0.05, 0.2), this._matPoly, 0, -0.02, 0.26);
-    this._part(g, new THREE.BoxGeometry(0.17, 0.014, 0.14), this._accent(c), 0, 0.09, 0.04);
+    this._part(g, new THREE.BoxGeometry(0.02, 0.012, 0.5), this._matSteel, 0, 0.07, -0.36);
+    this._part(g, new THREE.SphereGeometry(0.008, 8, 8), this._matBrass, 0, 0.082, -0.6);
+    // wooden splinter forend with finger grooves
+    this._part(g, new THREE.BoxGeometry(0.11, 0.055, 0.22), this._matWood, 0, -0.035, -0.22);
+    [-0.04, 0.05].forEach(dz => this._part(g, new THREE.BoxGeometry(0.112, 0.012, 0.012), this._matDark, 0, -0.06, -0.22 + dz));
+    // wooden stock: angled wrist + butt with recoil pad
+    this._part(g, new THREE.BoxGeometry(0.09, 0.09, 0.2), this._matWood, 0, -0.045, 0.18, 0.18);
+    this._part(g, new THREE.BoxGeometry(0.095, 0.13, 0.16), this._matWood, 0, -0.085, 0.34, 0.12);
+    this._part(g, new THREE.BoxGeometry(0.1, 0.135, 0.02), this._matDark, 0, -0.09, 0.43, 0.12);
+    // trigger guard + twin triggers
+    this._part(g, new THREE.BoxGeometry(0.016, 0.01, 0.11), this._matSteel, 0, -0.105, 0.02);
+    [-0.012, 0.012].forEach(dz => this._part(g, new THREE.BoxGeometry(0.01, 0.03, 0.008), this._matSteel, 0, -0.075, 0.02 + dz, 0.3));
+    // brass shells in a side saddle
+    for (let i = 0; i < 3; i++) {
+      const sh = this._part(g, new THREE.CylinderGeometry(0.016, 0.016, 0.055, 8), this._matBrass, 0.075, 0.01, 0.1 + i * 0.045);
+      sh.rotation.x = Math.PI / 2;
+      this._part(g, new THREE.CylinderGeometry(0.0165, 0.0165, 0.015, 8), new THREE.MeshStandardMaterial({ color: c, roughness: 0.5 }), 0.075, 0.01, 0.075 + i * 0.045).rotation.x = Math.PI / 2;
+    }
     g.userData.muzzle = new THREE.Vector3(0, 0.03, -0.64);
     return g;
   }
