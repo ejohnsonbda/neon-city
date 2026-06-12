@@ -5,9 +5,10 @@
 //  expose animated sub-parts.
 // ============================================================
 const WeaponFactory = {
-  matDark()  { return new THREE.MeshStandardMaterial({ color: 0x3a2350, roughness: 0.55, metalness: 0.15, flatShading: true }); },
-  matMetal() { return new THREE.MeshStandardMaterial({ color: 0x9aa6c4, metalness: 0.4, roughness: 0.4, flatShading: true }); },
-  matPoly()  { return new THREE.MeshStandardMaterial({ color: 0x6a4ea0, roughness: 0.5, metalness: 0.1, flatShading: true }); },
+  // identical gunmetal materials to Neon City: Nightfall (shared look)
+  matDark()  { return new THREE.MeshStandardMaterial({ color: 0x16181d, roughness: 0.45, metalness: 0.6 }); },
+  matMetal() { return new THREE.MeshStandardMaterial({ color: 0x4a505c, metalness: 0.9, roughness: 0.25 }); },
+  matPoly()  { return new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.6, metalness: 0.4 }); },
   accent(hex){ return new THREE.MeshBasicMaterial({ color: hex }); },
   glow(hex, i){ return new THREE.MeshStandardMaterial({ color: hex, emissive: hex, emissiveIntensity: i || 1.4, roughness: 0.4 }); },
   _part(g, geo, mat, x, y, z, rx, ry, rz) {
@@ -91,25 +92,67 @@ const WeaponFactory = {
     this._part(g, new THREE.BoxGeometry(0.17, 0.014, 0.2), this.accent(c), 0, 0.1, 0.06);
     return g;
   },
-  // FORCE PUSH gauntlet — armored open hand with palm emitter (shared with Neon City)
+  // FORCE PUSH — same MK-IV gauntlet as Neon City: armored forearm, open palm
+  // with splayed glowing-tip fingers, palm emitter core, spinning energy rings
   _gauntlet(c) {
     const g = new THREE.Group();
-    const plate = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.35, metalness: 0.85 });
-    const plate2 = new THREE.MeshStandardMaterial({ color: 0x2c3a52, roughness: 0.3, metalness: 0.9 });
-    // forearm + wrist energy band
-    const arm = this._part(g, new THREE.CylinderGeometry(0.085, 0.1, 0.3, 10), plate, 0, 0, 0.2); arm.rotation.x = Math.PI / 2;
-    this._part(g, new THREE.TorusGeometry(0.1, 0.018, 8, 20), this.glow(c, 1.6), 0, 0, 0.08, Math.PI / 2);
-    // open palm
-    this._part(g, new THREE.BoxGeometry(0.2, 0.19, 0.06), plate2, 0, 0.02, -0.1);
-    // fingers fanned up + thumb
-    [[-0.072, 0.13, 0.3], [-0.025, 0.145, 0.1], [0.025, 0.14, -0.1], [0.072, 0.12, -0.3]].forEach(([x, y, sp]) => {
-      this._part(g, new THREE.BoxGeometry(0.034, 0.11, 0.036), plate, x, y, -0.1, -0.15, 0, sp);
-      this._part(g, new THREE.SphereGeometry(0.018, 8, 8), this.glow(c, 2), x + sp * -0.02, y + 0.06, -0.11);
-    });
-    this._part(g, new THREE.BoxGeometry(0.034, 0.09, 0.036), plate, 0.115, -0.02, -0.1, -0.3, 0, -1.1);
-    // palm emitter core + ring
-    g.userData.orb = this._part(g, new THREE.SphereGeometry(0.055, 14, 14), this.glow(0xdffaff, 2.4), 0, 0.02, -0.15);
-    this._part(g, new THREE.TorusGeometry(0.08, 0.012, 8, 22), this.glow(c, 1.8), 0, 0.02, -0.14);
+    const core = new THREE.Group();
+    core.scale.setScalar(0.42);
+    core.position.set(0, 0.02, 0.08);
+    g.add(core);
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.35, metalness: 0.85 });
+    const plateMat2 = new THREE.MeshStandardMaterial({ color: 0x2c3a52, roughness: 0.3, metalness: 0.9 });
+    const knuckleMat = new THREE.MeshStandardMaterial({ color: 0x3a4a66, roughness: 0.25, metalness: 0.95 });
+    const energyMat = new THREE.MeshBasicMaterial({ color: c });
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xdffaff });
+    const part = (parent, geo, mat, x, y, z, rx, ry, rz) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); parent.add(m); return m;
+    };
+    // forearm + armor plates + wrist band
+    part(core, new THREE.CylinderGeometry(0.2, 0.24, 0.7, 12), plateMat, 0, 0, 0.5, Math.PI / 2, 0, 0);
+    for (let i = 0; i < 3; i++) part(core, new THREE.BoxGeometry(0.42, 0.08, 0.16), plateMat2, 0, 0.16, 0.3 + i * 0.18, 0, 0, 0);
+    part(core, new THREE.TorusGeometry(0.23, 0.04, 10, 24), energyMat, 0, 0, 0.2, Math.PI / 2, 0, 0);
+    // open hand
+    const fist = new THREE.Group();
+    fist.position.set(0, 0, -0.08);
+    core.add(fist);
+    part(fist, new THREE.BoxGeometry(0.46, 0.44, 0.14), plateMat2, 0, 0.04, -0.22);
+    part(fist, new THREE.BoxGeometry(0.4, 0.38, 0.06), plateMat, 0, 0.05, -0.15);
+    part(fist, new THREE.BoxGeometry(0.42, 0.14, 0.16), plateMat, 0, -0.16, -0.2);
+    // splayed fingers with glowing tips + thumb
+    const buildFinger = (rootX, rootY, splay, tiltX, len) => {
+      const f = new THREE.Group();
+      f.position.set(rootX, rootY, -0.24);
+      f.rotation.set(tiltX, 0, splay);
+      fist.add(f);
+      part(f, new THREE.BoxGeometry(0.082, len, 0.085), plateMat, 0, len / 2, 0);
+      part(f, new THREE.SphereGeometry(0.05, 8, 8), knuckleMat, 0, len, 0);
+      const tip = new THREE.Group(); tip.position.set(0, len, 0); tip.rotation.x = -0.25; f.add(tip);
+      part(tip, new THREE.BoxGeometry(0.072, len * 0.72, 0.078), plateMat, 0, len * 0.36, 0);
+      part(tip, new THREE.SphereGeometry(0.035, 8, 8), energyMat, 0, len * 0.72, 0);
+    };
+    buildFinger(-0.17, 0.22, 0.34, -0.18, 0.2);
+    buildFinger(-0.06, 0.25, 0.12, -0.1, 0.23);
+    buildFinger(0.06, 0.25, -0.1, -0.1, 0.21);
+    buildFinger(0.17, 0.22, -0.34, -0.18, 0.17);
+    buildFinger(0.24, -0.04, -1.15, -0.35, 0.17); // thumb
+    // palm emitter (orb pulses via the game's orb anim)
+    const emitter = new THREE.Group();
+    emitter.position.set(0, 0.02, -0.32);
+    fist.add(emitter);
+    g.userData.orb = part(emitter, new THREE.SphereGeometry(0.13, 16, 16), coreMat, 0, 0, 0);
+    part(emitter, new THREE.TorusGeometry(0.18, 0.024, 10, 28), energyMat, 0, 0, 0.02);
+    // spinning orbit rings (rotated by the game's spin anim)
+    const orbit = new THREE.Group();
+    fist.add(orbit);
+    const ringA = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.012, 8, 36),
+      new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85 }));
+    ringA.rotation.set(Math.PI / 2.2, 0.3, 0); orbit.add(ringA);
+    const ringB = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.01, 8, 36),
+      new THREE.MeshBasicMaterial({ color: 0x9b5cff, transparent: true, opacity: 0.7 }));
+    ringB.rotation.set(0.4, Math.PI / 2.4, 0.5); orbit.add(ringB);
+    g.userData.spin = orbit;
     return g;
   },
   _katana() {

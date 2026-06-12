@@ -134,7 +134,7 @@ class Game {
     else if (level === 'desert') this.buildDesert(this.worldGroup);
     else if (level === 'range') this.buildRange(this.worldGroup);
     else this.buildCity(this.worldGroup);
-    this._expandWorld(2.4);
+    this._expandWorld(3.0);
   }
 
   // Expand the whole world footprint by a factor: bakes an x/z scale into

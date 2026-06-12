@@ -377,14 +377,10 @@
       setTimeout(() => { const c = document.querySelector('#app canvas'); if (c && c.requestPointerLock) { const p = c.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } }, 80);
     }
     playBtn.addEventListener('click', start);
-    // ?stage=<id> from the Neon City home page deep-links straight into a stage
+    // no select screen: jump straight into the stage (?stage=<id> or the Tower)
     const urlStage = new URLSearchParams(location.search).get('stage');
-    if (urlStage && stageNames[urlStage]) {
-      selectedStage = urlStage;
-      grid.querySelectorAll('.stage').forEach(c => c.classList.toggle('sel', c.dataset.stage === urlStage));
-      playBtn.innerHTML = 'PLAY · ' + stageNames[urlStage] + ' 🎉';
-      start();
-    }
+    selectedStage = (urlStage && stageNames[urlStage]) ? urlStage : 'tower';
+    start();
   })();
 </script>
 </body>
