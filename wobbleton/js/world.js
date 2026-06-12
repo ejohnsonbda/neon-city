@@ -310,7 +310,7 @@ const World = (() => {
     bridge.rotation.x = Math.PI / 2; bridge.position.set(cx, 0.6, cz); scene.add(bridge);
 
     // DENSE pale-trunk trees
-    const palette = ['#7fe87a', '#5fd0a8', '#46c4d8', '#a6e85a', '#5fb86a'];
+    const palette = ['#1d5520', '#143f28', '#1a4a34', '#27611d', '#16451f'];
     let placed = 0, guard = 0;
     while (placed < 90 && guard < 600) {
       guard++;
@@ -332,23 +332,42 @@ const World = (() => {
       const a = Math.random() * Math.PI * 2, r = 5 + Math.random() * (JR - 6);
       flower(scene, cx + Math.cos(a) * r, cz + Math.sin(a) * r, ['#ff5ca2', '#ffd23f', '#b06cf6', '#43c6ff'][(Math.random() * 4) | 0]);
     }
-    // ambient swinging monkeys up in the canopy (decor, animated by game loop)
-    for (let i = 0; i < 7; i++) {
-      const a = Math.random() * Math.PI * 2, r = 12 + Math.random() * (JR - 16);
-      const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
-      const m = EnemyFactory.build('monkey'); m.scale.setScalar(0.7);
-      m.position.set(x, 5.5 + Math.random() * 2, z); scene.add(m);
-      AMB.push({ group: m, base: m.position.y, phase: Math.random() * 6 });
-    }
+    // thatched-hut village (round mud huts, ring around a clearing)
+    const hutSpots = [[34, 26], [48, 14], [52, 34], [30, 44], [64, 24], [-46, -42], [-58, -28], [-38, -58]];
+    hutSpots.forEach(([hx, hz], i) => hut(scene, cx + hx, cz + hz, 2.4 + (i % 3) * 0.4, obs));
+
     // big stone idol head (jungle landmark)
     idol(scene, cx + 40, cz - 30);
+  }
+
+  // round mud hut with a conical thatched roof + doorway
+  function hut(scene, x, z, r, obs) {
+    const g = new THREE.Group(); g.position.set(x, 0, z);
+    const mud = new THREE.MeshStandardMaterial({ color: '#7a5a38', roughness: 1, flatShading: true });
+    const thatch = new THREE.MeshStandardMaterial({ color: '#5c4a22', roughness: 1, flatShading: true });
+    const thatchDark = new THREE.MeshStandardMaterial({ color: '#473916', roughness: 1, flatShading: true });
+    const wallH = 2.2;
+    // wall ring with a doorway gap facing the village centre
+    const wall = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.05, wallH, 12, 1, true), mud);
+    wall.position.y = wallH / 2; wall.castShadow = true; wall.receiveShadow = true; g.add(wall);
+    // door frame
+    const door = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.7, 0.18), thatchDark);
+    door.position.set(0, 0.85, r); g.add(door);
+    // conical thatched roof, two tiers
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(r * 1.45, r * 1.15, 12), thatch);
+    roof.position.y = wallH + r * 0.55; roof.castShadow = true; g.add(roof);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.55, r * 0.6, 10), thatchDark);
+    cap.position.y = wallH + r * 1.15; g.add(cap);
+    g.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(g);
+    obs.push({ minX: x - r, maxX: x + r, minZ: z - r, maxZ: z + r, minY: 0, maxY: wallH });
   }
 
   function jungleGroundTex() {
     const c = document.createElement('canvas'); c.width = c.height = 256;
     const x = c.getContext('2d');
-    x.fillStyle = '#2f5a2a'; x.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 500; i++) { x.fillStyle = `rgba(${30 + Math.random() * 50 | 0},${70 + Math.random() * 80 | 0},${30 + Math.random() * 40 | 0},.7)`; x.beginPath(); x.arc(Math.random() * 256, Math.random() * 256, 2 + Math.random() * 5, 0, 7); x.fill(); }
+    x.fillStyle = '#16301a'; x.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 500; i++) { x.fillStyle = `rgba(${12 + Math.random() * 30 | 0},${40 + Math.random() * 55 | 0},${15 + Math.random() * 28 | 0},.7)`; x.beginPath(); x.arc(Math.random() * 256, Math.random() * 256, 2 + Math.random() * 5, 0, 7); x.fill(); }
     const t = new THREE.Texture(c); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
   }
   function paleTree(scene, x, z, leaf, obs) {

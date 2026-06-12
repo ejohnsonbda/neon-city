@@ -52,21 +52,13 @@ const Game = (() => {
     if (snd || typeof SoundManager === 'undefined') return;
     snd = new SoundManager();
     snd.loadSample('shoot', '../uploads/chromascension-lazer-gun-one-shot-542393.mp3');
-    const menuM = document.getElementById('menu-music');
-    if (menuM) {
-      menuM.volume = 0.5;
-      const tryPlay = () => { if (!S.engaged && menuM.paused) menuM.play().catch(() => {}); };
-      ['pointerdown', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, tryPlay));
-    }
   }
   function startGameMusic() {
-    const menuM = document.getElementById('menu-music');
     const gameM = document.getElementById('game-music');
-    if (menuM) { menuM.pause(); menuM.currentTime = 0; }
     if (gameM) { gameM.volume = 0.35; gameM.play().catch(() => {}); }
     if (snd) snd.resume();
   }
-  initAudio(); // menu music arms on first user gesture
+  initAudio();
 
   function init(stage) {
     initAudio();
