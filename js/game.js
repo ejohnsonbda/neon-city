@@ -183,7 +183,7 @@ class Game {
     // ground: rippled desert sand
     const sand = this.createGroundTex('sand', 26);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(100 * S, 100 * S),
-      new THREE.MeshStandardMaterial({ map: sand, color: 0xceac72, roughness: 0.95, metalness: 0.02 }));
+      new THREE.MeshStandardMaterial({ map: sand, normalMap: TextureGen.createNormalTexture('dirtN', 26, 26), color: 0xceac72, roughness: 0.95, metalness: 0.02 }));
     ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; ground.receiveShadow = true; W.add(ground);
 
     // jungle biome patch (NW quadrant) — darker grass
@@ -619,7 +619,12 @@ class Game {
     function makeBuilding(x, z, w, d, h, ci, ni) {
       const grp = new THREE.Group();
       const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshStandardMaterial({ color: buildingColors[ci % buildingColors.length], roughness: 0.35, metalness: 0.5 }));
+        new THREE.MeshStandardMaterial({
+          color: buildingColors[ci % buildingColors.length],
+          map: TextureGen.createImageTexture('metal', null, 1, Math.max(2, Math.round(h / 8))),
+          normalMap: TextureGen.createNormalTexture('concreteN', 1, Math.max(2, Math.round(h / 8))),
+          roughness: 0.35, metalness: 0.5,
+        }));
       body.position.y = h / 2; body.castShadow = true; body.receiveShadow = true; grp.add(body);
       // emissive window bands (cheap: a few glowing rings instead of hundreds of window meshes)
       const nm = new THREE.MeshStandardMaterial({ color: neonColors[ni % neonColors.length], emissive: neonColors[ni % neonColors.length], emissiveIntensity: 1.2 });
@@ -802,7 +807,7 @@ class Game {
 
     const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 60, 60);
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.48, metalness: 0.55, color: 0x48505e }));
+      new THREE.MeshStandardMaterial({ map: fTex, normalMap: TextureGen.createNormalTexture('concreteN', 60, 60), roughness: 0.48, metalness: 0.55, color: 0x48505e }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
 
     // NEON CITY street detail: sidewalks, grass strips, and readable street signs
@@ -877,6 +882,28 @@ class Game {
         m.castShadow = Math.abs(x) <= 4 && Math.abs(z) <= 4;
         m.receiveShadow = true; W.add(m); this.objects.push(m);
         if (Math.random() > 0.7) billboards.push(m);
+        // rooftop detail models: antennas with beacon lights, AC units, water tanks
+        if (Math.random() > 0.6) {
+          const fx = m.position.x, fz = m.position.z, half = m.scale.x * 10 * 0.28;
+          const kind = Math.random();
+          if (kind < 0.45) {
+            const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 4 + Math.random() * 4, 6), this._roofMetal || (this._roofMetal = new THREE.MeshStandardMaterial({ color: 0x444c5c, metalness: 0.8, roughness: 0.3 })));
+            ant.position.set(fx + (Math.random() - 0.5) * half, h + ant.geometry.parameters.height / 2, fz + (Math.random() - 0.5) * half);
+            W.add(ant);
+            const tip = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), new THREE.MeshBasicMaterial({ color: 0xff2244 }));
+            tip.position.set(ant.position.x, h + ant.geometry.parameters.height + 0.1, ant.position.z);
+            W.add(tip);
+          } else if (kind < 0.75) {
+            const ac = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 1.6), this._roofDark || (this._roofDark = new THREE.MeshStandardMaterial({ color: 0x2a2f3a, roughness: 0.7, metalness: 0.5 })));
+            ac.position.set(fx + (Math.random() - 0.5) * half, h + 0.5, fz + (Math.random() - 0.5) * half);
+            ac.rotation.y = Math.random() * Math.PI;
+            W.add(ac);
+          } else {
+            const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 2.2, 8), this._roofDark || (this._roofDark = new THREE.MeshStandardMaterial({ color: 0x2a2f3a, roughness: 0.7, metalness: 0.5 })));
+            tank.position.set(fx + (Math.random() - 0.5) * half, h + 1.1, fz + (Math.random() - 0.5) * half);
+            W.add(tank);
+          }
+        }
       }
     }
     billboards.slice(0, 26).forEach(b => {
@@ -952,11 +979,11 @@ class Game {
     // rolling grass ground
     const grassTex = TextureGen.createGrass(false); grassTex.repeat.set(60, 60);
     const grass = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ map: grassTex, color: 0x3d6e2f, roughness: 0.95, metalness: 0 }));
+      new THREE.MeshStandardMaterial({ map: grassTex, normalMap: TextureGen.createNormalTexture('dirtN', 60, 60), color: 0x3d6e2f, roughness: 0.95, metalness: 0 }));
     grass.rotation.x = -Math.PI / 2; grass.receiveShadow = true; W.add(grass);
-    // dirt path patch around spawn
+    // dirt path patch around spawn (real dirt PBR)
     const path = new THREE.Mesh(new THREE.CircleGeometry(10, 32),
-      new THREE.MeshStandardMaterial({ color: 0xb8a06a, roughness: 1 }));
+      new THREE.MeshStandardMaterial({ map: TextureGen.createImageTexture('dirt', null, 6, 6), normalMap: TextureGen.createNormalTexture('dirtN', 6, 6), color: 0xc9b078, roughness: 1 }));
     path.rotation.x = -Math.PI / 2; path.position.y = 0.01; path.receiveShadow = true; W.add(path);
 
     // rolling hills on the horizon (flattened mounds)
@@ -1776,18 +1803,13 @@ class Game {
     this.scene.background = new THREE.Color(0x070a14);
     this.scene.fog = new THREE.FogExp2(0x070a14, 0.018);
 
-    // speckled concrete floor
-    const c = document.createElement('canvas'); c.width = c.height = 256;
-    const x = c.getContext('2d');
-    x.fillStyle = '#0c0f17'; x.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 2600; i++) {
-      x.fillStyle = Math.random() > 0.5 ? 'rgba(120,140,170,.04)' : 'rgba(0,0,0,.4)';
-      x.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
-    }
-    const floorTex = new THREE.CanvasTexture(c);
-    floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(30, 30);
+    // polished marble range floor (PBR base color + normal from the kit)
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200),
-      new THREE.MeshStandardMaterial({ map: floorTex, color: 0x6878a0, roughness: 0.6, metalness: 0.4 }));
+      new THREE.MeshStandardMaterial({
+        map: TextureGen.createImageTexture('marble', null, 30, 30),
+        normalMap: TextureGen.createNormalTexture('marbleN', 30, 30),
+        color: 0x7884a4, roughness: 0.35, metalness: 0.45,
+      }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; W.add(floor);
     const grid = new THREE.GridHelper(200, 100, 0x1c3a5a, 0x0e1d30);
     grid.position.y = 0.01; W.add(grid);

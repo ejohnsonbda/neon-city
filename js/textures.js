@@ -32,7 +32,15 @@ const TextureGen = {
       concrete: R.texConcrete || 'T_Concrete_BaseColor.png',
       lit1: R.texLit1 || 'T_lit_interior_1.png',
       lit2: R.texLit2 || 'T_lit_interior_2.png',
-      dark: R.texDark || 'T_dark_interior.png'
+      dark: R.texDark || 'T_dark_interior.png',
+      // PBR detail maps (normal maps shipped with the kit, previously unused)
+      concreteN: 'T_Concrete_Normal.png',
+      marble: 'T_MarbleFloor_BaseColor.png',
+      marbleN: 'T_MarbleFloor_Normal.png',
+      dirt: 'T_Dirt_BaseColor.png',
+      dirtN: 'T_Dirt_Normal.png',
+      metal: 'T_MetalConcrete_BaseColor.png',
+      brickN: 'T_RedBrick_Normal.png'
     };
     const keys = Object.keys(srcs);
     let remaining = keys.length;
@@ -95,10 +103,22 @@ const TextureGen = {
     return this._applyTextureDefaults(t, repeatX, repeatY);
   },
 
+  // normal/detail maps must stay LINEAR (no sRGB) — returns null when missing
+  createNormalTexture(key, repeatX = 1, repeatY = repeatX) {
+    const img = this.img && this.img[key];
+    if (!img || !(img.naturalWidth || img.width)) return null;
+    const t = new THREE.Texture(img);
+    t.needsUpdate = true;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(repeatX, repeatY);
+    if (this._lowMemory()) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; }
+    return t;
+  },
+
   // A lit-window building using the real interior photo textures.
   // Returns { map, emissive } so windows glow at night.
   createBuilding(hue) {
-    const W = this._size(256), H = this._size(512);
+    const W = this._size(512), H = this._size(1024);
     const base = document.createElement('canvas'); base.width = W; base.height = H;
     const emis = document.createElement('canvas'); emis.width = W; emis.height = H;
     const b = base.getContext('2d');
