@@ -203,6 +203,13 @@
 <div id="shieldfx"></div>
 <div id="lift-fade"></div>
 <div id="lock-hint"><div class="pill">▶ Click to play · move mouse to aim</div></div>
+<!-- dev terminal (~) -->
+<div id="dev-terminal" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:95;background:rgba(30,20,50,.94);border-top:4px solid var(--ink);padding:10px 16px;font:600 13px 'Courier New',monospace;color:#fff;">
+  <div id="term-log" style="color:#ffd23f;margin-bottom:6px;min-height:16px;">WOBBLETON CONSOLE — type a command, ~ to close</div>
+  <div style="display:flex;gap:8px;align-items:center;"><span style="color:#ffd23f">&gt;</span>
+    <input id="term-input" style="flex:1;background:transparent;border:none;outline:none;color:#fff;font:600 14px 'Courier New',monospace;" autocomplete="off" spellcheck="false">
+  </div>
+</div>
 
 <!-- START -->
 <div class="over" id="start">
@@ -342,6 +349,9 @@
     <circle cx="116" cy="242" r="4" fill="#141018"/>
   </svg>
 </template>
+<audio id="menu-music" src="../uploads/Unison Static.mp3" loop preload="auto"></audio>
+<audio id="game-music" src="../uploads/Final Arena Run.mp3" loop preload="auto"></audio>
+<script src="../js/audio.js"></script>
 <script src="js/weapons.js"></script>
 <script src="js/enemies.js"></script>
 <script src="js/world.js"></script>

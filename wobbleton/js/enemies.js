@@ -1,97 +1,29 @@
 // ============================================================
-//  ENEMY FACTORY — violet-crystal & gray-stone golems for WOBBLETON
-//  Toon-shaded cracked stone, glowing oval eyes.
+//  ENEMY FACTORY — wacky-toon golems & goblins for WOBBLETON
+//  Candy colours, flat-shaded chunky shapes, big googly eyes.
 //  build(type) -> THREE.Group.  userData.cores = [emissive mats]
 //  userData.eyes = [pupil meshes] (wiggled by the game loop).
 // ============================================================
-
-// ---- shared golem textures (created lazily on first build) ----
-let _golemTex = null;
-function _createStoneTexture(baseA, baseB, crackColor) {
-  const size = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, size, size);
-  grad.addColorStop(0, baseA); grad.addColorStop(1, baseB);
-  ctx.fillStyle = grad; ctx.fillRect(0, 0, size, size);
-  for (let i = 0; i < 2500; i++) {
-    ctx.fillStyle = `rgba(255,255,255,${0.03 + Math.random() * 0.06})`;
-    ctx.fillRect(Math.random() * size, Math.random() * size, 1.5, 1.5);
-  }
-  for (let i = 0; i < 18; i++) {
-    let x = Math.random() * size, y = Math.random() * size;
-    ctx.beginPath(); ctx.moveTo(x, y);
-    const steps = 5 + Math.floor(Math.random() * 7);
-    for (let s = 0; s < steps; s++) { x += (Math.random() - 0.5) * 60; y += (Math.random() - 0.5) * 60; ctx.lineTo(x, y); }
-    ctx.strokeStyle = crackColor; ctx.lineWidth = 1.2 + Math.random() * 1.6; ctx.stroke();
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(1.4, 1.4);
-  return tex;
-}
-function _golemTextures() {
-  if (_golemTex) return _golemTex;
-  const data = new Uint8Array([38, 31, 53, 96, 85, 122, 165, 156, 194, 238, 235, 255]);
-  const gradientMap = new THREE.DataTexture(data, 4, 1, THREE.RGBFormat);
-  gradientMap.needsUpdate = true; gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
-  _golemTex = {
-    violet: _createStoneTexture('#7a73a0', '#2c2742', '#bb6bff'),
-    gray: _createStoneTexture('#c5c7cf', '#6f7583', '#d9d7ff'),
-    gradientMap,
-  };
-  return _golemTex;
-}
-
 const EnemyFactory = {
   TYPES: {
-    grunt:   { scale: 1.05, hp: 36,  speed: 2.3, dmg: 9,  col: '#c5c7cf', range: 0,    fly: 0, points: 10 },
-    runner:  { scale: 0.8,  hp: 18,  speed: 4.4, dmg: 6,  col: '#bb6bff', range: 0,    fly: 0, points: 12 },
-    tank:    { scale: 1.7,  hp: 130, speed: 1.3, dmg: 22, col: '#c5c7cf', range: 0,    fly: 0, points: 30 },
-    shooter: { scale: 1.05, hp: 30,  speed: 1.6, dmg: 14, col: '#bb6bff', range: 26,   fly: 0, points: 22 },
-    dragon:  { scale: 1.5,  hp: 110, speed: 3.0, dmg: 16, col: '#c5c7cf', range: 30,   fly: 1, points: 40 },
-    boss:    { scale: 2.6,  hp: 420, speed: 1.5, dmg: 30, col: '#cd6bff', range: 22,   fly: 0, points: 120 },
-    spider:  { scale: 2.4,  hp: 600, speed: 2.2, dmg: 34, col: '#bb6bff', range: 0,    fly: 0, points: 200 },
-    sapling: { scale: 0.7,  hp: 14,  speed: 3.8, dmg: 6,  col: '#bb6bff', range: 0,    fly: 0, points: 10 },
-    bramble: { scale: 1.0,  hp: 48,  speed: 2.2, dmg: 12, col: '#c5c7cf', range: 0,    fly: 0, points: 18 },
-    treant:  { scale: 1.6,  hp: 95,  speed: 1.2, dmg: 14, col: '#c5c7cf', range: 24,   fly: 0, points: 35 },
-    monkey:  { scale: 0.9,  hp: 22,  speed: 4.2, dmg: 8,  col: '#bb6bff', range: 0,    fly: 0, points: 14 },
-    slinger: { scale: 0.95, hp: 30,  speed: 2.4, dmg: 12, col: '#bb6bff', range: 24,   fly: 0, points: 22 },
-    ape:     { scale: 2.1,  hp: 280, speed: 1.7, dmg: 26, col: '#c5c7cf', range: 0,    fly: 0, points: 90 },
-    clown:   { scale: 1.05, hp: 34,  speed: 3.2, dmg: 11, col: '#bb6bff', range: 0,    fly: 0, points: 18 },
-    jester:  { scale: 1.0,  hp: 30,  speed: 2.2, dmg: 13, col: '#bb6bff', range: 22,   fly: 0, points: 24 },
+    grunt:   { scale: 1.05, hp: 36,  speed: 2.3, dmg: 9,  col: '#ffd23f', range: 0,    fly: 0, points: 10 },
+    runner:  { scale: 0.8,  hp: 18,  speed: 4.4, dmg: 6,  col: '#ff5ca2', range: 0,    fly: 0, points: 12 },
+    tank:    { scale: 1.7,  hp: 130, speed: 1.3, dmg: 22, col: '#43c6ff', range: 0,    fly: 0, points: 30 },
+    shooter: { scale: 1.05, hp: 30,  speed: 1.6, dmg: 14, col: '#b06cf6', range: 26,   fly: 0, points: 22 },
+    dragon:  { scale: 1.5,  hp: 110, speed: 3.0, dmg: 16, col: '#ff8a3d', range: 30,   fly: 1, points: 40 },
+    boss:    { scale: 2.6,  hp: 420, speed: 1.5, dmg: 30, col: '#ff5a5a', range: 22,   fly: 0, points: 120 },
+    spider:  { scale: 2.4,  hp: 600, speed: 2.2, dmg: 34, col: '#5fe3a1', range: 0,    fly: 0, points: 200 },
+    sapling: { scale: 0.7,  hp: 14,  speed: 3.8, dmg: 6,  col: '#9be84a', range: 0,    fly: 0, points: 10 },
+    bramble: { scale: 1.0,  hp: 48,  speed: 2.2, dmg: 12, col: '#c6f23a', range: 0,    fly: 0, points: 18 },
+    treant:  { scale: 1.6,  hp: 95,  speed: 1.2, dmg: 14, col: '#6fd83a', range: 24,   fly: 0, points: 35 },
+    monkey:  { scale: 0.9,  hp: 22,  speed: 4.2, dmg: 8,  col: '#ff5ca2', range: 0,    fly: 0, points: 14 },
+    slinger: { scale: 0.95, hp: 30,  speed: 2.4, dmg: 12, col: '#ffd23f', range: 24,   fly: 0, points: 22 },
+    ape:     { scale: 2.1,  hp: 280, speed: 1.7, dmg: 26, col: '#ff8a3d', range: 0,    fly: 0, points: 90 },
+    clown:   { scale: 1.05, hp: 34,  speed: 3.2, dmg: 11, col: '#ff3b5c', range: 0,    fly: 0, points: 18 },
+    jester:  { scale: 1.0,  hp: 30,  speed: 2.2, dmg: 13, col: '#b06cf6', range: 22,   fly: 0, points: 24 },
   },
 
-  _GRAY_TYPES: ['grunt', 'tank', 'dragon', 'ape', 'treant', 'bramble'],
-  _isGray(type) { return this._GRAY_TYPES.includes(type); },
-  // primary cracked-stone body material (toon-shaded)
-  _golemMat(type) {
-    const t = _golemTextures(); const gray = this._isGray(type);
-    return new THREE.MeshToonMaterial({
-      color: gray ? 0xb6bac6 : 0x6f6797,
-      map: gray ? t.gray : t.violet,
-      gradientMap: t.gradientMap,
-      emissive: gray ? 0x7877b1 : 0x54128c,
-      emissiveIntensity: gray ? 0.12 : 0.3,
-    });
-  },
-  // darker secondary chunks (wings, fangs, accents)
-  _golemMatDark(type) {
-    const t = _golemTextures(); const gray = this._isGray(type);
-    return new THREE.MeshToonMaterial({
-      color: gray ? 0x8f94a3 : 0x3e3958,
-      map: gray ? t.gray : t.violet,
-      gradientMap: t.gradientMap,
-      emissive: gray ? 0x7877b1 : 0x54128c,
-      emissiveIntensity: gray ? 0.12 : 0.3,
-    });
-  },
-  // legacy helper kept for any stray callers: stone now means toon crystal
-  _stone(col) {
-    const t = _golemTextures();
-    return new THREE.MeshToonMaterial({ color: col, map: t.violet, gradientMap: t.gradientMap });
-  },
+  _stone(col) { return new THREE.MeshStandardMaterial({ color: col, roughness: 0.85, metalness: 0, flatShading: true }); },
   _glow(col, i) { return new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: i || 1.2, roughness: 0.5, flatShading: true }); },
   _wood(col) { return new THREE.MeshStandardMaterial({ color: col, roughness: 0.8, metalness: 0, flatShading: true }); },
   _add(g, geo, mat, x, y, z, sx, sy, sz) {
@@ -99,16 +31,16 @@ const EnemyFactory = {
     if (sx != null) m.scale.set(sx, sy == null ? sx : sy, sz == null ? sx : sz);
     m.castShadow = true; g.add(m); return m;
   },
-  // glowing stretched-oval crystal eye; the mesh itself is wiggled by the game
+  // big cartoon googly eye: white ball + black pupil that the game wiggles
   _eye(g, x, y, z, r) {
     g.userData.eyes = g.userData.eyes || [];
-    const col = g.userData.golemGray ? 0xdedbff : 0xcd6bff;
-    const mat = new THREE.MeshBasicMaterial({ color: col });
-    const eye = this._add(g, new THREE.SphereGeometry(r, 12, 8), mat, x, y, z, 1.9, 0.45, 0.45);
-    eye.castShadow = false;
-    eye.userData.base = new THREE.Vector3(x, y, z); eye.userData.rr = r;
-    g.userData.eyes.push(eye);
-    return eye;
+    const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 });
+    const black = new THREE.MeshStandardMaterial({ color: 0x141018, roughness: 0.3 });
+    this._add(g, new THREE.SphereGeometry(r, 16, 16), white, x, y, z);
+    const pupil = this._add(g, new THREE.SphereGeometry(r * 0.5, 12, 12), black, x, y, z + r * 0.62);
+    pupil.userData.base = new THREE.Vector3(x, y, z + r * 0.62); pupil.userData.rr = r;
+    g.userData.eyes.push(pupil);
+    return pupil;
   },
   _mouth(g, col, x, y, z, w, h) {
     g.userData.cores = g.userData.cores || [];
@@ -117,33 +49,32 @@ const EnemyFactory = {
   },
 
   build(type) {
-    const c = this.TYPES[type] ? this.TYPES[type].col : '#c5c7cf';
+    const c = this.TYPES[type] ? this.TYPES[type].col : '#ffd23f';
     switch (type) {
-      case 'runner':  return this._runner(c, type);
-      case 'tank':    return this._tank(c, type);
-      case 'shooter': return this._shooter(c, type);
-      case 'dragon':  return this._dragon(c, type);
-      case 'boss':    return this._boss(c, type);
-      case 'spider':  return this._spider(c, type);
+      case 'runner':  return this._runner(c);
+      case 'tank':    return this._tank(c);
+      case 'shooter': return this._shooter(c);
+      case 'dragon':  return this._dragon(c);
+      case 'boss':    return this._boss(c);
+      case 'spider':  return this._spider(c);
       // every foe in Wobbleton is a golem now — stage variety comes from
-      // each type's palette, scale and stats rather than different species
-      case 'sapling': return this._runner(c, type);
-      case 'bramble': return this._grunt(c, type);
-      case 'treant':  return this._shooter(c, type);
-      case 'monkey':  return this._runner(c, type);
-      case 'slinger': return this._shooter(c, type);
-      case 'ape':     return this._tank(c, type);
-      case 'clown':   return this._grunt(c, type);
-      case 'jester':  return this._shooter(c, type);
-      default:        return this._grunt(c, 'grunt');
+      // each type's colour, scale and stats rather than different species
+      case 'sapling': return this._runner(c);
+      case 'bramble': return this._grunt(c);
+      case 'treant':  return this._shooter(c);
+      case 'monkey':  return this._runner(c);
+      case 'slinger': return this._shooter(c);
+      case 'ape':     return this._tank(c);
+      case 'clown':   return this._grunt(c);
+      case 'jester':  return this._shooter(c);
+      default:        return this._grunt(c);
     }
   },
 
-  // ---- GOLEMS (cracked stone, glowing crystal eyes) ----
-  _grunt(c, type) {
+  // ---- GOLEMS (chunky candy rocks, googly eyes) ----
+  _grunt(c) {
     const g = new THREE.Group(); g.userData.cores = []; g.userData.eyes = [];
-    g.userData.golemGray = this._isGray(type);
-    const rock = this._golemMat(type);
+    const rock = this._stone(0x8a6ad8);
     this._add(g, new THREE.IcosahedronGeometry(0.62, 0), rock, 0, 0.95, 0, 1, 1.15, 0.95);
     this._add(g, new THREE.DodecahedronGeometry(0.42, 0), rock, 0, 1.7, 0.04);
     [-0.62, 0.62].forEach(s => { this._add(g, new THREE.IcosahedronGeometry(0.3, 0), rock, s, 1.0, 0.18); this._add(g, new THREE.BoxGeometry(0.16, 0.5, 0.16), rock, s, 0.55, 0.1); });
@@ -153,19 +84,17 @@ const EnemyFactory = {
     this._moss(g, 1.95);
     return g;
   },
-  _runner(c, type) {
+  _runner(c) {
     const g = new THREE.Group(); g.userData.cores = []; g.userData.eyes = [];
-    g.userData.golemGray = this._isGray(type);
-    const rock = this._golemMat(type);
+    const rock = this._stone(0xff8ec9);
     this._add(g, new THREE.IcosahedronGeometry(0.5, 0), rock, 0, 0.55, 0, 1.2, 0.85, 1.1);
     [[-0.4,-0.3],[0.4,-0.3],[-0.4,0.3],[0.4,0.3]].forEach(p => this._add(g, new THREE.BoxGeometry(0.1, 0.5, 0.1), rock, p[0], 0.25, p[1]));
     this._eye(g, -0.18, 0.66, 0.4, 0.18); this._eye(g, 0.18, 0.66, 0.4, 0.18);
     return g;
   },
-  _tank(c, type) {
+  _tank(c) {
     const g = new THREE.Group(); g.userData.cores = []; g.userData.eyes = [];
-    g.userData.golemGray = this._isGray(type);
-    const rock = this._golemMat(type);
+    const rock = this._stone(0x6ab8ff);
     this._add(g, new THREE.DodecahedronGeometry(0.95, 0), rock, 0, 1.3, 0, 1, 1.1, 1);
     for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; this._add(g, new THREE.IcosahedronGeometry(0.42, 0), rock, Math.cos(a) * 0.85, 1.3 + Math.sin(a) * 0.3, Math.sin(a) * 0.3); }
     this._add(g, new THREE.DodecahedronGeometry(0.5, 0), rock, 0, 2.4, 0.1);
@@ -176,10 +105,9 @@ const EnemyFactory = {
     this._moss(g, 2.75);
     return g;
   },
-  _shooter(c, type) {
+  _shooter(c) {
     const g = new THREE.Group(); g.userData.cores = []; g.userData.eyes = []; g.userData.parts = {};
-    g.userData.golemGray = this._isGray(type);
-    const rock = this._golemMat(type);
+    const rock = this._stone(0xc18cff);
     this._add(g, new THREE.ConeGeometry(0.55, 1.4, 6), rock, 0, 1.0, 0);
     this._add(g, new THREE.DodecahedronGeometry(0.36, 0), rock, 0, 1.9, 0.04);
     [-0.45, 0.45].forEach(s => this._add(g, new THREE.IcosahedronGeometry(0.22, 0), rock, s, 1.25, 0.45));
@@ -188,24 +116,22 @@ const EnemyFactory = {
     this._eye(g, -0.13, 1.94, 0.3, 0.13); this._eye(g, 0.13, 1.94, 0.3, 0.13);
     return g;
   },
-  _dragon(c, type) {
+  _dragon(c) {
     const g = new THREE.Group(); g.userData.cores = []; g.userData.eyes = [];
-    g.userData.golemGray = this._isGray(type);
-    const rock = this._golemMat(type);
+    const rock = this._stone(0xffae6b);
     this._add(g, new THREE.IcosahedronGeometry(0.6, 0), rock, 0, 0, 0, 1.4, 0.8, 1);
     this._add(g, new THREE.ConeGeometry(0.3, 1.0, 5), rock, 0, 0, -0.9).rotation.x = -Math.PI / 2;
     this._add(g, new THREE.DodecahedronGeometry(0.34, 0), rock, 0, 0.05, -1.2);
     this._add(g, new THREE.ConeGeometry(0.18, 1.3, 5), rock, 0, 0, 1.1).rotation.x = Math.PI / 2;
     const wing = g.userData.wing = [];
-    [-1, 1].forEach(s => { const w = this._add(g, new THREE.BoxGeometry(1.4, 0.06, 0.7), this._golemMatDark(type), s * 1.0, 0.2, 0); wing.push(w); });
+    [-1, 1].forEach(s => { const w = this._add(g, new THREE.BoxGeometry(1.4, 0.06, 0.7), this._stone(0xffc78c), s * 1.0, 0.2, 0); wing.push(w); });
     this._eye(g, -0.16, 0.16, -1.35, 0.13); this._eye(g, 0.16, 0.16, -1.35, 0.13);
     this._mouth(g, c, 0, -0.1, -1.45, 0.22, 0.08);
     return g;
   },
-  _boss(c, type) {
+  _boss(c) {
     const g = new THREE.Group(); g.userData.cores = []; g.userData.eyes = [];
-    g.userData.golemGray = this._isGray(type);
-    const rock = this._golemMat(type);
+    const rock = this._stone(0xff7a7a);
     this._add(g, new THREE.IcosahedronGeometry(1.1, 0), rock, 0, 1.7, 0, 1, 1.2, 1);
     this._add(g, new THREE.DodecahedronGeometry(0.7, 0), rock, 0, 3.0, 0.1);
     [-1.2, 1.2].forEach(s => this._add(g, new THREE.IcosahedronGeometry(0.6, 0), rock, s, 2.2, 0));
@@ -217,10 +143,9 @@ const EnemyFactory = {
     this._moss(g, 3.5); this._moss(g, 3.3);
     return g;
   },
-  _spider(c, type) {
+  _spider(c) {
     const g = new THREE.Group(); g.userData.cores = []; g.userData.eyes = [];
-    g.userData.golemGray = this._isGray(type);
-    const rock = this._golemMat(type);
+    const rock = this._stone(0x7fe8b6);
     this._add(g, new THREE.IcosahedronGeometry(0.95, 0), rock, 0, 1.3, 0.4, 1.2, 1, 1.3);
     this._add(g, new THREE.DodecahedronGeometry(0.55, 0), rock, 0, 1.2, -0.6);
     for (let i = 0; i < 4; i++) {
@@ -231,7 +156,7 @@ const EnemyFactory = {
         this._add(g, new THREE.BoxGeometry(0.08, 1.3, 0.08), rock, hipX + s * 0.85, 0.7, hipZ).rotation.z = s * 0.5;
       });
     }
-    [-0.18, 0.18].forEach(s => this._add(g, new THREE.ConeGeometry(0.08, 0.4, 4), this._golemMatDark(type), s, 0.85, -0.95).rotation.x = Math.PI);
+    [-0.18, 0.18].forEach(s => this._add(g, new THREE.ConeGeometry(0.08, 0.4, 4), this._stone(0xffffff), s, 0.85, -0.95).rotation.x = Math.PI);
     // cluster of googly venom eyes
     [[-0.24, 1.45], [0.24, 1.45], [-0.36, 1.18], [0.36, 1.18], [0, 1.6]].forEach((p, i) => this._eye(g, p[0], p[1], -0.92, i === 4 ? 0.16 : 0.13));
     return g;
@@ -377,11 +302,10 @@ const EnemyFactory = {
     return g;
   },
 
-  // small glowing crystal shards sprouting from the stone (was moss)
   _moss(g, y) {
     for (let i = 0; i < 5; i++) {
       const a = Math.random() * Math.PI * 2, r = 0.2 + Math.random() * 0.3;
-      this._add(g, new THREE.IcosahedronGeometry(0.1 + Math.random() * 0.08, 0), this._glow(0xbb6bff, 0.9), Math.cos(a) * r, y - Math.random() * 0.3, Math.sin(a) * r);
+      this._add(g, new THREE.IcosahedronGeometry(0.1 + Math.random() * 0.08, 0), this._wood(0x8fdc4a), Math.cos(a) * r, y - Math.random() * 0.3, Math.sin(a) * r);
     }
   },
 };

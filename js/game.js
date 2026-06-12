@@ -134,6 +134,40 @@ class Game {
     else if (level === 'desert') this.buildDesert(this.worldGroup);
     else if (level === 'range') this.buildRange(this.worldGroup);
     else this.buildCity(this.worldGroup);
+    this._expandWorld(2.4);
+  }
+
+  // Expand the whole world footprint by a factor: bakes an x/z scale into
+  // every top-level world object (sky domes excluded), stretches fog and
+  // re-scales the coordinate systems of moving props (trains, traffic).
+  _expandWorld(f) {
+    this.worldGroup.children.forEach(c => {
+      const r = c.geometry && c.geometry.parameters && c.geometry.parameters.radius;
+      if (r && r >= 700) return; // sky dome stays a sphere
+      c.position.x *= f; c.position.z *= f;
+      c.scale.x *= f; c.scale.z *= f;
+    });
+    if (this.scene.fog) {
+      if (this.scene.fog.isFogExp2) this.scene.fog.density /= f;
+      else { this.scene.fog.near *= f; this.scene.fog.far *= f; }
+    }
+    this.camera.far = Math.max(this.camera.far, 1200 * f);
+    this.camera.updateProjectionMatrix();
+    const sc = v => { if (v) { v.x *= f; v.z *= f; } };
+    if (this.railProps) {
+      const rp = this.railProps;
+      if (rp.curve && rp.curve.points) { rp.curve.points.forEach(sc); if (rp.curve.updateArcLengths) rp.curve.updateArcLengths(); }
+      if (rp.span) rp.span *= f;
+      (rp.vehicles || []).forEach(v => v.pos *= f);
+      (rp.cars || []).forEach(car => { sc(car.userData.prevPos); });
+    }
+    if (this.megaProps) {
+      const mp = this.megaProps;
+      if (mp.span) mp.span *= f;
+      (mp.vehicles || []).forEach(v => v.pos *= f);
+    }
+    if (this.desertProps && this.desertProps.span) this.desertProps.span *= f;
+    sc(this._railSpawn); sc(this._desertSpawn); sc(this._rangeSpawn);
   }
 
   // ================= EGYPTIAN DESERT + JUNGLE (dual biome) =================
@@ -1499,6 +1533,8 @@ class Game {
   // ---------------- INPUT ----------------
   setupInputs() {
     const onKey = (code, down) => {
+      if (code === 'Backquote' && down) { this.toggleTerminal(); return; }
+      if (this._termOpen) return;
       if (code === 'KeyW') this.input.w = down;
       if (code === 'KeyS') this.input.s = down;
       if (code === 'KeyA') this.input.a = down;
@@ -1523,6 +1559,13 @@ class Game {
     };
     addEventListener('keydown', e => onKey(e.code, true));
     addEventListener('keyup', e => onKey(e.code, false));
+    // dev terminal input box
+    const ti = document.getElementById('term-input');
+    if (ti) ti.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.code === 'Backquote' || e.code === 'Escape') { e.preventDefault(); this.toggleTerminal(); return; }
+      if (e.code === 'Enter') { const cmd = ti.value.trim().toLowerCase(); ti.value = ''; this.execTerminal(cmd); }
+    });
     // scroll wheel cycles weapons (shared behaviour with Wobbleton Tower)
     addEventListener('wheel', e => {
       if (!this.gameStarted || this.isPaused) return;
@@ -1809,8 +1852,9 @@ class Game {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       if (this.enemies[i].userData.dummy) { this.scene.remove(this.enemies[i]); this.enemies.splice(i, 1); }
     }
+    const X = 2.4; // match the expanded world footprint
     const rows = [{ z: -14, n: 5, sp: 4 }, { z: -26, n: 5, sp: 5 }, { z: -40, n: 4, sp: 6 }, { z: -56, n: 3, sp: 7 }, { z: -70, n: 2, sp: 9 }];
-    rows.forEach(r => { for (let i = 0; i < r.n; i++) this.spawnDummy((i - (r.n - 1) / 2) * r.sp, r.z); });
+    rows.forEach(r => { for (let i = 0; i < r.n; i++) this.spawnDummy((i - (r.n - 1) / 2) * r.sp * X, r.z * X); });
     this.updateHUD();
   }
 
@@ -1856,8 +1900,34 @@ class Game {
     return spr;
   }
 
+  // ---------------- DEV TERMINAL (~) ----------------
+  toggleTerminal() {
+    this._termOpen = !this._termOpen;
+    const t = document.getElementById('dev-terminal');
+    if (!t) return;
+    t.classList.toggle('hidden', !this._termOpen);
+    this.input.shoot = false;
+    if (this._termOpen) { document.exitPointerLock(); setTimeout(() => { const i = document.getElementById('term-input'); if (i) i.focus(); }, 60); }
+    else if (this.gameStarted && !this.isPaused && !this.isMobile) this.lockPointer();
+  }
+
+  execTerminal(cmd) {
+    const log = document.getElementById('term-log');
+    const out = m => { if (log) log.textContent = m; };
+    if (cmd === 'tulani') {
+      this.god = !this.god;
+      out(this.god ? 'GOD MODE ENABLED — invulnerable · infinite ammo' : 'god mode disabled');
+      this.showMessage(this.god ? '★ GOD MODE ★' : 'GOD MODE OFF', '#ffd166');
+    } else if (cmd === 'help') {
+      out('commands: tulani (toggle god mode) · help');
+    } else if (cmd) {
+      out('unknown command: ' + cmd);
+    }
+  }
+
   // armor absorbs 60% of incoming damage until it breaks; the rest hits health
   damagePlayer(dmg) {
+    if (this.god) return;
     const P = this.player;
     if (P.armor > 0) {
       const absorbed = Math.min(P.armor, dmg * 0.6);
@@ -2433,7 +2503,8 @@ class Game {
       }
     } else { this.fpCharge = 0; }
     if (!w.forcePush && this.input.shoot && w.ammo > 0 && !this.gunGroup.userData.reloading && now - (w.lastShot || 0) > w.rate) {
-      w.ammo--; w.lastShot = now;
+      if (!this.god) w.ammo--;
+      w.lastShot = now;
       this.fireWeapon(w);
       this.sound.shoot(w.name.toLowerCase());
       this.updateHUD();

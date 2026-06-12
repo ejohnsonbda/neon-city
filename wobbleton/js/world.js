@@ -8,7 +8,7 @@ const World = (() => {
   const FLOOR_COUNT = 6;
   const INT = 15;          // interior half-extent (30x30 room)
   const WALL = 1;
-  const TOWN_R = 95;       // walkable town radius
+  const TOWN_R = 228;      // walkable town radius (expanded 240%)
   const DOOR_HALF = 2.4;   // door half-width on front (-z) wall
 
   // ---------- procedural textures ----------
@@ -175,9 +175,9 @@ const World = (() => {
     // ---- OPEN AREAS reached by portals ----
     const AREAS = {
       town:   { center: new THREE.Vector3(0, 0, 0),     R: TOWN_R, obstacles: colliders, group: scene, pool: ['runner', 'runner', 'grunt', 'grunt', 'spider'], boss: 'spider', bossEvery: 5, label: 'THE STREETS', sub: 'Wobbleton · open streets' },
-      jungle: { center: new THREE.Vector3(600, 0, 0),   R: 92, obstacles: [], group: new THREE.Group(), pool: ['runner', 'runner', 'shooter', 'runner', 'grunt'], boss: 'ape', bossEvery: 5, label: 'THE JUNGLE', sub: 'Wibblewood · deep jungle' },
-      castle: { center: new THREE.Vector3(-600, 0, 0),  R: 90, obstacles: [], group: new THREE.Group(), pool: ['grunt', 'grunt', 'tank', 'runner', 'shooter'], boss: 'boss', bossEvery: 5, label: 'WACKY CASTLE', sub: 'Castle Cattywumpus' },
-      maze:   { center: new THREE.Vector3(0, 0, 600),   R: 66, obstacles: [], group: new THREE.Group(), pool: ['grunt', 'runner', 'runner', 'shooter', 'grunt'], boss: 'ape', bossEvery: 6, label: 'HEDGE MAZE', sub: 'Maze of Maziness' },
+      jungle: { center: new THREE.Vector3(900, 0, 0),   R: 221, obstacles: [], group: new THREE.Group(), pool: ['runner', 'runner', 'shooter', 'runner', 'grunt'], boss: 'ape', bossEvery: 5, label: 'THE JUNGLE', sub: 'Wibblewood · deep jungle' },
+      castle: { center: new THREE.Vector3(-900, 0, 0), R: 216, obstacles: [], group: new THREE.Group(), pool: ['grunt', 'grunt', 'tank', 'runner', 'shooter'], boss: 'boss', bossEvery: 5, label: 'WACKY CASTLE', sub: 'Castle Cattywumpus' },
+      maze:   { center: new THREE.Vector3(0, 0, 900),   R: 158, obstacles: [], group: new THREE.Group(), pool: ['grunt', 'runner', 'runner', 'shooter', 'grunt'], boss: 'ape', bossEvery: 6, label: 'HEDGE MAZE', sub: 'Maze of Maziness' },
     };
     buildJungle(AREAS.jungle.group, AREAS.jungle.center, AREAS.jungle.R, AREAS.jungle.obstacles);
     buildCastle(AREAS.castle.group, AREAS.castle.center, AREAS.castle.R, AREAS.castle.obstacles);

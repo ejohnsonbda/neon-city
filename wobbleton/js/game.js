@@ -46,7 +46,31 @@ const Game = (() => {
     const t = new THREE.Texture(c); t.needsUpdate = true; return t;
   }
 
+  // ---------- audio (shared SoundManager + music from the main game) ----------
+  let snd = null;
+  function initAudio() {
+    if (snd || typeof SoundManager === 'undefined') return;
+    snd = new SoundManager();
+    snd.loadSample('shoot', '../uploads/chromascension-lazer-gun-one-shot-542393.mp3');
+    const menuM = document.getElementById('menu-music');
+    if (menuM) {
+      menuM.volume = 0.5;
+      const tryPlay = () => { if (!S.engaged && menuM.paused) menuM.play().catch(() => {}); };
+      ['pointerdown', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, tryPlay));
+    }
+  }
+  function startGameMusic() {
+    const menuM = document.getElementById('menu-music');
+    const gameM = document.getElementById('game-music');
+    if (menuM) { menuM.pause(); menuM.currentTime = 0; }
+    if (gameM) { gameM.volume = 0.35; gameM.play().catch(() => {}); }
+    if (snd) snd.resume();
+  }
+  initAudio(); // menu music arms on first user gesture
+
   function init(stage) {
+    initAudio();
+    startGameMusic();
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 400);
     // mobile / coarse-pointer devices get a lighter renderer (this is where lag bites)
@@ -180,7 +204,34 @@ const Game = (() => {
     });
     addEventListener('mousedown', e => { if (e.button === 0) S.mouseDown = true; });
     addEventListener('mouseup', e => { if (e.button === 0) S.mouseDown = false; });
+    // dev terminal (~) — type "tulani" for god mode
+    const termInput = document.getElementById('term-input');
+    function toggleTerm() {
+      S.termOpen = !S.termOpen;
+      const t = document.getElementById('dev-terminal');
+      if (!t) return;
+      t.style.display = S.termOpen ? 'block' : 'none';
+      S.mouseDown = false;
+      if (S.termOpen) { if (document.exitPointerLock) document.exitPointerLock(); setTimeout(() => termInput && termInput.focus(), 60); }
+    }
+    function execTerm(cmd) {
+      const log = document.getElementById('term-log');
+      const out = m => { if (log) log.textContent = m; };
+      if (cmd === 'tulani') {
+        S.god = !S.god;
+        out(S.god ? 'GOD MODE ENABLED — invulnerable · infinite ammo' : 'god mode disabled');
+        HUD.flash('#ffd23f', S.god ? '★ GOD MODE! ★' : 'god mode off');
+      } else if (cmd === 'help') out('commands: tulani (toggle god mode) · help');
+      else if (cmd) out('unknown command: ' + cmd);
+    }
+    if (termInput) termInput.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.code === 'Backquote' || e.code === 'Escape') { e.preventDefault(); toggleTerm(); return; }
+      if (e.code === 'Enter') { const cmd = termInput.value.trim().toLowerCase(); termInput.value = ''; execTerm(cmd); }
+    });
     addEventListener('keydown', e => {
+      if (e.code === 'Backquote') { toggleTerm(); return; }
+      if (S.termOpen) return;
       S.keys[e.code] = true;
       if (e.code >= 'Digit1' && e.code <= 'Digit6') {
         const i = +e.code.slice(5) - 1;
@@ -241,6 +292,7 @@ const Game = (() => {
         if (Game.opts.shake) S.shake = Math.min(0.7, 0.2 + power * 0.4);
         muzzle.intensity = 4 + power * 4; muzzle.color.setHex(w.color);
         if (muzzleFlash) { muzzleFlash.material.color.setHex(w.color); muzzleFlash.material.opacity = 1; muzzleFlash.scale.setScalar(0.8 + power); }
+        if (snd) { snd.tone(70 + power * 30, 'sawtooth', 0.2, 0.25); snd.tone(150 + power * 60, 'sine', 0.14, 0.3); }
         forceBlast(camForward(), w, power);
       }
       return;
@@ -253,12 +305,13 @@ const Game = (() => {
     if (S.mags[S.wi] <= 0) { reload(); return; }
 
     S.firedThisClick = true;
-    S.cd = w.rate * (S.buffs.rapid > 0 ? 0.42 : 1); S.mags[S.wi]--;
+    S.cd = w.rate * (S.buffs.rapid > 0 ? 0.42 : 1); if (!S.god) S.mags[S.wi]--;
     S.recoil = Math.min(0.5, S.recoil + w.recoil);
     if (Game.opts.shake) S.shake = Math.min(0.6, S.shake + w.recoil * 0.9);
     muzzle.intensity = 5; muzzle.color.setHex(w.color);
     // pop the muzzle flash sprite
     if (muzzleFlash) { muzzleFlash.material.color.setHex(w.color); muzzleFlash.material.opacity = 1; muzzleFlash.scale.setScalar(0.7 + Math.random() * 0.5); muzzleFlash.material.rotation = Math.random() * 6.28; }
+    if (snd) snd.shoot(w.name.toLowerCase());
     HUD.weapon(w, S.mags[S.wi], S.reserves[S.wi]);
 
     const dir = camForward();
@@ -381,10 +434,12 @@ const Game = (() => {
   function damageEnemy(e, dmg) {
     if (e.dead) return;
     e.hp -= dmg; e.hitFlash = 0.12;
+    if (snd) snd.hit();
     if (e.hp <= 0) killEnemy(e);
   }
   function killEnemy(e) {
     e.dead = true;
+    if (snd) snd.kill();
     burst(e.center(), e.cfg.col, e.type === 'boss' || e.type === 'spider' ? 40 : 14);
     scene.remove(e.group);
     S.score += e.cfg.points * (S.buffs.double > 0 ? 2 : 1); HUD.score(S.score);
@@ -537,6 +592,7 @@ const Game = (() => {
       p.group.position.y = zoneGroundY() + 0.9 + Math.sin(t * 3 + p.group.position.x) * 0.18;
       p.sprite.material.rotation = Math.sin(t * 4) * 0.15;
       if (new THREE.Vector3(p.group.position.x, S.pos.y, p.group.position.z).distanceTo(S.pos) < 1.8) {
+        if (snd) snd.collect();
         applyPowerup(p.def);
         burst(p.group.position.clone(), p.def.disc, 12);
         scene.remove(p.group); p.gone = true;
@@ -566,6 +622,8 @@ const Game = (() => {
       const absorbed = Math.min(S.armor, dmg * 0.6);
       S.armor -= absorbed; dmg -= absorbed;
     }
+    if (S.god) return;
+    if (snd) snd.damage();
     S.hp -= dmg; S.hurt = 0.4; if (Game.opts.shake) S.shake = Math.min(0.7, S.shake + 0.25);
     HUD.hp(S.hp, S.maxHp, S.armor);
     if (S.hp <= 0) gameOver();

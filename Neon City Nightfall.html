@@ -278,6 +278,13 @@
 <div id="dmg-vignette"></div>
 <div id="scope-overlay"></div>
 <div id="fp-flash"></div>
+<!-- dev terminal (~) -->
+<div id="dev-terminal" class="hidden" style="position:fixed;left:0;right:0;bottom:0;z-index:95;background:rgba(4,8,14,.94);border-top:1px solid rgba(25,240,255,.4);padding:10px 16px;font:600 13px 'Courier New',monospace;">
+  <div id="term-log" style="color:rgba(25,240,255,.8);margin-bottom:6px;min-height:16px;">NIGHTFALL CONSOLE — type a command, ~ to close</div>
+  <div style="display:flex;gap:8px;align-items:center;"><span style="color:var(--cyan)">&gt;</span>
+    <input id="term-input" style="flex:1;background:transparent;border:none;outline:none;color:#fff;font:600 14px 'Courier New',monospace;" autocomplete="off" spellcheck="false">
+  </div>
+</div>
 <div id="fp-charge-wrap">
   <div id="fp-charge-label"><span>KINETIC CHARGE</span><span id="fp-charge-val">READY</span></div>
   <div id="fp-charge-track"><div id="fp-charge-bar"></div></div>
