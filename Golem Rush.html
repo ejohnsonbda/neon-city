@@ -4,37 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2305060c'/%3E%3Cpath d='M14 46V18h8l20 28V18h8v28h-8L22 18v28z' fill='%2319f0ff'/%3E%3Cpath d='M10 50h44' stroke='%23ff2d95' stroke-width='4'/%3E%3C/svg%3E">
-<title>Neon City: Nightfall</title>
+<title>Golem Rush</title>
 <script src="js/lib/three.min.js"></script>
 <script>if (typeof THREE === 'undefined') document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --cyan:#19f0ff; --mag:#ff2d95; --purple:#9b5cff; --amber:#ffd166; --green:#39ff14;
-    --ink:#05060c; --panel:rgba(8,12,22,.78);
+    --cyan:#ffb347; --mag:#9b59b6; --purple:#6bcb77; --amber:#ffd166; --green:#39ff14;
+    --ink:#0a0a1a; --panel:rgba(8,12,22,.78);
   }
   *{box-sizing:border-box;}
-  body{margin:0;overflow:hidden;background:#05060c;font-family:'Rajdhani',sans-serif;color:#fff;
+  body{margin:0;overflow:hidden;background:#0a0a1a;font-family:'Rajdhani',sans-serif;color:#fff;
     user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
   #game-container{position:fixed;inset:0;}
   #ui-layer{position:fixed;inset:0;pointer-events:none;z-index:10;}
   .hidden{display:none !important;}
   /* ---------- Startup preload overlay ---------- */
   #preload-overlay{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;pointer-events:auto;
-    background:radial-gradient(circle at 50% 42%,rgba(25,240,255,.16),transparent 55%),linear-gradient(rgba(6,8,16,.72),rgba(6,8,16,.94)),#05060c;
+    background:radial-gradient(circle at 50% 42%,rgba(255,179,71,.16),transparent 55%),linear-gradient(rgba(6,8,16,.72),rgba(6,8,16,.94)),#0a0a1a;
     transition:opacity .42s ease,visibility .42s ease;}
   #preload-overlay.done{opacity:0;visibility:hidden;pointer-events:none;}
-  .preload-card{width:min(520px,calc(100vw - 38px));padding:24px 26px 22px;background:rgba(8,12,22,.88);border:1px solid rgba(25,240,255,.38);
-    clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px);box-shadow:0 0 42px rgba(25,240,255,.22),inset 0 0 28px rgba(255,45,149,.08);}
+  .preload-card{width:min(520px,calc(100vw - 38px));padding:24px 26px 22px;background:rgba(8,12,22,.88);border:1px solid rgba(255,179,71,.38);
+    clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px);box-shadow:0 0 42px rgba(255,179,71,.22),inset 0 0 28px rgba(255,45,149,.08);}
   .preload-kicker{font:700 11px 'Rajdhani';letter-spacing:.42em;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:8px;}
-  #preload-status{font:900 24px 'Orbitron';letter-spacing:.18em;color:var(--cyan);text-shadow:0 0 18px rgba(25,240,255,.55);}
+  #preload-status{font:900 24px 'Cinzel';letter-spacing:.18em;color:var(--cyan);text-shadow:0 0 18px rgba(25,240,255,.55);}
   #preload-detail{min-height:22px;margin:10px 0 16px;font:600 15px 'Rajdhani';letter-spacing:.05em;color:rgba(255,255,255,.68);}
   .preload-track{height:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);overflow:hidden;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);}
   #preload-bar{height:100%;width:6%;background:linear-gradient(90deg,var(--cyan),var(--mag));box-shadow:0 0 18px rgba(255,45,149,.6);transition:width .22s ease;}
-  #preload-dismiss{margin-top:16px;padding:8px 13px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:rgba(255,255,255,.62);font:700 11px 'Orbitron';letter-spacing:.16em;cursor:pointer;}
+  #preload-dismiss{margin-top:16px;padding:8px 13px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:rgba(255,255,255,.62);font:700 11px 'Cinzel';letter-spacing:.16em;cursor:pointer;}
   #preload-dismiss:hover{color:#fff;border-color:rgba(25,240,255,.52);}
 
-  .orb{font-family:'Orbitron',sans-serif;}
+  .orb{font-family:'Cinzel',sans-serif;}
 
   /* ---------- Crosshair ---------- */
   #crosshair{position:absolute;top:50%;left:50%;width:30px;height:30px;transform:translate(-50%,-50%);}
@@ -58,18 +58,18 @@
   /* ---------- Top-right stats ---------- */
   #hud-top{position:absolute;top:22px;right:22px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;}
   .score-label{font:700 11px 'Rajdhani';letter-spacing:.35em;color:rgba(255,255,255,.45);}
-  .score-num{font:900 42px 'Orbitron';line-height:.9;color:#fff;text-shadow:0 0 18px rgba(255,209,102,.5);}
+  .score-num{font:900 42px 'Cinzel';line-height:.9;color:#fff;text-shadow:0 0 18px rgba(255,209,102,.5);}
   .score-num b{color:var(--amber);}
   .stat-row{display:flex;gap:8px;margin-top:4px;}
   .stat-chip{background:var(--panel);border:1px solid rgba(255,255,255,.12);padding:5px 12px;
     clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
     font:700 13px 'Rajdhani';letter-spacing:.15em;}
-  .stat-chip span{font-family:'Orbitron';font-weight:700;}
+  .stat-chip span{font-family:'Cinzel';font-weight:700;}
   .stat-chip .c{color:var(--cyan);} .stat-chip .m{color:var(--mag);}
 
   /* ---------- Boss bar ---------- */
   #boss-bar-wrap{position:absolute;top:24px;left:50%;transform:translateX(-50%);width:min(560px,70vw);}
-  .boss-name{text-align:center;font:700 14px 'Orbitron';letter-spacing:.3em;color:var(--mag);
+  .boss-name{text-align:center;font:700 14px 'Cinzel';letter-spacing:.3em;color:var(--mag);
     text-shadow:0 0 12px rgba(255,45,149,.6);margin-bottom:6px;}
   .boss-track{height:14px;background:rgba(8,12,22,.8);border:1px solid rgba(255,45,149,.5);
     clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);overflow:hidden;}
@@ -82,7 +82,7 @@
   .hp-block{min-width:300px;}
   .hp-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;}
   .hp-head .lbl{font:700 12px 'Rajdhani';letter-spacing:.3em;color:rgba(255,255,255,.5);}
-  .hp-head .num{font:900 22px 'Orbitron';color:var(--cyan);text-shadow:0 0 12px rgba(25,240,255,.5);}
+  .hp-head .num{font:900 22px 'Cinzel';color:var(--cyan);text-shadow:0 0 12px rgba(25,240,255,.5);}
   .hp-track{height:13px;background:rgba(8,12,22,.85);border:1px solid rgba(255,255,255,.15);
     clip-path:polygon(0 0,calc(100% - 9px) 0,100% 100%,9px 100%);overflow:hidden;}
   #health-bar{height:100%;width:100%;background:linear-gradient(90deg,#ff2d55,#ffd166 55%,#39ff14);
@@ -90,22 +90,22 @@
 
   .ammo-block{text-align:right;}
   .ammo-line{display:flex;align-items:flex-end;gap:8px;justify-content:flex-end;}
-  #ammo-display{font:900 70px 'Orbitron';line-height:.85;color:#fff;text-shadow:0 0 22px rgba(255,255,255,.3);}
+  #ammo-display{font:900 70px 'Cinzel';line-height:.85;color:#fff;text-shadow:0 0 22px rgba(255,255,255,.3);}
   .ammo-max{font:700 18px 'Rajdhani';color:rgba(255,255,255,.5);padding-bottom:8px;}
-  #weapon-name{font:700 14px 'Orbitron';letter-spacing:.3em;color:var(--amber);margin-top:2px;
+  #weapon-name{font:700 14px 'Cinzel';letter-spacing:.3em;color:var(--amber);margin-top:2px;
     border-top:2px solid rgba(255,209,102,.5);padding-top:4px;display:inline-block;}
   #wep-icon-container{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;}
   .wep-chip{display:flex;align-items:center;gap:7px;padding:5px 11px;background:var(--panel);
     border:1px solid rgba(255,255,255,.12);clip-path:polygon(9px 0,100% 0,calc(100% - 9px) 100%,0 100%);}
-  .wep-chip .wep-key{font:700 11px 'Orbitron';color:rgba(255,255,255,.4);background:rgba(255,255,255,.08);
+  .wep-chip .wep-key{font:700 11px 'Cinzel';color:rgba(255,255,255,.4);background:rgba(255,255,255,.08);
     width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:3px;}
   .wep-chip .wep-lbl{font:700 12px 'Rajdhani';letter-spacing:.12em;color:rgba(255,255,255,.55);}
-  .wep-chip.active{border-color:var(--cyan);box-shadow:0 0 14px rgba(25,240,255,.3);}
+  .wep-chip.active{border-color:var(--cyan);box-shadow:0 0 14px rgba(255,179,71,.3);}
   .wep-chip.active .wep-key{color:#04121a;background:var(--cyan);}
   .wep-chip.active .wep-lbl{color:#fff;}
 
   /* ---------- Center message ---------- */
-  #game-message{position:absolute;top:30%;left:50%;transform:translateX(-50%);font:900 40px 'Orbitron';
+  #game-message{position:absolute;top:30%;left:50%;transform:translateX(-50%);font:900 40px 'Cinzel';
     letter-spacing:.12em;opacity:0;transition:opacity .4s;text-shadow:0 0 30px currentColor;text-align:center;white-space:nowrap;}
 
   /* ---------- Force Push gauntlet: charge bar + blast flash ---------- */
@@ -115,8 +115,8 @@
     pointer-events:none;z-index:11;opacity:0;transition:opacity .2s;}
   #fp-charge-label{display:flex;justify-content:space-between;font:700 10px 'Rajdhani';
     letter-spacing:.28em;color:rgba(255,255,255,.55);margin-bottom:5px;}
-  #fp-charge-val{font-family:'Orbitron';color:var(--cyan);}
-  #fp-charge-track{height:9px;background:rgba(10,16,28,.85);border:1px solid rgba(25,240,255,.3);
+  #fp-charge-val{font-family:'Cinzel';color:var(--cyan);}
+  #fp-charge-track{height:9px;background:rgba(10,16,28,.85);border:1px solid rgba(255,179,71,.3);
     clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%);overflow:hidden;}
   #fp-charge-bar{height:100%;width:0%;background:linear-gradient(90deg,#2a6fff,var(--cyan));
     box-shadow:0 0 14px rgba(25,240,255,.7);transition:width .05s linear;}
@@ -130,7 +130,7 @@
   #scope-overlay{position:fixed;inset:0;pointer-events:none;z-index:21;opacity:0;transition:opacity .12s;
     background:radial-gradient(circle at 50% 50%,transparent 0,transparent 30vh,rgba(0,0,0,.92) 31vh,#000 100%);}
   #scope-overlay::before{content:"";position:absolute;top:50%;left:50%;width:62vh;height:62vh;transform:translate(-50%,-50%);
-    border-radius:50%;border:2px solid rgba(25,240,255,.5);box-shadow:inset 0 0 30px rgba(25,240,255,.3);}
+    border-radius:50%;border:2px solid rgba(25,240,255,.5);box-shadow:inset 0 0 30px rgba(255,179,71,.3);}
   #scope-overlay::after{content:"";position:absolute;top:50%;left:50%;width:62vh;height:1px;transform:translate(-50%,-50%);
     background:rgba(25,240,255,.45);}
   #crosshair.aiming .arm{opacity:.3;}
@@ -139,26 +139,26 @@
   .overlay{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;
     justify-content:center;pointer-events:auto;}
   .grid-bg{background:
-    radial-gradient(circle at 50% 38%,rgba(25,240,255,.10),transparent 60%),
+    radial-gradient(circle at 50% 38%,rgba(255,179,71,.10),transparent 60%),
     linear-gradient(rgba(155,92,255,.06) 1px,transparent 1px) 0 0/100% 44px,
     linear-gradient(90deg,rgba(155,92,255,.06) 1px,transparent 1px) 0 0/44px 100%,
-    #05060c;}
+    #0a0a1a;}
   /* Login/start screen: Shibuya photo behind the neon grid */
   #menu-overlay{position:fixed;inset:0;overflow-y:auto;justify-content:flex-start;padding:clamp(16px,3vh,36px) 20px 40px;background:
-    linear-gradient(rgba(25,240,255,.09) 1px,transparent 1px) 0 0/100% 46px,
-    linear-gradient(90deg,rgba(255,45,149,.07) 1px,transparent 1px) 0 0/46px 100%,
+    linear-gradient(rgba(255,179,71,.09) 1px,transparent 1px) 0 0/100% 46px,
+    linear-gradient(90deg,rgba(107,203,119,.07) 1px,transparent 1px) 0 0/46px 100%,
     radial-gradient(ellipse at 50% 44%,rgba(5,6,12,.18),rgba(4,5,11,.62) 80%),
     linear-gradient(rgba(6,8,16,.32),rgba(6,8,16,.52)),
-    url('uploads/nicolas-caetano-YBtULi9OAWs-unsplash.jpg') center/cover no-repeat,
-    #05060c;}
+    url('') center/cover no-repeat,
+    #0a0a1a;}
   .scanlines:after{content:"";position:fixed;inset:0;pointer-events:none;
     background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px,rgba(0,0,0,.18) 2px 4px);mix-blend-mode:multiply;}
 
   .title-kicker{font:700 13px 'Rajdhani';letter-spacing:.7em;color:var(--cyan);opacity:.8;margin-bottom:10px;text-transform:uppercase;}
-  .title-main{font:900 clamp(54px,11vw,150px) 'Orbitron';line-height:.86;letter-spacing:-.02em;text-align:center;
+  .title-main{font:900 clamp(54px,11vw,150px) 'Cinzel';line-height:.86;letter-spacing:-.02em;text-align:center;
     background:linear-gradient(180deg,#fff 0%,var(--cyan) 55%,var(--mag) 100%);-webkit-background-clip:text;
     background-clip:text;color:transparent;filter:drop-shadow(0 0 28px rgba(25,240,255,.35));}
-  .title-sub{font:900 clamp(20px,4vw,44px) 'Orbitron';letter-spacing:.5em;color:var(--mag);
+  .title-sub{font:900 clamp(20px,4vw,44px) 'Cinzel';letter-spacing:.5em;color:var(--mag);
     text-shadow:0 0 24px rgba(255,45,149,.5);margin:6px 0 36px;}
 
   #char-select{display:flex;gap:18px;margin-bottom:30px;flex-wrap:wrap;justify-content:center;}
@@ -179,7 +179,7 @@
   .lvl-art.jungle{background:radial-gradient(circle at 70% 22%,#a7ff72,transparent 18%),linear-gradient(160deg,#06190b,#1f5f2b 46%,#68d05a 72%,#102712);}
   .lvl-art.houseyard{background:radial-gradient(circle at 50% 48%,#f9b43a 0 13%,transparent 14%),radial-gradient(circle at 36% 34%,#4ecdc4 0 7%,transparent 8%),radial-gradient(circle at 64% 34%,#ff6f61 0 7%,transparent 8%),linear-gradient(160deg,#87ceeb 0%,#ffe2a4 37%,#6da55a 72%,#dd4a4a 100%);}
   .lvl-body{padding:11px 16px 15px;}
-  .lvl-name{font:900 18px 'Orbitron';margin-bottom:2px;}
+  .lvl-name{font:900 18px 'Cinzel';margin-bottom:2px;}
   .lvl-desc{font-size:13px;color:rgba(255,255,255,.6);}
   .menu-actions{display:flex;gap:16px;align-items:center;margin-bottom:34px;flex-wrap:wrap;justify-content:center;}
 
@@ -187,8 +187,8 @@
   .game-intro p{margin:0 auto 12px;max-width:900px;color:rgba(229,246,255,.82);font-size:17px;line-height:1.45;text-align:center;}
   .feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px;}
   .feature-card{padding:12px 14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:rgba(255,255,255,.72);font-size:13px;line-height:1.35;}
-  .feature-card b{display:block;color:var(--cyan);font-family:'Orbitron';font-size:11px;letter-spacing:.16em;margin-bottom:4px;}
-  .btn-ghost{pointer-events:auto;cursor:pointer;text-decoration:none;font:700 15px 'Orbitron';letter-spacing:.14em;color:var(--purple);
+  .feature-card b{display:block;color:var(--cyan);font-family:'Cinzel';font-size:11px;letter-spacing:.16em;margin-bottom:4px;}
+  .btn-ghost{pointer-events:auto;cursor:pointer;text-decoration:none;font:700 15px 'Cinzel';letter-spacing:.14em;color:var(--purple);
     padding:16px 26px;border:1px solid rgba(194,75,255,.5);background:rgba(20,12,30,.6);
     clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);transition:.15s;}
   .btn-ghost:hover{box-shadow:0 0 24px rgba(194,75,255,.35);border-color:var(--purple);}
@@ -197,11 +197,11 @@
     transition:.18s;font-family:'Rajdhani';}
   .char-card:hover{border-color:rgba(255,255,255,.4);transform:translateY(-3px);}
   .char-card.sel{border-color:var(--cyan);box-shadow:0 0 30px rgba(25,240,255,.25);background:rgba(16,24,40,.95);}
-  .char-name{font:900 24px 'Orbitron';margin-bottom:4px;}
+  .char-name{font:900 24px 'Cinzel';margin-bottom:4px;}
   .char-stats{font:700 12px 'Rajdhani';letter-spacing:.18em;color:rgba(255,255,255,.45);margin-bottom:10px;}
   .char-desc{font-size:14px;color:rgba(255,255,255,.7);margin:0;line-height:1.4;}
 
-  .btn-deploy{pointer-events:auto;cursor:pointer;font:900 26px 'Orbitron';letter-spacing:.2em;color:#04121a;
+  .btn-deploy{pointer-events:auto;cursor:pointer;font:900 26px 'Cinzel';letter-spacing:.2em;color:#04121a;
     padding:18px 70px;border:none;background:linear-gradient(180deg,#5cffe6,var(--cyan));
     clip-path:polygon(16px 0,100% 0,calc(100% - 16px) 100%,0 100%);transition:.15s;
     box-shadow:0 0 36px rgba(25,240,255,.45);}
@@ -213,7 +213,7 @@
 
   /* ---------- Menu tabs ---------- */
   .menu-tabs{display:flex;gap:0;margin:16px 0 4px;border-bottom:1px solid rgba(255,255,255,.12);align-self:stretch;}
-  .menu-tab{font:700 13px 'Orbitron';letter-spacing:.2em;padding:11px 32px;cursor:pointer;pointer-events:auto;
+  .menu-tab{font:700 13px 'Cinzel';letter-spacing:.2em;padding:11px 32px;cursor:pointer;pointer-events:auto;
     color:rgba(255,255,255,.35);border-bottom:2px solid transparent;transition:.15s;}
   .menu-tab.active{color:var(--cyan);border-bottom-color:var(--cyan);}
   .tab-panel{display:none;flex-direction:column;align-items:center;width:100%;}
@@ -226,7 +226,7 @@
     font-family:'Rajdhani';cursor:pointer;pointer-events:auto;transition:.18s;}
   .wep-card:hover{transform:translateY(-2px);}
   .wep-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
-  .wep-name{font:900 15px 'Orbitron';}
+  .wep-name{font:900 15px 'Cinzel';}
   .wep-type{font:700 9px 'Rajdhani';letter-spacing:.25em;padding:3px 6px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.45);margin-top:2px;}
   .wep-bar-row{display:flex;justify-content:space-between;font:700 10px 'Rajdhani';letter-spacing:.1em;color:rgba(255,255,255,.4);margin-top:6px;}
   .wep-bar-track{height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:3px;}
@@ -237,37 +237,37 @@
   /* Pause / settings */
   .panel{width:380px;background:rgba(10,14,26,.95);border:1px solid rgba(25,240,255,.25);padding:26px;
     clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);margin-bottom:24px;}
-  .panel h3{font:700 14px 'Orbitron';letter-spacing:.25em;color:var(--cyan);margin:0 0 18px;
+  .panel h3{font:700 14px 'Cinzel';letter-spacing:.25em;color:var(--cyan);margin:0 0 18px;
     border-bottom:1px solid rgba(25,240,255,.2);padding-bottom:10px;}
   .set-row{margin-bottom:16px;}
   .set-row .top{display:flex;justify-content:space-between;margin-bottom:6px;}
   .set-row label{font:700 12px 'Rajdhani';letter-spacing:.18em;color:rgba(255,255,255,.7);}
-  .set-row .val{font:700 12px 'Orbitron';color:rgba(255,255,255,.45);}
+  .set-row .val{font:700 12px 'Cinzel';color:rgba(255,255,255,.45);}
   .toggle-row{display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);}
   input[type=range]{-webkit-appearance:none;width:100%;background:transparent;}
   input[type=range]::-webkit-slider-runnable-track{height:4px;background:#26303f;border-radius:2px;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;
     border-radius:50%;background:var(--cyan);border:2px solid #fff;box-shadow:0 0 10px var(--cyan);cursor:pointer;}
   input[type=checkbox]{width:18px;height:18px;accent-color:var(--cyan);}
-  .pause-title{font:900 48px 'Orbitron';letter-spacing:.2em;color:#fff;margin-bottom:26px;text-shadow:0 0 30px rgba(25,240,255,.4);}
+  .pause-title{font:900 48px 'Cinzel';letter-spacing:.2em;color:#fff;margin-bottom:26px;text-shadow:0 0 30px rgba(25,240,255,.4);}
   .menu-btns{display:flex;flex-direction:column;gap:12px;width:280px;}
-  .mbtn{pointer-events:auto;cursor:pointer;font:700 16px 'Orbitron';letter-spacing:.15em;padding:14px;border:none;transition:.15s;
+  .mbtn{pointer-events:auto;cursor:pointer;font:700 16px 'Cinzel';letter-spacing:.15em;padding:14px;border:none;transition:.15s;
     clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);}
   .mbtn.primary{background:var(--cyan);color:#04121a;} .mbtn.primary:hover{box-shadow:0 0 26px rgba(25,240,255,.5);}
   .mbtn.danger{background:rgba(255,45,90,.15);color:#ff6680;border:1px solid rgba(255,45,90,.5);} .mbtn.danger:hover{background:rgba(255,45,90,.3);}
 
   /* Death */
   #death-screen{background:radial-gradient(circle at 50% 40%,rgba(120,8,30,.6),rgba(4,2,6,.95));backdrop-filter:blur(8px);}
-  .kia{font:900 110px 'Orbitron';letter-spacing:.08em;color:var(--mag);text-shadow:0 0 50px rgba(255,45,149,.6);margin:0;}
+  .kia{font:900 110px 'Cinzel';letter-spacing:.08em;color:var(--mag);text-shadow:0 0 50px rgba(255,45,149,.6);margin:0;}
   .death-stats{font:700 18px 'Rajdhani';letter-spacing:.2em;color:rgba(255,255,255,.8);margin:14px 0 34px;}
-  .death-stats b{font-family:'Orbitron';color:var(--amber);}
+  .death-stats b{font-family:'Cinzel';color:var(--amber);}
 
   /* Mobile */
   .touch-control{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.25);background:rgba(0,0,0,.2);
     pointer-events:auto;touch-action:none;}
   .touch-knob{position:absolute;width:40%;height:40%;background:rgba(25,240,255,.4);border-radius:50%;top:30%;left:30%;pointer-events:none;}
   .mbtn-round{position:absolute;border-radius:50%;pointer-events:auto;display:flex;align-items:center;justify-content:center;
-    font:700 12px 'Orbitron';touch-action:none;}
+    font:700 12px 'Cinzel';touch-action:none;}
 </style>
 </head>
 <body>
@@ -280,7 +280,7 @@
 <div id="fp-flash"></div>
 <!-- dev terminal (~) -->
 <div id="dev-terminal" class="hidden" style="position:fixed;left:0;right:0;bottom:0;z-index:95;background:rgba(4,8,14,.94);border-top:1px solid rgba(25,240,255,.4);padding:10px 16px;font:600 13px 'Courier New',monospace;">
-  <div id="term-log" style="color:rgba(25,240,255,.8);margin-bottom:6px;min-height:16px;">NIGHTFALL CONSOLE — type a command, ~ to close</div>
+  <div id="term-log" style="color:rgba(25,240,255,.8);margin-bottom:6px;min-height:16px;">GOLEM RUSH CONSOLE — type a command, ~ to close</div>
   <div style="display:flex;gap:8px;align-items:center;"><span style="color:var(--cyan)">&gt;</span>
     <input id="term-input" style="flex:1;background:transparent;border:none;outline:none;color:#fff;font:600 14px 'Courier New',monospace;" autocomplete="off" spellcheck="false">
   </div>
@@ -293,7 +293,7 @@
 <!-- STARTUP PRELOAD -->
 <div id="preload-overlay" role="status" aria-live="polite">
   <div class="preload-card">
-    <div class="preload-kicker">Nightfall Protocol</div>
+    <div class="preload-kicker">Golem Rush</div>
     <div id="preload-status">LOADING TEXTURES</div>
     <div id="preload-detail">Preparing renderer, textures, audio, and first-use effects.</div>
     <div class="preload-track"><div id="preload-bar"></div></div>
@@ -373,16 +373,16 @@
 
 <!-- MAIN MENU -->
 <div id="menu-overlay" class="overlay grid-bg">
-  <div class="title-kicker">Urban Survival · Nightfall Protocol</div>
-  <h1 class="title-main">NEON CITY</h1>
-  <div class="title-sub">NIGHTFALL</div>
+  <div class="title-kicker">Urban Survival · Golem Rush</div>
+  <h1 class="title-main">GOLEM RUSH</h1>
+  <div class="title-sub">FANTASY REALM</div>
 
   <div class="game-intro">
-    <p><b>Neon City: Nightfall</b> is a browser FPS about surviving waves of golems across a restored neon downtown, rural arenas, and boss stages. Sprint through streets, climb playable structures, swap weapons instantly, and use scoped aim to control the fight.</p>
+    <p><b>Golem Rush</b> is a browser FPS about surviving endless waves of stone golems across a vast fantasy realm. Sprint through ancient ruins, climb towering columns, swap weapons instantly, and use scoped aim to dominate the battlefield.</p>
     <div class="feature-grid">
-      <div class="feature-card"><b>RESTORED CITY</b> The first level returns to night streets, sidewalks, storefronts, rooftops, signs, and skyline cover.</div>
+      <div class="feature-card"><b>FANTASY REALM</b> Rolling hills, stone columns, rock arches, enchanted forests, and floating islands form one massive open world.</div>
       <div class="feature-card"><b>FAST FPS MECHANICS</b> WASD movement, sprinting, jumping, ADS/scopes, reloads, weapon hotkeys, and waves remain intact.</div>
-      <div class="feature-card"><b>BROWSER PERFORMANCE</b> The renderer now uses a lower internal resolution to reduce lag while keeping the HUD full-size.</div>
+      <div class="feature-card"><b>BROWSER PERFORMANCE</b> Optimized rendering with dynamic LOD and fog for smooth gameplay in vast open environments.</div>
     </div>
   </div>
 
@@ -393,12 +393,12 @@
 
   <div id="tab-theatre" class="tab-panel active">
     <div class="pick-label">OPEN WORLD MAP</div>
-    <div style="text-align:center;padding:12px 20px;border:1px solid rgba(25,240,255,.3);background:rgba(10,14,26,.7);margin-bottom:18px;max-width:680px;">
-      <div style="font:900 22px Orbitron;color:var(--cyan);margin-bottom:8px;">NEON CITY: WARZONE</div>
-      <div style="font:600 14px Rajdhani;color:rgba(255,255,255,.7);line-height:1.4;">One massive continuous world with 5 connected sectors: <b style='color:#19f0ff'>Neon City</b>, <b style='color:#39ff14'>The Fields</b>, <b style='color:#ffd166'>Desert Ruins</b>, <b style='color:#9b5cff'>Rail District</b>, and <b style='color:#ff2d95'>Megawatt City</b>. Traverse freely between zones — no loading screens, no portals. Enemies spawn in waves around your position. Survive as long as you can.</div>
+    <div style="text-align:center;padding:12px 20px;border:1px solid rgba(255,179,71,.3);background:rgba(10,14,26,.7);margin-bottom:18px;max-width:680px;">
+      <div style="font:900 22px Orbitron;color:var(--cyan);margin-bottom:8px;">GOLEM RUSH: FANTASY REALM</div>
+      <div style="font:600 14px Rajdhani;color:rgba(255,255,255,.7);line-height:1.4;">One massive fantasy realm with 5 connected sectors: <b style='color:#ffb347'>Stone Ruins</b>, <b style='color:#6bcb77'>Enchanted Forest</b>, <b style='color:#ffd93d'>Ancient Temple</b>, <b style='color:#9b59b6'>Rock Arches</b>, and <b style='color:#4d96ff'>Floating Islands</b>. Traverse freely between zones — no loading screens, no portals. Golems spawn in waves around your position. Survive as long as you can.</div>
     </div>
     <div id="level-select" style="display:none;"></div>
-    <div class="pick-label">SELECT OPERATIVE</div>
+    <div class="pick-label">SELECT WARRIOR</div>
     <div id="char-select"></div>
   </div>
 

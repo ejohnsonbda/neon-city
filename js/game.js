@@ -123,37 +123,117 @@ class Game {
     this.desertProps = null;
     this.japanProps = null;
 
-    // ===== UNIFIED OPEN WORLD: All sectors built simultaneously =====
+    // ===== GOLEM RUSH: FANTASY REALM — One massive open world =====
     // Sector layout (offsets in world units):
-    //   Neon City (center):     (0, 0)
-    //   Fields (north):         (0, -900)
-    //   Desert (south):         (0, 900)
-    //   Rail City (east):       (900, 0)
-    //   Megawatt City (west):   (-900, 0)
+    //   Stone Ruins (center):      (0, 0)
+    //   Enchanted Forest (north):  (0, -600)
+    //   Ancient Temple (south):    (0, 600)
+    //   Rock Arches (east):        (600, 0)
+    //   Floating Islands (west):   (-600, 0)
     this.sectors = [
-      { name: 'NEON CITY',      key: 'city',     offset: [0, 0],      radius: 350, color: '#19f0ff' },
-      { name: 'THE FIELDS',     key: 'fields',   offset: [0, -900],   radius: 350, color: '#39ff14' },
-      { name: 'DESERT RUINS',   key: 'desert',   offset: [0, 900],    radius: 350, color: '#ffd166' },
-      { name: 'RAIL DISTRICT',  key: 'rail',     offset: [900, 0],    radius: 350, color: '#9b5cff' },
-      { name: 'MEGAWATT CITY',  key: 'megacity', offset: [-900, 0],   radius: 350, color: '#ff2d95' },
+      { name: 'STONE RUINS',       key: 'ruins',    offset: [0, 0],      radius: 250, color: '#ffb347' },
+      { name: 'ENCHANTED FOREST',  key: 'forest',   offset: [0, -600],   radius: 250, color: '#6bcb77' },
+      { name: 'ANCIENT TEMPLE',    key: 'temple',   offset: [0, 600],    radius: 250, color: '#ffd93d' },
+      { name: 'ROCK ARCHES',       key: 'arches',   offset: [600, 0],    radius: 250, color: '#9b59b6' },
+      { name: 'FLOATING ISLANDS',  key: 'islands',  offset: [-600, 0],   radius: 250, color: '#4d96ff' },
     ];
     this.currentSector = this.sectors[0];
     this._lastSectorName = '';
 
-    // Global sky dome (night cyberpunk)
+    // ---- Fantasy Sky Dome (animated gradient shader) ----
     this.scene.background = null;
-    this.scene.fog = new THREE.FogExp2(0x0a0a1a, 0.0018);
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(2400, 32, 24),
-      new THREE.MeshBasicMaterial({ map: TextureGen.createSky(), side: THREE.BackSide, fog: false }));
+    this.scene.fog = new THREE.FogExp2(0x8ecae6, 0.0025);
+    const skyGeo = new THREE.SphereGeometry(2000, 32, 24);
+    const skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      uniforms: {
+        uTime: { value: 0 },
+      },
+      vertexShader: `
+        varying vec3 vPos;
+        void main() {
+          vPos = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        varying vec3 vPos;
+        void main() {
+          vec3 dir = normalize(vPos);
+          float t1 = 0.5 + 0.5 * sin(uTime * 0.05);
+          vec3 leftColor = mix(vec3(0.96, 0.84, 0.66), vec3(0.96, 0.71, 0.42), t1);
+          vec3 rightColor = mix(vec3(0.48, 0.55, 0.66), vec3(0.29, 0.42, 0.54), t1);
+          float t = (dir.x + 1.0) * 0.5;
+          vec3 horizonColor = mix(leftColor, rightColor, t);
+          float h = (dir.y + 1.0) * 0.5;
+          vec3 skyColor = mix(vec3(0.72, 0.78, 0.85), vec3(0.83, 0.89, 0.97), h);
+          float horizonWeight = 1.0 - abs(dir.y) * 0.6;
+          vec3 finalColor = mix(skyColor, horizonColor, horizonWeight);
+          gl_FragColor = vec4(finalColor, 1.0);
+        }
+      `
+    });
+    this._skyMat = skyMat;
+    const sky = new THREE.Mesh(skyGeo, skyMat);
     this.worldGroup.add(sky);
 
-    // Massive ground plane spanning the entire world
-    const worldSize = 3200;
-    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 120, 120);
-    const worldGround = new THREE.Mesh(new THREE.PlaneGeometry(worldSize, worldSize),
-      new THREE.MeshStandardMaterial({ map: fTex, normalMap: TextureGen.createNormalTexture('concreteN', 120, 120), roughness: 0.6, metalness: 0.3, color: 0x1a1e28 }));
-    worldGround.rotation.x = -Math.PI / 2; worldGround.position.y = -0.1; worldGround.receiveShadow = true;
-    this.worldGroup.add(worldGround);
+    // ---- Clouds ----
+    this._clouds = new THREE.Group();
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0, depthWrite: false, side: THREE.DoubleSide });
+    for (let i = 0; i < 25; i++) {
+      const cg = new THREE.Group();
+      const count = 8 + Math.floor(Math.random() * 12);
+      for (let j = 0; j < count; j++) {
+        const size = 4 + Math.random() * 12;
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(size, 6, 6), cloudMat);
+        const a = Math.random() * Math.PI * 2;
+        const r = 6 + Math.random() * 15;
+        sphere.position.set(Math.cos(a) * r, (Math.random() - 0.5) * 3, Math.sin(a) * r);
+        sphere.scale.y = 0.3 + Math.random() * 0.3;
+        cg.add(sphere);
+      }
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 200 + Math.random() * 800;
+      cg.position.set(Math.cos(angle) * radius, 80 + Math.random() * 60, Math.sin(angle) * radius);
+      cg.scale.setScalar(0.6 + Math.random() * 1.2);
+      cg.userData = { speed: 0.002 + Math.random() * 0.005, angle: angle, radius: radius };
+      this._clouds.add(cg);
+    }
+    this.worldGroup.add(this._clouds);
+
+    // ---- Massive rolling terrain ----
+    const groundSize = 2000;
+    const segments = 80;
+    const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, segments, segments);
+    const pos = groundGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i);
+      let y = 0;
+      y += Math.sin(x * 0.003) * Math.cos(z * 0.0024) * 12.0;
+      y += Math.sin(x * 0.005 + z * 0.004) * 6.0;
+      y += Math.max(0, Math.sin((x - 50) * 0.004) * 8.0 * Math.exp(-z * z * 0.0000004));
+      y += Math.sin(x * 0.012 + z * 0.01) * 1.6;
+      pos.setY(i, y);
+    }
+    groundGeo.computeVertexNormals();
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x6a9a5a, roughness: 0.9, metalness: 0.0, flatShading: false, side: THREE.DoubleSide });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1;
+    ground.receiveShadow = true;
+    this.worldGroup.add(ground);
+    this._fantasyGround = ground;
+
+    // ---- Tan/dirt patches ----
+    const patchMat = new THREE.MeshStandardMaterial({ color: 0x8a7a4a, roughness: 1.0, metalness: 0, transparent: true, opacity: 0.25, depthWrite: false });
+    for (let i = 0; i < 60; i++) {
+      const patch = new THREE.Mesh(new THREE.CircleGeometry(20 + Math.random() * 30, 6), patchMat);
+      const a = Math.random() * Math.PI * 2, d = 50 + Math.random() * 600;
+      patch.position.set(Math.cos(a) * d, -0.9 + Math.random() * 0.2, Math.sin(a) * d);
+      patch.rotation.x = -Math.PI / 2;
+      this.worldGroup.add(patch);
+    }
 
     // Build each sector into its own offset group
     this.sectorGroups = {};
@@ -165,312 +245,357 @@ class Game {
     });
 
     // Build sector content
-    this._buildSectorCity(this.sectorGroups['city']);
-    this._buildSectorFields(this.sectorGroups['fields']);
-    this._buildSectorDesert(this.sectorGroups['desert']);
-    this._buildSectorRail(this.sectorGroups['rail']);
-    this._buildSectorMega(this.sectorGroups['megacity']);
+    this._buildSectorRuins(this.sectorGroups['ruins']);
+    this._buildSectorForest(this.sectorGroups['forest']);
+    this._buildSectorTemple(this.sectorGroups['temple']);
+    this._buildSectorArches(this.sectorGroups['arches']);
+    this._buildSectorIslands(this.sectorGroups['islands']);
 
-    // Connecting highways between sectors (simple lit roads)
-    this._buildConnectors();
+    // Connecting paths (stone paths between sectors)
+    this._buildFantasyConnectors();
 
-    // Global lighting
-    this.worldGroup.add(new THREE.AmbientLight(0x3a4a60, 0.5));
-    this.worldGroup.add(new THREE.HemisphereLight(0x2040a0, 0x101018, 0.4));
-    const moon = new THREE.DirectionalLight(0x8899cc, 0.6);
-    moon.position.set(200, 300, -150); moon.castShadow = true; moon.shadow.bias = -0.0002;
-    moon.shadow.camera.left = -200; moon.shadow.camera.right = 200;
-    moon.shadow.camera.top = 200; moon.shadow.camera.bottom = -200;
-    moon.shadow.camera.far = 800; moon.shadow.mapSize.set(2048, 2048);
-    this.worldGroup.add(moon);
-    this._worldMoon = moon;
+    // ---- Global Lighting (fantasy warm sun) ----
+    this.worldGroup.add(new THREE.AmbientLight(0x445566, 0.3));
+    this.worldGroup.add(new THREE.HemisphereLight(0xffeedd, 0x445566, 0.5));
+    const sun = new THREE.DirectionalLight(0xffcc88, 2.5);
+    sun.position.set(-200, 300, 150); sun.castShadow = true; sun.shadow.bias = -0.001;
+    sun.shadow.camera.left = -400; sun.shadow.camera.right = 400;
+    sun.shadow.camera.top = 400; sun.shadow.camera.bottom = -400;
+    sun.shadow.camera.far = 800; sun.shadow.mapSize.set(2048, 2048);
+    this.worldGroup.add(sun);
+    this._worldMoon = sun; // reuse reference for shadow follow
+    const fill = new THREE.DirectionalLight(0x6688bb, 0.5);
+    fill.position.set(150, 150, -150); this.worldGroup.add(fill);
+
+    // ---- Atmospheric particles ----
+    const particleCount = 800;
+    const particleGeo = new THREE.BufferGeometry();
+    const particlePos = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      const r = 50 + Math.random() * 900;
+      const theta = Math.random() * Math.PI * 2;
+      particlePos[i * 3] = Math.cos(theta) * r;
+      particlePos[i * 3 + 1] = 10 + Math.random() * 60;
+      particlePos[i * 3 + 2] = Math.sin(theta) * r;
+    }
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+    const particleMat = new THREE.PointsMaterial({ color: 0xffeedd, size: 0.3, transparent: true, opacity: 0.15, depthWrite: false, sizeAttenuation: true });
+    const particles = new THREE.Points(particleGeo, particleMat);
+    this.worldGroup.add(particles);
+    this._fantasyParticles = particles;
+
+    // ---- Embers ----
+    const emberCount = 150;
+    const emberGeo = new THREE.BufferGeometry();
+    const emberPos = new Float32Array(emberCount * 3);
+    this._emberData = [];
+    for (let i = 0; i < emberCount; i++) {
+      const r = 50 + Math.random() * 500;
+      const a = Math.random() * Math.PI * 2;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r, y = 5 + Math.random() * 35;
+      emberPos[i * 3] = x; emberPos[i * 3 + 1] = y; emberPos[i * 3 + 2] = z;
+      this._emberData.push({ speed: 0.15 + Math.random() * 0.4, phase: Math.random() * Math.PI * 2, baseX: x, baseY: y, baseZ: z });
+    }
+    emberGeo.setAttribute('position', new THREE.BufferAttribute(emberPos, 3));
+    const emberMat = new THREE.PointsMaterial({ color: 0xffaa66, size: 0.4, transparent: true, opacity: 0.35, depthWrite: false, sizeAttenuation: true });
+    this._embers = new THREE.Points(emberGeo, emberMat);
+    this.worldGroup.add(this._embers);
   }
 
-  // ===== SECTOR BUILDERS (simplified versions that add to offset group) =====
+  // ===== FANTASY SECTOR BUILDERS =====
 
-  _buildSectorCity(W) {
-    // Local ground overlay
-    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 60, 60);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ map: fTex, normalMap: TextureGen.createNormalTexture('concreteN', 60, 60), roughness: 0.48, metalness: 0.55, color: 0x48505e }));
-    floor.rotation.x = -Math.PI / 2; floor.position.y = 0.01; floor.receiveShadow = true; W.add(floor);
-
-    // Buildings
-    const variants = [];
-    for (let i = 0; i < 5; i++) {
-      const t = TextureGen.createBuilding();
-      t.map.wrapS = t.map.wrapT = THREE.RepeatWrapping;
-      t.emissive.wrapS = t.emissive.wrapT = THREE.RepeatWrapping;
-      t.map.repeat.set(1, 12); t.emissive.repeat.set(1, 12);
-      if (t.map.encoding !== undefined) t.map.encoding = THREE.sRGBEncoding;
-      variants.push(new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.emissive, emissive: 0xffffff,
-        emissiveIntensity: 1.6, roughness: 0.28, metalness: 0.6 }));
-    }
-    const bldgGeo = new THREE.BoxGeometry(10, 1, 10);
-    const blockSize = 26;
-    for (let x = -8; x <= 8; x++) for (let z = -8; z <= 8; z++) {
-      if (Math.abs(x) < 2 && Math.abs(z) < 2) continue;
-      if (Math.random() > 0.22) {
-        const h = 22 + Math.random() * 55;
-        const m = new THREE.Mesh(bldgGeo, variants[(Math.random() * variants.length) | 0]);
-        m.position.set(x * blockSize + (Math.random() - 0.5) * 6, h / 2, z * blockSize + (Math.random() - 0.5) * 6);
-        m.scale.set(0.8 + Math.random() * 0.7, h, 0.8 + Math.random() * 0.7);
-        m.castShadow = Math.abs(x) <= 3 && Math.abs(z) <= 3;
-        m.receiveShadow = true; W.add(m); this.objects.push(m);
-      }
-    }
-    // Neon billboards
-    for (let i = 0; i < 18; i++) {
-      const bw = 6 + Math.random() * 5, bh = bw * 0.55;
-      const bm = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh),
-        new THREE.MeshBasicMaterial({ map: TextureGen.createBillboard(), transparent: true }));
-      const a = Math.random() * Math.PI * 2, r = 60 + Math.random() * 120;
-      bm.position.set(Math.cos(a) * r, 8 + Math.random() * 30, Math.sin(a) * r);
-      bm.rotation.y = Math.random() * Math.PI * 2; W.add(bm);
-    }
-    // Local lights
-    const hues = [0x19f0ff, 0xff2d95, 0x9b5cff, 0xffb347, 0x39ff14];
-    for (let i = 0; i < 6; i++) {
-      const hue = hues[(Math.random() * hues.length) | 0];
-      const pl = new THREE.PointLight(hue, 3.0, 24, 1.6);
-      pl.position.set((Math.random() - 0.5) * 120, 2.4 + Math.random() * 1.8, (Math.random() - 0.5) * 120);
-      W.add(pl);
-    }
-    // Crates for cover
-    const crateGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
-    const crateMat = new THREE.MeshStandardMaterial({ color: 0x2a2620, roughness: 0.8 });
+  _buildSectorRuins(W) {
+    // Giant stone columns scattered around center
+    const colMat = new THREE.MeshStandardMaterial({ color: 0x7a7a8a, roughness: 0.8, metalness: 0.05, flatShading: true });
     for (let i = 0; i < 30; i++) {
-      const m = new THREE.Mesh(crateGeo, crateMat);
-      m.position.set((Math.random() - 0.5) * 250, 0.8, (Math.random() - 0.5) * 250);
-      m.rotation.y = Math.random() * Math.PI; m.castShadow = true; W.add(m); this.objects.push(m);
-    }
-  }
-
-  _buildSectorFields(W) {
-    // Grass ground
-    const grassTex = TextureGen.createGrass(false); grassTex.repeat.set(60, 60);
-    const grass = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ map: grassTex, normalMap: TextureGen.createNormalTexture('dirtN', 60, 60), color: 0x3d6e2f, roughness: 0.95 }));
-    grass.rotation.x = -Math.PI / 2; grass.position.y = 0.01; grass.receiveShadow = true; W.add(grass);
-    // Hills
-    const hillMat = new THREE.MeshStandardMaterial({ color: 0x356128, roughness: 1, flatShading: true });
-    for (let i = 0; i < 20; i++) {
-      const a = (i / 20) * Math.PI * 2;
-      const r = 150 + Math.random() * 80;
-      const hill = new THREE.Mesh(new THREE.SphereGeometry(28 + Math.random() * 30, 10, 8), hillMat);
-      hill.position.set(Math.cos(a) * r, -8, Math.sin(a) * r); hill.scale.y = 0.4; W.add(hill);
-    }
-    // Trees
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 1 });
-    const leafMats = [0x4f9e3e, 0x66b84e, 0x7cce5a].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true }));
-    for (let i = 0; i < 50; i++) {
-      const a = Math.random() * Math.PI * 2, r = 18 + Math.random() * 180;
+      const a = Math.random() * Math.PI * 2, r = 30 + Math.random() * 180;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const h = 12 + Math.random() * 25, rad = 1.8 + Math.random() * 3.0;
       const g = new THREE.Group();
-      const s = 0.8 + Math.random() * 0.9;
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.32 * s, 0.46 * s, 1.6 * s, 6), trunkMat);
-      tr.position.y = 0.8 * s; g.add(tr);
-      [1.0, 1.55, 2.05].forEach((y, k) => {
-        const f = new THREE.Mesh(new THREE.ConeGeometry((0.95 - k * 0.18) * s, (1.2 - k * 0.18) * s, 8), leafMats[k]);
-        f.position.y = (1.4 + y * 0.7) * s; g.add(f);
-      });
-      g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); W.add(g);
-      this.objects.push(tr);
+      // Shaft
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.8, rad, h, 8), colMat);
+      shaft.position.y = h / 2; shaft.castShadow = true; shaft.receiveShadow = true; g.add(shaft);
+      // Capital
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(rad * 1.1, rad * 0.9, h * 0.08, 8), colMat);
+      cap.position.y = h + h * 0.04; cap.castShadow = true; g.add(cap);
+      // Base
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(rad * 1.2, rad * 1.4, h * 0.1, 8), colMat);
+      base.position.y = h * 0.05; base.castShadow = true; g.add(base);
+      g.position.set(x, -1, z);
+      g.rotation.y = Math.random() * Math.PI * 2;
+      W.add(g);
+      this.objects.push(shaft);
     }
-    // Houses
-    const bodyCols = [0xf6b43a, 0x6fb3e0, 0xef6f6c, 0x8fd17a, 0xcd88ff];
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2, r = 40 + Math.random() * 30;
-      this.buildEnterable(W, Math.cos(a) * r, Math.sin(a) * r, 8, 8, {
-        wall: new THREE.MeshStandardMaterial({ color: bodyCols[i], roughness: 0.55 }),
-        floor: new THREE.MeshStandardMaterial({ color: 0xbc9a6c, roughness: 0.8 }),
-        roof: new THREE.MeshStandardMaterial({ color: 0xfff2e0, roughness: 0.4 }),
-        cone: new THREE.MeshStandardMaterial({ color: 0xc2572c, roughness: 0.6, flatShading: true }),
-        lamp: 0xffd9a0
-      });
+    // Some scattered boulders
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x6a6a7a, roughness: 0.9, flatShading: true });
+    for (let i = 0; i < 40; i++) {
+      const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * 200;
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5 + Math.random() * 3, 0), rockMat);
+      rock.position.set(Math.cos(a) * r, -1 + Math.random(), Math.sin(a) * r);
+      rock.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      rock.scale.set(1, 0.6 + Math.random() * 0.5, 1);
+      rock.castShadow = true; W.add(rock);
     }
-    // Sunlight for this sector
-    const sun = new THREE.DirectionalLight(0xfff3d0, 1.2);
-    sun.position.set(-80, 120, -100); sun.castShadow = true; sun.shadow.bias = -0.0002;
-    sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
-    sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
-    sun.shadow.camera.far = 400; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
-    W.add(new THREE.AmbientLight(0xbfd4e8, 0.6));
+    // Wildflowers
+    const flowerColors = [0xff6b6b, 0xffb347, 0xffd93d, 0x6bcb77, 0x4d96ff, 0x9b59b6];
+    for (let i = 0; i < 80; i++) {
+      const mat = new THREE.MeshStandardMaterial({ color: flowerColors[(Math.random() * flowerColors.length) | 0], roughness: 0.7 });
+      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.15, 5, 5), mat);
+      const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * 200;
+      flower.position.set(Math.cos(a) * r, -0.8, Math.sin(a) * r);
+      W.add(flower);
+    }
+    // Warm sector light
+    const sun = new THREE.DirectionalLight(0xfff8d0, 1.0);
+    sun.position.set(-40, 80, 30); W.add(sun);
+    W.add(new THREE.AmbientLight(0xd4c8a0, 0.4));
   }
 
-  _buildSectorDesert(W) {
-    const S = 7;
-    // Sand ground
-    const sand = this.createGroundTex('sand', 26);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(100 * S, 100 * S),
-      new THREE.MeshStandardMaterial({ map: sand, normalMap: TextureGen.createNormalTexture('dirtN', 26, 26), color: 0xceac72, roughness: 0.95 }));
-    ground.rotation.x = -Math.PI / 2; ground.position.y = 0.01; ground.receiveShadow = true; W.add(ground);
-    // Pyramids
-    const stoneTex = TextureGen.createSandstone();
-    const stoneMat = () => { const t = stoneTex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3); return new THREE.MeshStandardMaterial({ map: t, color: 0xcaa97a, roughness: 0.85 }); };
-    const pyramids = [[-8, -7, 3.2, 4.5], [9, -8, 2.4, 3.5], [-10, 6, 1.8, 2.8], [12, 5, 2.0, 3.0]];
-    pyramids.forEach(([x, z, rad, h]) => {
-      const p = new THREE.Mesh(new THREE.CylinderGeometry(0, rad * S, h * S, 4), stoneMat());
-      p.position.set(x * S, h * S / 2, z * S); p.rotation.y = Math.PI / 4; p.castShadow = true; W.add(p); this.objects.push(p);
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0, rad * S * 0.16, h * S * 0.16, 4),
-        new THREE.MeshStandardMaterial({ color: 0xffd35a, emissive: 0x6a4e0c, emissiveIntensity: 0.4, metalness: 0.8, roughness: 0.3 }));
-      cap.position.set(x * S, h * S * 0.92, z * S); cap.rotation.y = Math.PI / 4; W.add(cap);
-    });
-    // Sphinx
-    const sphinx = new THREE.Group();
-    const darkStone = () => new THREE.MeshStandardMaterial({ map: stoneTex.clone(), color: 0x9a7848, roughness: 0.9 });
-    const sBase = new THREE.Mesh(new THREE.BoxGeometry(2.2 * S, 0.8 * S, 4.5 * S), darkStone()); sBase.position.y = 0.4 * S; sphinx.add(sBase);
-    const sBody = new THREE.Mesh(new THREE.BoxGeometry(1.6 * S, 1.2 * S, 3.2 * S), stoneMat()); sBody.position.y = 0.9 * S; sphinx.add(sBody);
-    const sHead = new THREE.Mesh(new THREE.SphereGeometry(0.9 * S, 16, 14), stoneMat()); sHead.position.set(0, 1.8 * S, 1.1 * S); sphinx.add(sHead);
-    sphinx.position.set(0, 0, 11 * S); W.add(sphinx); this.objects.push(sBody);
-    // Columns
-    [[-4, 12], [4, 12], [-5, 14], [5, 14]].forEach(([x, z]) => {
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.55 * S, 0.7 * S, 3.2 * S, 12), stoneMat());
-      col.position.set(x * S, 1.6 * S, z * S); col.castShadow = true; W.add(col); this.objects.push(col);
-    });
-    // Desert sun
-    const sun = new THREE.DirectionalLight(0xfff8d0, 1.4);
-    sun.position.set(60, 140, 40); sun.castShadow = true; sun.shadow.bias = -0.0002;
-    sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
-    sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
-    sun.shadow.mapSize.set(1024, 1024); W.add(sun);
-    W.add(new THREE.AmbientLight(0xd4c8a0, 0.7));
-  }
-
-  _buildSectorRail(W) {
-    // Industrial ground
-    const fTex = TextureGen.createImageTexture('metal', () => TextureGen.createAsphalt(), 40, 40);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600),
-      new THREE.MeshStandardMaterial({ map: fTex, color: 0x3a3e48, roughness: 0.6, metalness: 0.5 }));
-    floor.rotation.x = -Math.PI / 2; floor.position.y = 0.01; floor.receiveShadow = true; W.add(floor);
-    // Elevated rail track (simplified)
-    const trackMat = new THREE.MeshStandardMaterial({ color: 0x5a6070, metalness: 0.8, roughness: 0.3 });
-    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x4a4e58, metalness: 0.6, roughness: 0.4 });
-    for (let i = -8; i <= 8; i++) {
-      const x = i * 30;
-      // Pillar
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 12, 8), pillarMat);
-      pillar.position.set(x, 6, 0); pillar.castShadow = true; W.add(pillar); this.objects.push(pillar);
-      // Track beam
-      const beam = new THREE.Mesh(new THREE.BoxGeometry(32, 1.2, 4), trackMat);
-      beam.position.set(x, 12, 0); beam.castShadow = true; W.add(beam);
-    }
-    // Industrial buildings
-    const indMat = new THREE.MeshStandardMaterial({ color: 0x2a2e38, roughness: 0.7, metalness: 0.4 });
-    for (let i = 0; i < 20; i++) {
-      const h = 10 + Math.random() * 25;
-      const m = new THREE.Mesh(new THREE.BoxGeometry(12, h, 12), indMat);
-      const a = Math.random() * Math.PI * 2, r = 60 + Math.random() * 150;
-      m.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r);
-      m.castShadow = true; m.receiveShadow = true; W.add(m); this.objects.push(m);
-    }
-    // Station platform
-    const platMat = new THREE.MeshStandardMaterial({ color: 0x6a7080, roughness: 0.5, metalness: 0.3 });
-    const plat = new THREE.Mesh(new THREE.BoxGeometry(20, 0.8, 8), platMat);
-    plat.position.set(0, 11.5, 6); plat.castShadow = true; W.add(plat);
-    // Lights
-    for (let i = 0; i < 4; i++) {
-      const pl = new THREE.PointLight(0x9b5cff, 2.5, 30, 1.5);
-      pl.position.set((Math.random() - 0.5) * 100, 4, (Math.random() - 0.5) * 100); W.add(pl);
-    }
-    W.add(new THREE.AmbientLight(0x4a5570, 0.5));
-  }
-
-  _buildSectorMega(W) {
-    // Dense cyberpunk district
-    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 80, 80);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
-      new THREE.MeshStandardMaterial({ map: fTex, normalMap: TextureGen.createNormalTexture('concreteN', 80, 80), roughness: 0.4, metalness: 0.6, color: 0x38404e }));
-    floor.rotation.x = -Math.PI / 2; floor.position.y = 0.01; floor.receiveShadow = true; W.add(floor);
-    // Taller, denser buildings
-    const variants = [];
-    for (let i = 0; i < 4; i++) {
-      const t = TextureGen.createBuilding();
-      t.map.wrapS = t.map.wrapT = THREE.RepeatWrapping;
-      t.emissive.wrapS = t.emissive.wrapT = THREE.RepeatWrapping;
-      t.map.repeat.set(1, 16); t.emissive.repeat.set(1, 16);
-      if (t.map.encoding !== undefined) t.map.encoding = THREE.sRGBEncoding;
-      variants.push(new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.emissive, emissive: 0xffffff,
-        emissiveIntensity: 2.0, roughness: 0.2, metalness: 0.7 }));
-    }
-    const bldgGeo = new THREE.BoxGeometry(10, 1, 10);
-    for (let x = -7; x <= 7; x++) for (let z = -7; z <= 7; z++) {
-      if (Math.abs(x) < 2 && Math.abs(z) < 2) continue;
-      if (Math.random() > 0.18) {
-        const h = 35 + Math.random() * 80;
-        const m = new THREE.Mesh(bldgGeo, variants[(Math.random() * variants.length) | 0]);
-        m.position.set(x * 28 + (Math.random() - 0.5) * 8, h / 2, z * 28 + (Math.random() - 0.5) * 8);
-        m.scale.set(0.9 + Math.random() * 0.8, h, 0.9 + Math.random() * 0.8);
-        m.castShadow = Math.abs(x) <= 2 && Math.abs(z) <= 2;
-        m.receiveShadow = true; W.add(m); this.objects.push(m);
+  _buildSectorForest(W) {
+    // Dense pine trees and twisted trees
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.9 });
+    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x3a7a3a, roughness: 0.8, flatShading: true });
+    const darkFoliage = new THREE.MeshStandardMaterial({ color: 0x2a5a2a, roughness: 0.8, flatShading: true });
+    // Pine trees
+    for (let i = 0; i < 80; i++) {
+      const g = new THREE.Group();
+      const h = 4 + Math.random() * 8;
+      const trunkH = 1.5 + Math.random() * 1.5;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, trunkH, 6), trunkMat);
+      trunk.position.y = trunkH / 2; trunk.castShadow = true; g.add(trunk);
+      const layers = 3 + Math.floor(Math.random() * 3);
+      for (let j = 0; j < layers; j++) {
+        const r = 1.0 + (layers - j) * 0.6 + Math.random() * 0.4;
+        const lh = 1.2 + Math.random() * 0.8;
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(r, lh, 7), Math.random() > 0.5 ? foliageMat : darkFoliage);
+        cone.position.y = trunkH + j * (lh * 0.7) + lh / 2;
+        cone.castShadow = true; g.add(cone);
       }
+      const a = Math.random() * Math.PI * 2, r = 15 + Math.random() * 200;
+      g.position.set(Math.cos(a) * r, -1, Math.sin(a) * r);
+      g.scale.setScalar(0.8 + Math.random() * 0.7);
+      g.rotation.y = Math.random() * Math.PI * 2;
+      W.add(g);
+      this.objects.push(trunk);
     }
-    // Neon signs
-    for (let i = 0; i < 24; i++) {
-      const bw = 5 + Math.random() * 6, bh = bw * 0.5;
-      const bm = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh),
-        new THREE.MeshBasicMaterial({ map: TextureGen.createBillboard(), transparent: true }));
-      const a = Math.random() * Math.PI * 2, r = 50 + Math.random() * 140;
-      bm.position.set(Math.cos(a) * r, 12 + Math.random() * 40, Math.sin(a) * r);
-      bm.rotation.y = Math.random() * Math.PI * 2; W.add(bm);
+    // Large canopy trees
+    const canopyMat = new THREE.MeshStandardMaterial({ color: 0x3a8a3a, roughness: 0.6, flatShading: true });
+    for (let i = 0; i < 15; i++) {
+      const g = new THREE.Group();
+      const h = 7 + Math.random() * 4;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, h * 0.5, 8), trunkMat);
+      trunk.position.y = h * 0.25; trunk.castShadow = true; g.add(trunk);
+      const canopy = new THREE.Mesh(new THREE.SphereGeometry(3.5 + Math.random() * 1.5, 7, 7), canopyMat);
+      canopy.position.y = h * 0.55; canopy.scale.set(1 + Math.random() * 0.4, 0.8 + Math.random() * 0.3, 1 + Math.random() * 0.4);
+      canopy.castShadow = true; g.add(canopy);
+      const a = Math.random() * Math.PI * 2, r = 30 + Math.random() * 150;
+      g.position.set(Math.cos(a) * r, -1, Math.sin(a) * r);
+      g.scale.setScalar(0.8 + Math.random() * 0.5);
+      W.add(g);
+      this.objects.push(trunk);
     }
-    // Intense neon lighting
-    const hues = [0xff2d95, 0x19f0ff, 0x9b5cff, 0xff7a18];
-    for (let i = 0; i < 8; i++) {
-      const pl = new THREE.PointLight(hues[i % hues.length], 4.0, 30, 1.5);
-      pl.position.set((Math.random() - 0.5) * 140, 3 + Math.random() * 2, (Math.random() - 0.5) * 140); W.add(pl);
+    // Bushes
+    const bushMat = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.8, flatShading: true });
+    for (let i = 0; i < 60; i++) {
+      const g = new THREE.Group();
+      const count = 3 + Math.floor(Math.random() * 5);
+      for (let j = 0; j < count; j++) {
+        const r = 0.4 + Math.random() * 0.7;
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(r, 5, 5), bushMat);
+        const ba = Math.random() * Math.PI * 2, bd = Math.random() * 0.7;
+        sphere.position.set(Math.cos(ba) * bd, r * 0.6, Math.sin(ba) * bd);
+        sphere.castShadow = true; g.add(sphere);
+      }
+      const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * 200;
+      g.position.set(Math.cos(a) * r, -1, Math.sin(a) * r);
+      g.scale.setScalar(0.6 + Math.random() * 0.8);
+      W.add(g);
     }
-    W.add(new THREE.AmbientLight(0x2a3050, 0.4));
+    // Forest lighting (dappled green)
+    W.add(new THREE.AmbientLight(0x4a7a4a, 0.5));
+    const fSun = new THREE.DirectionalLight(0xaaffaa, 0.8);
+    fSun.position.set(30, 80, -40); W.add(fSun);
   }
 
-  // Connecting highways between sectors
-  _buildConnectors() {
-    const W = this.worldGroup;
-    const roadMat = new THREE.MeshStandardMaterial({
-      map: TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 20, 2),
-      normalMap: TextureGen.createNormalTexture('concreteN', 20, 2),
-      color: 0x2a2e38, roughness: 0.5, metalness: 0.4
-    });
-    // Neon strip material for road edges
-    const stripMat = new THREE.MeshBasicMaterial({ color: 0x19f0ff, transparent: true, opacity: 0.6 });
+  _buildSectorTemple(W) {
+    // Ancient temple with columns and stone platforms
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x9a8a6a, roughness: 0.85, metalness: 0.05, flatShading: true });
+    const darkStone = new THREE.MeshStandardMaterial({ color: 0x6a5a4a, roughness: 0.9, flatShading: true });
+    // Central temple platform
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(40, 3, 40), stoneMat);
+    platform.position.y = 1.5; platform.castShadow = true; platform.receiveShadow = true; W.add(platform);
+    this.objects.push(platform);
+    // Temple columns around platform
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const x = Math.cos(a) * 18, z = Math.sin(a) * 18;
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 14, 8), stoneMat);
+      col.position.set(x, 10, z); col.castShadow = true; W.add(col);
+      this.objects.push(col);
+      // Column capital
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.3, 1.2, 8), stoneMat);
+      cap.position.set(x, 17.5, z); W.add(cap);
+    }
+    // Temple roof (flat slab)
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(42, 2, 42), darkStone);
+    roof.position.y = 18.5; roof.castShadow = true; W.add(roof);
+    // Scattered ruins around temple
+    for (let i = 0; i < 20; i++) {
+      const a = Math.random() * Math.PI * 2, r = 40 + Math.random() * 150;
+      const h = 5 + Math.random() * 12;
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.3, h, 8), stoneMat);
+      col.position.set(Math.cos(a) * r, h / 2 - 1, Math.sin(a) * r);
+      col.rotation.set((Math.random() - 0.5) * 0.2, 0, (Math.random() - 0.5) * 0.2);
+      col.castShadow = true; W.add(col);
+      this.objects.push(col);
+    }
+    // Sacred stones
+    for (let i = 0; i < 30; i++) {
+      const a = Math.random() * Math.PI * 2, r = 20 + Math.random() * 180;
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1 + Math.random() * 2, 0), darkStone);
+      rock.position.set(Math.cos(a) * r, -0.5, Math.sin(a) * r);
+      rock.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      rock.castShadow = true; W.add(rock);
+    }
+    // Warm temple light
+    W.add(new THREE.AmbientLight(0xd4c8a0, 0.5));
+    const tSun = new THREE.DirectionalLight(0xfff3d0, 1.2);
+    tSun.position.set(-60, 100, 40); W.add(tSun);
+  }
 
-    // Connect center to each outer sector
+  _buildSectorArches(W) {
+    // Towering rock arches
+    const archMat = new THREE.MeshStandardMaterial({ color: 0x7a7a8a, roughness: 0.85, metalness: 0.05, flatShading: true });
+    for (let i = 0; i < 15; i++) {
+      const g = new THREE.Group();
+      const span = 8 + Math.random() * 12;
+      const h = 6 + Math.random() * 10;
+      const thick = 1.5 + Math.random() * 1.5;
+      // Two pillars
+      const p1 = new THREE.Mesh(new THREE.CylinderGeometry(thick * 0.6, thick * 0.8, h, 6), archMat);
+      p1.position.set(-span / 2, h / 2, 0); p1.castShadow = true; g.add(p1);
+      const p2 = new THREE.Mesh(new THREE.CylinderGeometry(thick * 0.6, thick * 0.8, h, 6), archMat);
+      p2.position.set(span / 2, h / 2, 0); p2.castShadow = true; g.add(p2);
+      // Arch top (torus)
+      const archTop = new THREE.Mesh(new THREE.TorusGeometry(span / 2, thick * 0.6, 8, 12, Math.PI), archMat);
+      archTop.position.set(0, h, 0); archTop.rotation.x = Math.PI / 2; archTop.rotation.z = Math.PI / 2;
+      archTop.scale.y = 1.2; archTop.castShadow = true; g.add(archTop);
+      // Extra rocks on top
+      for (let j = 0; j < 6; j++) {
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5 + Math.random(), 0), archMat);
+        const ra = (j / 6) * Math.PI + Math.random() * 0.3;
+        rock.position.set(Math.cos(ra) * span * 0.35, h + 1.5 + Math.random() * 1.5, Math.sin(ra) * span * 0.2);
+        rock.castShadow = true; g.add(rock);
+      }
+      const a = Math.random() * Math.PI * 2, r = 30 + Math.random() * 180;
+      g.position.set(Math.cos(a) * r, -1, Math.sin(a) * r);
+      g.rotation.y = Math.random() * Math.PI * 2;
+      W.add(g);
+      this.objects.push(p1);
+      this.objects.push(p2);
+    }
+    // Additional scattered columns
+    const colMat = new THREE.MeshStandardMaterial({ color: 0x8a8a9a, roughness: 0.8, flatShading: true });
+    for (let i = 0; i < 20; i++) {
+      const a = Math.random() * Math.PI * 2, r = 20 + Math.random() * 200;
+      const h = 8 + Math.random() * 15;
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.0, h, 8), colMat);
+      col.position.set(Math.cos(a) * r, h / 2 - 1, Math.sin(a) * r);
+      col.castShadow = true; W.add(col);
+      this.objects.push(col);
+    }
+    // Purple-tinted lighting for mystical feel
+    W.add(new THREE.AmbientLight(0x6a5a8a, 0.4));
+    const aSun = new THREE.DirectionalLight(0xccaaff, 1.0);
+    aSun.position.set(50, 80, -30); W.add(aSun);
+  }
+
+  _buildSectorIslands(W) {
+    // Floating rocks and islands
+    this._floatingRocks = [];
+    const floatColors = [0x7a8a8a, 0x8a7a7a, 0x6a7a7a, 0x9a8a7a, 0x5a6a7a, 0x7a6a7a];
+    for (let i = 0; i < 35; i++) {
+      const size = 3 + Math.random() * 8;
+      const geo = new THREE.DodecahedronGeometry(size, 0);
+      // Distort vertices slightly
+      const p = geo.attributes.position;
+      for (let j = 0; j < p.count; j++) {
+        const scale = 1 + (Math.random() - 0.5) * 0.08;
+        p.setXYZ(j, p.getX(j) * scale, p.getY(j) * scale, p.getZ(j) * scale);
+      }
+      geo.computeVertexNormals();
+      const mat = new THREE.MeshStandardMaterial({ color: floatColors[(Math.random() * floatColors.length) | 0], roughness: 0.8, metalness: 0.05, flatShading: true });
+      const rock = new THREE.Mesh(geo, mat);
+      const a = Math.random() * Math.PI * 2, r = 20 + Math.random() * 180;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const y = 15 + Math.random() * 40;
+      rock.position.set(x, y, z);
+      rock.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      rock.scale.set(1, 0.6 + Math.random() * 0.4, 1);
+      rock.castShadow = true;
+      rock.userData = { floatSpeed: 0.15 + Math.random() * 0.3, floatPhase: Math.random() * Math.PI * 2, baseY: y, rotSpeed: (Math.random() - 0.5) * 0.008 };
+      W.add(rock);
+      this._floatingRocks.push(rock);
+    }
+    // Smaller floating pebbles
+    for (let i = 0; i < 50; i++) {
+      const size = 0.5 + Math.random() * 1.5;
+      const geo = new THREE.IcosahedronGeometry(size, 1);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x8a8a7a, roughness: 0.85, flatShading: true });
+      const rock = new THREE.Mesh(geo, mat);
+      const a = Math.random() * Math.PI * 2, r = 15 + Math.random() * 200;
+      const y = 8 + Math.random() * 45;
+      rock.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+      rock.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      rock.userData = { floatSpeed: 0.2 + Math.random() * 0.4, floatPhase: Math.random() * Math.PI * 2, baseY: y, rotSpeed: (Math.random() - 0.5) * 0.015 };
+      W.add(rock);
+      this._floatingRocks.push(rock);
+    }
+    // Ground-level boulders for cover
+    const boulderMat = new THREE.MeshStandardMaterial({ color: 0x5a6a7a, roughness: 0.9, flatShading: true });
+    for (let i = 0; i < 25; i++) {
+      const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * 200;
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2 + Math.random() * 3, 0), boulderMat);
+      rock.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+      rock.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      rock.scale.y = 0.5 + Math.random() * 0.5;
+      rock.castShadow = true; W.add(rock);
+      this.objects.push(rock);
+    }
+    // Blue-tinted sky lighting
+    W.add(new THREE.AmbientLight(0x4a6a8a, 0.5));
+    const iSun = new THREE.DirectionalLight(0xaaccff, 1.0);
+    iSun.position.set(-40, 100, 50); W.add(iSun);
+  }
+
+  // Stone paths connecting sectors (replacing neon highways)
+  _buildFantasyConnectors() {
+    const W = this.worldGroup;
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0x8a7a6a, roughness: 0.9, metalness: 0.0, flatShading: true });
     const connections = [
-      [[0, 0], [0, -900]],   // city -> fields
-      [[0, 0], [0, 900]],    // city -> desert
-      [[0, 0], [900, 0]],    // city -> rail
-      [[0, 0], [-900, 0]],   // city -> mega
+      [[0, 0], [0, -600]],
+      [[0, 0], [0, 600]],
+      [[0, 0], [600, 0]],
+      [[0, 0], [-600, 0]],
     ];
     connections.forEach(([from, to]) => {
       const dx = to[0] - from[0], dz = to[1] - from[1];
       const len = Math.hypot(dx, dz);
       const cx = (from[0] + to[0]) / 2, cz = (from[1] + to[1]) / 2;
       const angle = Math.atan2(dx, dz);
-      // Road surface
-      const road = new THREE.Mesh(new THREE.PlaneGeometry(14, len - 200), roadMat);
-      road.rotation.x = -Math.PI / 2;
-      road.rotation.z = -angle;
-      road.position.set(cx, 0.02, cz);
-      road.receiveShadow = true; W.add(road);
-      // Neon edge strips
-      [-7.5, 7.5].forEach(offset => {
-        const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.4, len - 200), stripMat);
-        strip.rotation.x = -Math.PI / 2;
-        strip.rotation.z = -angle;
-        const perpX = Math.cos(angle) * offset;
-        const perpZ = -Math.sin(angle) * offset;
-        strip.position.set(cx + perpX, 0.03, cz + perpZ);
-        W.add(strip);
-      });
-      // Lamp posts along the road
-      for (let t = 0.15; t < 0.85; t += 0.1) {
+      // Stone path
+      const path = new THREE.Mesh(new THREE.PlaneGeometry(8, len - 150), pathMat);
+      path.rotation.x = -Math.PI / 2;
+      path.rotation.z = -angle;
+      path.position.set(cx, -0.85, cz);
+      path.receiveShadow = true; W.add(path);
+      // Stone markers along path
+      const markerMat = new THREE.MeshStandardMaterial({ color: 0x7a7a8a, roughness: 0.8, flatShading: true });
+      for (let t = 0.15; t < 0.85; t += 0.12) {
         const px = from[0] + dx * t, pz = from[1] + dz * t;
-        const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 5, 6),
-          new THREE.MeshStandardMaterial({ color: 0x5a6070, metalness: 0.7, roughness: 0.3 }));
-        lamp.position.set(px + Math.cos(angle) * 9, 2.5, pz - Math.sin(angle) * 9);
-        W.add(lamp);
-        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8),
-          new THREE.MeshBasicMaterial({ color: 0x19f0ff }));
-        bulb.position.set(lamp.position.x, 5.2, lamp.position.z); W.add(bulb);
+        const marker = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 2.5, 6), markerMat);
+        marker.position.set(px + Math.cos(angle) * 5, 0.25, pz - Math.sin(angle) * 5);
+        W.add(marker);
       }
     });
   }
@@ -495,8 +620,50 @@ class Game {
       const dx = px - sec.offset[0], dz = pz - sec.offset[1];
       const d = Math.hypot(dx, dz);
       if (this.sectorGroups[sec.key]) {
-        this.sectorGroups[sec.key].visible = (d < 1200);
+        this.sectorGroups[sec.key].visible = (d < 900);
       }
+    }
+    // Animate floating rocks (islands sector)
+    const t = performance.now() * 0.001;
+    if (this._floatingRocks) {
+      for (const rock of this._floatingRocks) {
+        const d = rock.userData;
+        if (d) {
+          rock.position.y = d.baseY + Math.sin(t * d.floatSpeed + d.floatPhase) * 1.5;
+          rock.rotation.x += d.rotSpeed * 0.5;
+          rock.rotation.y += d.rotSpeed;
+        }
+      }
+    }
+    // Animate sky shader
+    if (this._skyMat && this._skyMat.uniforms) {
+      this._skyMat.uniforms.uTime.value = t;
+    }
+    // Animate clouds
+    if (this._clouds) {
+      this._clouds.children.forEach(cloud => {
+        const d = cloud.userData;
+        if (d) {
+          const a = d.angle + t * d.speed;
+          cloud.position.x = Math.cos(a) * d.radius;
+          cloud.position.z = Math.sin(a) * d.radius;
+        }
+      });
+    }
+    // Animate embers
+    if (this._embers && this._emberData) {
+      const pos = this._embers.geometry.attributes.position.array;
+      for (let i = 0; i < this._emberData.length; i++) {
+        const d = this._emberData[i];
+        pos[i * 3] = d.baseX + Math.sin(t * d.speed + d.phase) * 1.5;
+        pos[i * 3 + 1] = d.baseY + Math.sin(t * d.speed * 0.7 + d.phase * 1.3) * 2.0;
+        pos[i * 3 + 2] = d.baseZ + Math.cos(t * d.speed * 0.8 + d.phase * 0.7) * 1.5;
+      }
+      this._embers.geometry.attributes.position.needsUpdate = true;
+    }
+    // Rotate particles slowly
+    if (this._fantasyParticles) {
+      this._fantasyParticles.rotation.y = t * 0.002;
     }
   }
 
