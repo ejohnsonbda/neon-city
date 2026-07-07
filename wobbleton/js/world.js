@@ -184,10 +184,11 @@ const World = (() => {
     buildMaze(AREAS.maze.group, AREAS.maze.center, AREAS.maze.R, AREAS.maze.obstacles);
     // remote areas start hidden — only the active one is shown (huge perf win:
     // an invisible group is fully skipped — no frustum cull, no shadow pass, no draw calls)
-    ['jungle', 'castle', 'maze'].forEach(k => { AREAS[k].group.visible = false; scene.add(AREAS[k].group); });
+    // All areas now visible simultaneously — open world, no portals needed
+    ['jungle', 'castle', 'maze'].forEach(k => { AREAS[k].group.visible = true; scene.add(AREAS[k].group); });
 
-    // portals: each lives in `area`, sits at world `pos`, and sends you to `target`
-    function addPortal(area, x, z, col, label, target) { portal(scene, x, z, col, label); PORTALS.push({ area, pos: new THREE.Vector3(x, 0, z), target, color: col }); }
+    // portals disabled — seamless open world traversal
+    function addPortal(area, x, z, col, label, target) { /* no-op: portals removed */ }
 
     // ---- lights ----
     scene.add(new THREE.HemisphereLight(0xcdeeff, 0x4f7a3a, 0.85));

@@ -117,67 +117,387 @@ class Game {
     this.objects = [];
     this.worldGroup = new THREE.Group();
     this.scene.add(this.worldGroup);
-    this.level = level;
+    this.level = 'openworld';
     this.megaProps = null;
     this.railProps = null;
     this.desertProps = null;
     this.japanProps = null;
-    // tune bloom per level: punchy at night, subtle in daylight (avoids white-out)
-    if (this.bloom) {
-      const day = (level === 'fields' || level === 'desert');
-      if (day) { this.bloom.strength = 0.22; this.bloom.threshold = 0.92; this.bloom.radius = 0.35; }
-      else { this.bloom.strength = 0.95; this.bloom.threshold = 0.52; this.bloom.radius = 0.75; }
-    }
-    if (level === 'fields') this.buildFields(this.worldGroup);
-    else if (level === 'megacity') this.buildMegaCity(this.worldGroup);
-    else if (level === 'rail') this.buildRailCity(this.worldGroup);
-    else if (level === 'desert') this.buildDesert(this.worldGroup);
-    else if (level === 'range') this.buildRange(this.worldGroup);
-    else this.buildCity(this.worldGroup);
-    this._expandWorld(3.0);
+
+    // ===== UNIFIED OPEN WORLD: All sectors built simultaneously =====
+    // Sector layout (offsets in world units):
+    //   Neon City (center):     (0, 0)
+    //   Fields (north):         (0, -900)
+    //   Desert (south):         (0, 900)
+    //   Rail City (east):       (900, 0)
+    //   Megawatt City (west):   (-900, 0)
+    this.sectors = [
+      { name: 'NEON CITY',      key: 'city',     offset: [0, 0],      radius: 350, color: '#19f0ff' },
+      { name: 'THE FIELDS',     key: 'fields',   offset: [0, -900],   radius: 350, color: '#39ff14' },
+      { name: 'DESERT RUINS',   key: 'desert',   offset: [0, 900],    radius: 350, color: '#ffd166' },
+      { name: 'RAIL DISTRICT',  key: 'rail',     offset: [900, 0],    radius: 350, color: '#9b5cff' },
+      { name: 'MEGAWATT CITY',  key: 'megacity', offset: [-900, 0],   radius: 350, color: '#ff2d95' },
+    ];
+    this.currentSector = this.sectors[0];
+    this._lastSectorName = '';
+
+    // Global sky dome (night cyberpunk)
+    this.scene.background = null;
+    this.scene.fog = new THREE.FogExp2(0x0a0a1a, 0.0018);
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(2400, 32, 24),
+      new THREE.MeshBasicMaterial({ map: TextureGen.createSky(), side: THREE.BackSide, fog: false }));
+    this.worldGroup.add(sky);
+
+    // Massive ground plane spanning the entire world
+    const worldSize = 3200;
+    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 120, 120);
+    const worldGround = new THREE.Mesh(new THREE.PlaneGeometry(worldSize, worldSize),
+      new THREE.MeshStandardMaterial({ map: fTex, normalMap: TextureGen.createNormalTexture('concreteN', 120, 120), roughness: 0.6, metalness: 0.3, color: 0x1a1e28 }));
+    worldGround.rotation.x = -Math.PI / 2; worldGround.position.y = -0.1; worldGround.receiveShadow = true;
+    this.worldGroup.add(worldGround);
+
+    // Build each sector into its own offset group
+    this.sectorGroups = {};
+    this.sectors.forEach(sec => {
+      const g = new THREE.Group();
+      g.position.set(sec.offset[0], 0, sec.offset[1]);
+      this.worldGroup.add(g);
+      this.sectorGroups[sec.key] = g;
+    });
+
+    // Build sector content
+    this._buildSectorCity(this.sectorGroups['city']);
+    this._buildSectorFields(this.sectorGroups['fields']);
+    this._buildSectorDesert(this.sectorGroups['desert']);
+    this._buildSectorRail(this.sectorGroups['rail']);
+    this._buildSectorMega(this.sectorGroups['megacity']);
+
+    // Connecting highways between sectors (simple lit roads)
+    this._buildConnectors();
+
+    // Global lighting
+    this.worldGroup.add(new THREE.AmbientLight(0x3a4a60, 0.5));
+    this.worldGroup.add(new THREE.HemisphereLight(0x2040a0, 0x101018, 0.4));
+    const moon = new THREE.DirectionalLight(0x8899cc, 0.6);
+    moon.position.set(200, 300, -150); moon.castShadow = true; moon.shadow.bias = -0.0002;
+    moon.shadow.camera.left = -200; moon.shadow.camera.right = 200;
+    moon.shadow.camera.top = 200; moon.shadow.camera.bottom = -200;
+    moon.shadow.camera.far = 800; moon.shadow.mapSize.set(2048, 2048);
+    this.worldGroup.add(moon);
+    this._worldMoon = moon;
   }
 
-  // Expand the whole world footprint by a factor: bakes an x/z scale into
-  // every top-level world object (sky domes excluded), stretches fog and
-  // re-scales the coordinate systems of moving props (trains, traffic).
-  _expandWorld(f) {
-    // moving props (train cars, traffic, birds) keep their true proportions —
-    // only their positions/coordinate systems scale, never their shape
-    const noStretch = new Set();
-    [this.railProps, this.megaProps].forEach(pr => {
-      if (!pr) return;
-      (pr.cars || []).forEach(c => noStretch.add(c));
-      (pr.vehicles || []).forEach(v => noStretch.add(v.mesh));
-      (pr.birds || []).forEach(b => noStretch.add(b));
+  // ===== SECTOR BUILDERS (simplified versions that add to offset group) =====
+
+  _buildSectorCity(W) {
+    // Local ground overlay
+    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 60, 60);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
+      new THREE.MeshStandardMaterial({ map: fTex, normalMap: TextureGen.createNormalTexture('concreteN', 60, 60), roughness: 0.48, metalness: 0.55, color: 0x48505e }));
+    floor.rotation.x = -Math.PI / 2; floor.position.y = 0.01; floor.receiveShadow = true; W.add(floor);
+
+    // Buildings
+    const variants = [];
+    for (let i = 0; i < 5; i++) {
+      const t = TextureGen.createBuilding();
+      t.map.wrapS = t.map.wrapT = THREE.RepeatWrapping;
+      t.emissive.wrapS = t.emissive.wrapT = THREE.RepeatWrapping;
+      t.map.repeat.set(1, 12); t.emissive.repeat.set(1, 12);
+      if (t.map.encoding !== undefined) t.map.encoding = THREE.sRGBEncoding;
+      variants.push(new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.emissive, emissive: 0xffffff,
+        emissiveIntensity: 1.6, roughness: 0.28, metalness: 0.6 }));
+    }
+    const bldgGeo = new THREE.BoxGeometry(10, 1, 10);
+    const blockSize = 26;
+    for (let x = -8; x <= 8; x++) for (let z = -8; z <= 8; z++) {
+      if (Math.abs(x) < 2 && Math.abs(z) < 2) continue;
+      if (Math.random() > 0.22) {
+        const h = 22 + Math.random() * 55;
+        const m = new THREE.Mesh(bldgGeo, variants[(Math.random() * variants.length) | 0]);
+        m.position.set(x * blockSize + (Math.random() - 0.5) * 6, h / 2, z * blockSize + (Math.random() - 0.5) * 6);
+        m.scale.set(0.8 + Math.random() * 0.7, h, 0.8 + Math.random() * 0.7);
+        m.castShadow = Math.abs(x) <= 3 && Math.abs(z) <= 3;
+        m.receiveShadow = true; W.add(m); this.objects.push(m);
+      }
+    }
+    // Neon billboards
+    for (let i = 0; i < 18; i++) {
+      const bw = 6 + Math.random() * 5, bh = bw * 0.55;
+      const bm = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh),
+        new THREE.MeshBasicMaterial({ map: TextureGen.createBillboard(), transparent: true }));
+      const a = Math.random() * Math.PI * 2, r = 60 + Math.random() * 120;
+      bm.position.set(Math.cos(a) * r, 8 + Math.random() * 30, Math.sin(a) * r);
+      bm.rotation.y = Math.random() * Math.PI * 2; W.add(bm);
+    }
+    // Local lights
+    const hues = [0x19f0ff, 0xff2d95, 0x9b5cff, 0xffb347, 0x39ff14];
+    for (let i = 0; i < 6; i++) {
+      const hue = hues[(Math.random() * hues.length) | 0];
+      const pl = new THREE.PointLight(hue, 3.0, 24, 1.6);
+      pl.position.set((Math.random() - 0.5) * 120, 2.4 + Math.random() * 1.8, (Math.random() - 0.5) * 120);
+      W.add(pl);
+    }
+    // Crates for cover
+    const crateGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0x2a2620, roughness: 0.8 });
+    for (let i = 0; i < 30; i++) {
+      const m = new THREE.Mesh(crateGeo, crateMat);
+      m.position.set((Math.random() - 0.5) * 250, 0.8, (Math.random() - 0.5) * 250);
+      m.rotation.y = Math.random() * Math.PI; m.castShadow = true; W.add(m); this.objects.push(m);
+    }
+  }
+
+  _buildSectorFields(W) {
+    // Grass ground
+    const grassTex = TextureGen.createGrass(false); grassTex.repeat.set(60, 60);
+    const grass = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
+      new THREE.MeshStandardMaterial({ map: grassTex, normalMap: TextureGen.createNormalTexture('dirtN', 60, 60), color: 0x3d6e2f, roughness: 0.95 }));
+    grass.rotation.x = -Math.PI / 2; grass.position.y = 0.01; grass.receiveShadow = true; W.add(grass);
+    // Hills
+    const hillMat = new THREE.MeshStandardMaterial({ color: 0x356128, roughness: 1, flatShading: true });
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      const r = 150 + Math.random() * 80;
+      const hill = new THREE.Mesh(new THREE.SphereGeometry(28 + Math.random() * 30, 10, 8), hillMat);
+      hill.position.set(Math.cos(a) * r, -8, Math.sin(a) * r); hill.scale.y = 0.4; W.add(hill);
+    }
+    // Trees
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 1 });
+    const leafMats = [0x4f9e3e, 0x66b84e, 0x7cce5a].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true }));
+    for (let i = 0; i < 50; i++) {
+      const a = Math.random() * Math.PI * 2, r = 18 + Math.random() * 180;
+      const g = new THREE.Group();
+      const s = 0.8 + Math.random() * 0.9;
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.32 * s, 0.46 * s, 1.6 * s, 6), trunkMat);
+      tr.position.y = 0.8 * s; g.add(tr);
+      [1.0, 1.55, 2.05].forEach((y, k) => {
+        const f = new THREE.Mesh(new THREE.ConeGeometry((0.95 - k * 0.18) * s, (1.2 - k * 0.18) * s, 8), leafMats[k]);
+        f.position.y = (1.4 + y * 0.7) * s; g.add(f);
+      });
+      g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); W.add(g);
+      this.objects.push(tr);
+    }
+    // Houses
+    const bodyCols = [0xf6b43a, 0x6fb3e0, 0xef6f6c, 0x8fd17a, 0xcd88ff];
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2, r = 40 + Math.random() * 30;
+      this.buildEnterable(W, Math.cos(a) * r, Math.sin(a) * r, 8, 8, {
+        wall: new THREE.MeshStandardMaterial({ color: bodyCols[i], roughness: 0.55 }),
+        floor: new THREE.MeshStandardMaterial({ color: 0xbc9a6c, roughness: 0.8 }),
+        roof: new THREE.MeshStandardMaterial({ color: 0xfff2e0, roughness: 0.4 }),
+        cone: new THREE.MeshStandardMaterial({ color: 0xc2572c, roughness: 0.6, flatShading: true }),
+        lamp: 0xffd9a0
+      });
+    }
+    // Sunlight for this sector
+    const sun = new THREE.DirectionalLight(0xfff3d0, 1.2);
+    sun.position.set(-80, 120, -100); sun.castShadow = true; sun.shadow.bias = -0.0002;
+    sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
+    sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
+    sun.shadow.camera.far = 400; sun.shadow.mapSize.set(1024, 1024); W.add(sun);
+    W.add(new THREE.AmbientLight(0xbfd4e8, 0.6));
+  }
+
+  _buildSectorDesert(W) {
+    const S = 7;
+    // Sand ground
+    const sand = this.createGroundTex('sand', 26);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(100 * S, 100 * S),
+      new THREE.MeshStandardMaterial({ map: sand, normalMap: TextureGen.createNormalTexture('dirtN', 26, 26), color: 0xceac72, roughness: 0.95 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = 0.01; ground.receiveShadow = true; W.add(ground);
+    // Pyramids
+    const stoneTex = TextureGen.createSandstone();
+    const stoneMat = () => { const t = stoneTex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3); return new THREE.MeshStandardMaterial({ map: t, color: 0xcaa97a, roughness: 0.85 }); };
+    const pyramids = [[-8, -7, 3.2, 4.5], [9, -8, 2.4, 3.5], [-10, 6, 1.8, 2.8], [12, 5, 2.0, 3.0]];
+    pyramids.forEach(([x, z, rad, h]) => {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0, rad * S, h * S, 4), stoneMat());
+      p.position.set(x * S, h * S / 2, z * S); p.rotation.y = Math.PI / 4; p.castShadow = true; W.add(p); this.objects.push(p);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0, rad * S * 0.16, h * S * 0.16, 4),
+        new THREE.MeshStandardMaterial({ color: 0xffd35a, emissive: 0x6a4e0c, emissiveIntensity: 0.4, metalness: 0.8, roughness: 0.3 }));
+      cap.position.set(x * S, h * S * 0.92, z * S); cap.rotation.y = Math.PI / 4; W.add(cap);
     });
-    this.worldGroup.children.forEach(c => {
-      const r = c.geometry && c.geometry.parameters && c.geometry.parameters.radius;
-      if (r && r >= 700) return; // sky dome stays a sphere
-      c.position.x *= f; c.position.z *= f;
-      if (noStretch.has(c)) return;
-      c.scale.x *= f; c.scale.z *= f;
+    // Sphinx
+    const sphinx = new THREE.Group();
+    const darkStone = () => new THREE.MeshStandardMaterial({ map: stoneTex.clone(), color: 0x9a7848, roughness: 0.9 });
+    const sBase = new THREE.Mesh(new THREE.BoxGeometry(2.2 * S, 0.8 * S, 4.5 * S), darkStone()); sBase.position.y = 0.4 * S; sphinx.add(sBase);
+    const sBody = new THREE.Mesh(new THREE.BoxGeometry(1.6 * S, 1.2 * S, 3.2 * S), stoneMat()); sBody.position.y = 0.9 * S; sphinx.add(sBody);
+    const sHead = new THREE.Mesh(new THREE.SphereGeometry(0.9 * S, 16, 14), stoneMat()); sHead.position.set(0, 1.8 * S, 1.1 * S); sphinx.add(sHead);
+    sphinx.position.set(0, 0, 11 * S); W.add(sphinx); this.objects.push(sBody);
+    // Columns
+    [[-4, 12], [4, 12], [-5, 14], [5, 14]].forEach(([x, z]) => {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.55 * S, 0.7 * S, 3.2 * S, 12), stoneMat());
+      col.position.set(x * S, 1.6 * S, z * S); col.castShadow = true; W.add(col); this.objects.push(col);
     });
-    if (this.scene.fog) {
-      if (this.scene.fog.isFogExp2) this.scene.fog.density /= f;
-      else { this.scene.fog.near *= f; this.scene.fog.far *= f; }
+    // Desert sun
+    const sun = new THREE.DirectionalLight(0xfff8d0, 1.4);
+    sun.position.set(60, 140, 40); sun.castShadow = true; sun.shadow.bias = -0.0002;
+    sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
+    sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
+    sun.shadow.mapSize.set(1024, 1024); W.add(sun);
+    W.add(new THREE.AmbientLight(0xd4c8a0, 0.7));
+  }
+
+  _buildSectorRail(W) {
+    // Industrial ground
+    const fTex = TextureGen.createImageTexture('metal', () => TextureGen.createAsphalt(), 40, 40);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600),
+      new THREE.MeshStandardMaterial({ map: fTex, color: 0x3a3e48, roughness: 0.6, metalness: 0.5 }));
+    floor.rotation.x = -Math.PI / 2; floor.position.y = 0.01; floor.receiveShadow = true; W.add(floor);
+    // Elevated rail track (simplified)
+    const trackMat = new THREE.MeshStandardMaterial({ color: 0x5a6070, metalness: 0.8, roughness: 0.3 });
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x4a4e58, metalness: 0.6, roughness: 0.4 });
+    for (let i = -8; i <= 8; i++) {
+      const x = i * 30;
+      // Pillar
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 12, 8), pillarMat);
+      pillar.position.set(x, 6, 0); pillar.castShadow = true; W.add(pillar); this.objects.push(pillar);
+      // Track beam
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(32, 1.2, 4), trackMat);
+      beam.position.set(x, 12, 0); beam.castShadow = true; W.add(beam);
     }
-    this.camera.far = Math.max(this.camera.far, 1200 * f);
-    this.camera.updateProjectionMatrix();
-    const sc = v => { if (v) { v.x *= f; v.z *= f; } };
-    if (this.railProps) {
-      const rp = this.railProps;
-      if (rp.curve && rp.curve.points) { rp.curve.points.forEach(sc); if (rp.curve.updateArcLengths) rp.curve.updateArcLengths(); }
-      if (rp.span) rp.span *= f;
-      (rp.vehicles || []).forEach(v => v.pos *= f);
-      (rp.cars || []).forEach(car => { sc(car.userData.prevPos); });
+    // Industrial buildings
+    const indMat = new THREE.MeshStandardMaterial({ color: 0x2a2e38, roughness: 0.7, metalness: 0.4 });
+    for (let i = 0; i < 20; i++) {
+      const h = 10 + Math.random() * 25;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(12, h, 12), indMat);
+      const a = Math.random() * Math.PI * 2, r = 60 + Math.random() * 150;
+      m.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r);
+      m.castShadow = true; m.receiveShadow = true; W.add(m); this.objects.push(m);
     }
-    if (this.megaProps) {
-      const mp = this.megaProps;
-      if (mp.span) mp.span *= f;
-      (mp.vehicles || []).forEach(v => v.pos *= f);
+    // Station platform
+    const platMat = new THREE.MeshStandardMaterial({ color: 0x6a7080, roughness: 0.5, metalness: 0.3 });
+    const plat = new THREE.Mesh(new THREE.BoxGeometry(20, 0.8, 8), platMat);
+    plat.position.set(0, 11.5, 6); plat.castShadow = true; W.add(plat);
+    // Lights
+    for (let i = 0; i < 4; i++) {
+      const pl = new THREE.PointLight(0x9b5cff, 2.5, 30, 1.5);
+      pl.position.set((Math.random() - 0.5) * 100, 4, (Math.random() - 0.5) * 100); W.add(pl);
     }
-    if (this.desertProps && this.desertProps.span) this.desertProps.span *= f;
-    sc(this._railSpawn); sc(this._desertSpawn); sc(this._rangeSpawn);
+    W.add(new THREE.AmbientLight(0x4a5570, 0.5));
+  }
+
+  _buildSectorMega(W) {
+    // Dense cyberpunk district
+    const fTex = TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 80, 80);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700),
+      new THREE.MeshStandardMaterial({ map: fTex, normalMap: TextureGen.createNormalTexture('concreteN', 80, 80), roughness: 0.4, metalness: 0.6, color: 0x38404e }));
+    floor.rotation.x = -Math.PI / 2; floor.position.y = 0.01; floor.receiveShadow = true; W.add(floor);
+    // Taller, denser buildings
+    const variants = [];
+    for (let i = 0; i < 4; i++) {
+      const t = TextureGen.createBuilding();
+      t.map.wrapS = t.map.wrapT = THREE.RepeatWrapping;
+      t.emissive.wrapS = t.emissive.wrapT = THREE.RepeatWrapping;
+      t.map.repeat.set(1, 16); t.emissive.repeat.set(1, 16);
+      if (t.map.encoding !== undefined) t.map.encoding = THREE.sRGBEncoding;
+      variants.push(new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.emissive, emissive: 0xffffff,
+        emissiveIntensity: 2.0, roughness: 0.2, metalness: 0.7 }));
+    }
+    const bldgGeo = new THREE.BoxGeometry(10, 1, 10);
+    for (let x = -7; x <= 7; x++) for (let z = -7; z <= 7; z++) {
+      if (Math.abs(x) < 2 && Math.abs(z) < 2) continue;
+      if (Math.random() > 0.18) {
+        const h = 35 + Math.random() * 80;
+        const m = new THREE.Mesh(bldgGeo, variants[(Math.random() * variants.length) | 0]);
+        m.position.set(x * 28 + (Math.random() - 0.5) * 8, h / 2, z * 28 + (Math.random() - 0.5) * 8);
+        m.scale.set(0.9 + Math.random() * 0.8, h, 0.9 + Math.random() * 0.8);
+        m.castShadow = Math.abs(x) <= 2 && Math.abs(z) <= 2;
+        m.receiveShadow = true; W.add(m); this.objects.push(m);
+      }
+    }
+    // Neon signs
+    for (let i = 0; i < 24; i++) {
+      const bw = 5 + Math.random() * 6, bh = bw * 0.5;
+      const bm = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh),
+        new THREE.MeshBasicMaterial({ map: TextureGen.createBillboard(), transparent: true }));
+      const a = Math.random() * Math.PI * 2, r = 50 + Math.random() * 140;
+      bm.position.set(Math.cos(a) * r, 12 + Math.random() * 40, Math.sin(a) * r);
+      bm.rotation.y = Math.random() * Math.PI * 2; W.add(bm);
+    }
+    // Intense neon lighting
+    const hues = [0xff2d95, 0x19f0ff, 0x9b5cff, 0xff7a18];
+    for (let i = 0; i < 8; i++) {
+      const pl = new THREE.PointLight(hues[i % hues.length], 4.0, 30, 1.5);
+      pl.position.set((Math.random() - 0.5) * 140, 3 + Math.random() * 2, (Math.random() - 0.5) * 140); W.add(pl);
+    }
+    W.add(new THREE.AmbientLight(0x2a3050, 0.4));
+  }
+
+  // Connecting highways between sectors
+  _buildConnectors() {
+    const W = this.worldGroup;
+    const roadMat = new THREE.MeshStandardMaterial({
+      map: TextureGen.createImageTexture('asphalt', () => TextureGen.createAsphalt(), 20, 2),
+      normalMap: TextureGen.createNormalTexture('concreteN', 20, 2),
+      color: 0x2a2e38, roughness: 0.5, metalness: 0.4
+    });
+    // Neon strip material for road edges
+    const stripMat = new THREE.MeshBasicMaterial({ color: 0x19f0ff, transparent: true, opacity: 0.6 });
+
+    // Connect center to each outer sector
+    const connections = [
+      [[0, 0], [0, -900]],   // city -> fields
+      [[0, 0], [0, 900]],    // city -> desert
+      [[0, 0], [900, 0]],    // city -> rail
+      [[0, 0], [-900, 0]],   // city -> mega
+    ];
+    connections.forEach(([from, to]) => {
+      const dx = to[0] - from[0], dz = to[1] - from[1];
+      const len = Math.hypot(dx, dz);
+      const cx = (from[0] + to[0]) / 2, cz = (from[1] + to[1]) / 2;
+      const angle = Math.atan2(dx, dz);
+      // Road surface
+      const road = new THREE.Mesh(new THREE.PlaneGeometry(14, len - 200), roadMat);
+      road.rotation.x = -Math.PI / 2;
+      road.rotation.z = -angle;
+      road.position.set(cx, 0.02, cz);
+      road.receiveShadow = true; W.add(road);
+      // Neon edge strips
+      [-7.5, 7.5].forEach(offset => {
+        const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.4, len - 200), stripMat);
+        strip.rotation.x = -Math.PI / 2;
+        strip.rotation.z = -angle;
+        const perpX = Math.cos(angle) * offset;
+        const perpZ = -Math.sin(angle) * offset;
+        strip.position.set(cx + perpX, 0.03, cz + perpZ);
+        W.add(strip);
+      });
+      // Lamp posts along the road
+      for (let t = 0.15; t < 0.85; t += 0.1) {
+        const px = from[0] + dx * t, pz = from[1] + dz * t;
+        const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 5, 6),
+          new THREE.MeshStandardMaterial({ color: 0x5a6070, metalness: 0.7, roughness: 0.3 }));
+        lamp.position.set(px + Math.cos(angle) * 9, 2.5, pz - Math.sin(angle) * 9);
+        W.add(lamp);
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8),
+          new THREE.MeshBasicMaterial({ color: 0x19f0ff }));
+        bulb.position.set(lamp.position.x, 5.2, lamp.position.z); W.add(bulb);
+      }
+    });
+  }
+
+  // Sector proximity check — called every frame
+  _updateSectors() {
+    const px = this.camera.position.x, pz = this.camera.position.z;
+    let closest = this.sectors[0], minDist = Infinity;
+    for (const sec of this.sectors) {
+      const dx = px - sec.offset[0], dz = pz - sec.offset[1];
+      const d = Math.hypot(dx, dz);
+      if (d < minDist) { minDist = d; closest = sec; }
+    }
+    this.currentSector = closest;
+    // Show sector-entering notification
+    if (closest.name !== this._lastSectorName) {
+      this._lastSectorName = closest.name;
+      this.showMessage('ENTERING: ' + closest.name, closest.color, 2500);
+    }
+    // Sector visibility culling for performance
+    for (const sec of this.sectors) {
+      const dx = px - sec.offset[0], dz = pz - sec.offset[1];
+      const d = Math.hypot(dx, dz);
+      if (this.sectorGroups[sec.key]) {
+        this.sectorGroups[sec.key].visible = (d < 1200);
+      }
+    }
   }
 
   // ================= EGYPTIAN DESERT + JUNGLE (dual biome) =================
@@ -1799,25 +2119,21 @@ class Game {
     if (this.failed) return;
     this.gameStarted = true; this.isPaused = false; this.sound.resume();
     if (this.music) { this.music.pause(); this.music.currentTime = 0; }
-    // start gameplay music — Desert Raid for desert/egypt, Final Arena Run elsewhere
     this.gameMusic.forEach(m => { m.pause(); m.currentTime = 0; });
-    this.curGameMusic = (this.level === 'desert') ? this.gameMusic[1] : this.gameMusic[0];
+    this.curGameMusic = this.gameMusic[0];
     if (this.curGameMusic) this.curGameMusic.play().catch(() => {});
-    this.buildWorld(this.level || 'city');
+    // Build the unified open world
+    this.buildWorld('openworld');
     this.player.weapons = this.defaultWeapons;
     this.player.weaponIdx = this.startWeaponIdx || 0;
     this.player.hp = this.player.maxHp; this.player.armor = 0; this.score = 0; this.wave = 1;
     this.waveCountdown = null;
     this.player.weapons.forEach(w => w.ammo = w.ammo === Infinity ? Infinity : Math.floor(w.maxAmmo * 0.6));
     this.camera.position.set(0, this.player.height, 0);
-    if (this._railSpawn && this.level === 'rail') this.camera.position.copy(this._railSpawn);
-    if (this._desertSpawn && this.level === 'desert') this.camera.position.copy(this._desertSpawn);
-    if (this._rangeSpawn && this.level === 'range') this.camera.position.copy(this._rangeSpawn);
     this.player.ridingCar = null; this.player.floorY = this.player.height;
     this.camera.rotation.set(0, 0, 0);
-    // time-of-day chip only on rail level
     const todWrap = document.getElementById('tod-chip');
-    if (todWrap) todWrap.style.display = this.level === 'rail' ? 'flex' : 'none';
+    if (todWrap) todWrap.style.display = 'none';
 
     document.getElementById('menu-overlay').classList.add('hidden');
     document.getElementById('hud-top').classList.remove('hidden');
@@ -1834,13 +2150,9 @@ class Game {
     document.getElementById('boss-bar-wrap').classList.add('hidden');
     this.updateHUD();
     this.updateWeaponModel(this.player.weapons[0].name);
-    if (this.level === 'range') {
-      this.layoutRangeTargets();
-      this.showMessage('WEAPON TEST RANGE — PRESS T TO RESET TARGETS', '#19f0ff');
-    } else {
-      this.startWaveCountdown(1);
-    }
+    this.startWaveCountdown(1);
   }
+
 
   togglePause() {
     if (!this.gameStarted) return;
@@ -2024,13 +2336,16 @@ class Game {
 
   spawnEnemy(type, hpScale) {
     const cfg = EnemyFactory.TYPES[type];
-    const mesh = EnemyFactory.build(type, this.level === 'desert' ? 'desert' : 'rock');
+    // Use rock skin for all sectors (unified golem enemies)
+    const mesh = EnemyFactory.build(type, 'rock');
     mesh.scale.setScalar(cfg.scale);
 
+    // Spawn around player's current position (open world)
+    const px = this.camera.position.x, pz = this.camera.position.z;
     let pos = new THREE.Vector3(), ok = false, tries = 0;
     while (!ok && tries++ < 40) {
       const a = Math.random() * Math.PI * 2, d = (cfg.boss ? 55 : 38) + Math.random() * 55;
-      pos.set(Math.cos(a) * d, 0, Math.sin(a) * d);
+      pos.set(px + Math.cos(a) * d, 0, pz + Math.sin(a) * d);
       ok = true;
       for (const o of this.objects) if (pos.distanceTo(o.position) < 9) { ok = false; break; }
     }
@@ -2047,9 +2362,10 @@ class Game {
       this.boss = mesh;
       document.getElementById('boss-bar-wrap').classList.remove('hidden');
       this.sound.boss();
-      this.showMessage('⚠ APEX HORROR INBOUND', '#ff2d95');
+      this.showMessage('\u26A0 APEX HORROR INBOUND', '#ff2d95');
     }
   }
+
 
   // emoji billboard sprite (always faces camera)
   _emojiSprite(emoji) {
@@ -2125,11 +2441,18 @@ class Game {
     this.scene.add(spr); this.items.push(spr);
   }
 
-  showMessage(text, color) {
+  showMessage(text, color, duration) {
     const el = document.getElementById('game-message');
     el.innerText = text; el.style.color = color || '#fff'; el.style.opacity = 1;
     clearTimeout(this._msgT);
-    this._msgT = setTimeout(() => el.style.opacity = 0, 1800);
+    this._msgT = setTimeout(() => el.style.opacity = 0, duration || 1800);
+    // Also update sector indicator if it exists
+    const si = document.getElementById('sector-indicator');
+    if (si && text.startsWith('ENTERING:')) {
+      si.innerText = text.replace('ENTERING: ', '');
+      si.style.color = color || '#19f0ff';
+      si.style.opacity = 1;
+    }
   }
 
   // ---------------- SHOOTING ----------------
@@ -2529,6 +2852,7 @@ class Game {
   // ---------------- UPDATE ----------------
   update(dt) {
     if (this.isPaused || !this.gameStarted) return;
+    this._updateSectors();
     const P = this.player;
 
     // movement
@@ -2977,35 +3301,65 @@ class Game {
 
   // ---------------- MINIMAP ----------------
   drawMinimap() {
-    const ctx = this.mmCtx, cx = 75, cy = 75, scale = 0.42;
+    const ctx = this.mmCtx, cx = 75, cy = 75;
     ctx.clearRect(0, 0, 150, 150);
-    ctx.fillStyle = 'rgba(6,10,20,0.7)'; ctx.fillRect(0, 0, 150, 150);
+    ctx.fillStyle = 'rgba(6,10,20,0.75)'; ctx.fillRect(0, 0, 150, 150);
     const rot = this.camera.rotation.y;
     const cosR = Math.cos(rot), sinR = Math.sin(rot);
+    // Draw sector indicators (scaled down massively)
+    const mapScale = 0.065;
+    if (this.sectors) {
+      this.sectors.forEach(sec => {
+        const dx = sec.offset[0] - this.camera.position.x;
+        const dz = sec.offset[1] - this.camera.position.z;
+        const rx = (dx * cosR - dz * sinR) * mapScale;
+        const ry = (dx * sinR + dz * cosR) * mapScale;
+        if (Math.abs(rx) < 72 && Math.abs(ry) < 72) {
+          ctx.fillStyle = sec.color + '44';
+          ctx.beginPath(); ctx.arc(cx + rx, cy + ry, 18, 0, 6.28); ctx.fill();
+          ctx.fillStyle = sec.color + '88';
+          ctx.font = '7px Arial'; ctx.textAlign = 'center';
+          ctx.fillText(sec.name.split(' ')[0], cx + rx, cy + ry + 2);
+        }
+      });
+    }
+    // Nearby buildings
+    const bldgScale = 0.42;
     ctx.fillStyle = '#2a3550';
     for (const o of this.objects) {
-      if (o.scale.y > 4) {
+      if (o.scale && o.scale.y > 4) {
         const dx = o.position.x - this.camera.position.x, dz = o.position.z - this.camera.position.z;
+        if (Math.abs(dx) > 200 || Math.abs(dz) > 200) continue;
         const rx = dx * cosR - dz * sinR, ry = dx * sinR + dz * cosR;
-        if (Math.abs(rx) < 150 && Math.abs(ry) < 150) ctx.fillRect(cx + rx * scale - 3, cy + ry * scale - 3, 6, 6);
+        if (Math.abs(rx) < 150 && Math.abs(ry) < 150) ctx.fillRect(cx + rx * bldgScale - 2, cy + ry * bldgScale - 2, 4, 4);
       }
     }
+    // Enemies
     for (const e of this.enemies) {
       const dx = e.position.x - this.camera.position.x, dz = e.position.z - this.camera.position.z;
-      const rx = dx * cosR - dz * sinR, ry = dx * sinR + dz * cosR;
-      if (Math.abs(rx) < 150 && Math.abs(ry) < 150) {
+      const rx = (dx * cosR - dz * sinR) * bldgScale, ry = (dx * sinR + dz * cosR) * bldgScale;
+      if (Math.abs(rx) < 72 && Math.abs(ry) < 72) {
         ctx.fillStyle = e.userData.boss ? '#ff2d95' : (e.userData.ranged ? '#9b5cff' : '#ff5555');
-        ctx.beginPath(); ctx.arc(cx + rx * scale, cy + ry * scale, e.userData.boss ? 5 : 3, 0, 6.28); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + rx, cy + ry, e.userData.boss ? 5 : 3, 0, 6.28); ctx.fill();
       }
     }
+    // Items
     for (const it of this.items) {
       const dx = it.position.x - this.camera.position.x, dz = it.position.z - this.camera.position.z;
-      const rx = dx * cosR - dz * sinR, ry = dx * sinR + dz * cosR;
-      if (Math.abs(rx) < 150 && Math.abs(ry) < 150) { ctx.fillStyle = it.userData.health ? '#ff3355' : '#39ff14'; ctx.fillRect(cx + rx * scale - 2, cy + ry * scale - 2, 4, 4); }
+      const rx = (dx * cosR - dz * sinR) * bldgScale, ry = (dx * sinR + dz * cosR) * bldgScale;
+      if (Math.abs(rx) < 72 && Math.abs(ry) < 72) { ctx.fillStyle = it.userData.health ? '#ff3355' : '#39ff14'; ctx.fillRect(cx + rx - 2, cy + ry - 2, 4, 4); }
     }
+    // Player arrow
     ctx.fillStyle = '#19f0ff';
     ctx.beginPath(); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx - 4, cy + 5); ctx.lineTo(cx + 4, cy + 5); ctx.fill();
+    // Sector name overlay
+    if (this.currentSector) {
+      ctx.fillStyle = this.currentSector.color || '#19f0ff';
+      ctx.font = 'bold 8px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(this.currentSector.name, 75, 146);
+    }
   }
+
 
   // ---------------- HUD ----------------
   updateHUD() {

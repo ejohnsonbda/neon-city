@@ -124,7 +124,8 @@ const Game = (() => {
     const area = stage === 'streets' ? 'town' : stage;
     const ad = W.areas[area], C = ad.center;
     // toggle remote-area visibility for the chosen stage
-    ['jungle', 'castle', 'maze'].forEach(k => { if (W.areas[k].group) W.areas[k].group.visible = (k === area); });
+    // All areas visible simultaneously — open world
+    ['jungle', 'castle', 'maze'].forEach(k => { if (W.areas[k].group) W.areas[k].group.visible = true; });
     // hand-picked safe spawn just inside each area, facing its centre
     let off;
     if (area === 'town') off = new THREE.Vector3(0, 0, 42);
@@ -664,7 +665,7 @@ const Game = (() => {
       S.vel.y -= 20 * dt; S.pos.y += S.vel.y * dt;
       if (S.pos.y <= gy) { S.pos.y = gy; S.vel.y = 0; S.onGround = true; }
       checkPad();
-      checkPortals();
+      // checkPortals(); // portals removed — open world, all sectors visible
     }
 
     // camera
@@ -868,7 +869,8 @@ const Game = (() => {
     const a = S.area;
     if (a === prevArea) return;
     // show only the active remote area's group; hub (town+building) lives in the root scene
-    ['jungle', 'castle', 'maze'].forEach(k => { if (W.areas[k].group) W.areas[k].group.visible = (k === a); });
+    // All areas visible — open world (no portal-based toggling)
+    ['jungle', 'castle', 'maze'].forEach(k => { if (W.areas[k].group) W.areas[k].group.visible = true; });
     if (a === 'building') { startFloor(0); S.cleared[0] = true; W.rings[0].material.color.setHex(0x39ff14); W.rings[0].material.emissive.setHex(0x39ff14); }
     else { startArea(a); HUD.floorArea(W.areas[a]); }
     prevArea = a;
@@ -904,8 +906,7 @@ const Game = (() => {
     updatePickups(dt, t);
     // pad rings spin
     W.rings.forEach(r => r.rotation.z += dt);
-    // portal swirl + signs face the player
-    (World.portalFX || []).forEach(g => { if (g.userData.swirl) { g.userData.swirl.rotation.z += dt * 1.5; g.userData.swirl.material.opacity = 0.3 + Math.sin(t * 3) * 0.15; } if (g.userData.sign) g.userData.sign.lookAt(camera.position.x, g.userData.sign.getWorldPosition(new THREE.Vector3()).y, camera.position.z); });
+    // portal FX removed — open world, no portals
     // ambient canopy monkeys swing (only when the jungle is the active area)
     if (S.area === 'jungle') (W.ambientMonkeys || []).forEach(m => { m.group.position.y = m.base + Math.sin(t * 2 + m.phase) * 0.5; m.group.rotation.z = Math.sin(t * 2 + m.phase) * 0.2; m.group.rotation.y = t * 0.3 + m.phase; });
 

@@ -325,6 +325,7 @@
   <div id="minimap-container">
     <canvas id="minimap-canvas" width="238" height="238"></canvas>
   </div>
+  <div id="sector-indicator" style="position:absolute;top:268px;left:22px;width:238px;text-align:center;font:700 13px Orbitron,Arial,sans-serif;color:#19f0ff;text-shadow:0 0 12px rgba(25,240,255,.6);letter-spacing:.08em;opacity:0;transition:opacity .5s;"></div>
 
   <div id="hud-top" class="hidden">
     <div class="score-label">SCORE</div>
@@ -391,8 +392,12 @@
   </div>
 
   <div id="tab-theatre" class="tab-panel active">
-    <div class="pick-label">SELECT THEATRE</div>
-    <div id="level-select"></div>
+    <div class="pick-label">OPEN WORLD MAP</div>
+    <div style="text-align:center;padding:12px 20px;border:1px solid rgba(25,240,255,.3);background:rgba(10,14,26,.7);margin-bottom:18px;max-width:680px;">
+      <div style="font:900 22px Orbitron;color:var(--cyan);margin-bottom:8px;">NEON CITY: WARZONE</div>
+      <div style="font:600 14px Rajdhani;color:rgba(255,255,255,.7);line-height:1.4;">One massive continuous world with 5 connected sectors: <b style='color:#19f0ff'>Neon City</b>, <b style='color:#39ff14'>The Fields</b>, <b style='color:#ffd166'>Desert Ruins</b>, <b style='color:#9b5cff'>Rail District</b>, and <b style='color:#ff2d95'>Megawatt City</b>. Traverse freely between zones — no loading screens, no portals. Enemies spawn in waves around your position. Survive as long as you can.</div>
+    </div>
+    <div id="level-select" style="display:none;"></div>
     <div class="pick-label">SELECT OPERATIVE</div>
     <div id="char-select"></div>
   </div>

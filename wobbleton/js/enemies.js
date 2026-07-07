@@ -34,8 +34,7 @@ const EnemyFactory_TYPES = {
     monkey:  { scale: 0.9,  hp: 22,  speed: 4.2, dmg: 8,  col: '#ff5ca2', range: 0,  fly: 0, points: 14,  glow: 0xff3bd0 },
     slinger: { scale: 0.95, hp: 30,  speed: 2.4, dmg: 12, col: '#ffd23f', range: 24, fly: 0, points: 22,  glow: 0x8a5bff },
     ape:     { scale: 2.1,  hp: 280, speed: 1.7, dmg: 26, col: '#ff8a3d', range: 0,  fly: 0, points: 90,  glow: 0xa24bff },
-    clown:   { scale: 1.05, hp: 34,  speed: 3.2, dmg: 11, col: '#ff3b5c', range: 0,  fly: 0, points: 18,  glow: 0xc24bff },
-    jester:  { scale: 1.0,  hp: 30,  speed: 2.2, dmg: 13, col: '#b06cf6', range: 22, fly: 0, points: 24,  glow: 0x8a5bff },
+    // clown and jester removed — all enemies are golems now
   };
 
 const EnemyFactory = {
@@ -129,6 +128,7 @@ const EnemyFactory = {
     _geos();
     this._skin = skin || 'rock';
     // Wobbleton-only species all map onto the regular golem builders
+    // All Wobbleton-specific species map to standard golem builders
     const alias = { monkey: 'runner', slinger: 'shooter', ape: 'tank', clown: 'grunt', jester: 'shooter' };
     type = alias[type] || type;
     let g;

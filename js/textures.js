@@ -33,14 +33,27 @@ const TextureGen = {
       lit1: R.texLit1 || 'T_lit_interior_1.png',
       lit2: R.texLit2 || 'T_lit_interior_2.png',
       dark: R.texDark || 'T_dark_interior.png',
-      // PBR detail maps (normal maps shipped with the kit, previously unused)
+      // PBR detail maps (full kit — normal, ORM, and additional base colors)
       concreteN: 'T_Concrete_Normal.png',
+      concreteORM: 'T_Concrete_ORM.png',
       marble: 'T_MarbleFloor_BaseColor.png',
       marbleN: 'T_MarbleFloor_Normal.png',
+      marbleORM: 'T_MarbleFloor_ORM.png',
       dirt: 'T_Dirt_BaseColor.png',
       dirtN: 'T_Dirt_Normal.png',
+      dirtORM: 'T_Dirt_ORM.png',
       metal: 'T_MetalConcrete_BaseColor.png',
-      brickN: 'T_RedBrick_Normal.png'
+      brickN: 'T_RedBrick_Normal.png',
+      brickORM: 'T_RedBrick_ORM.png',
+      roofSlate: 'T_RoofSlate_BaseColor.png',
+      roofSlateORM: 'T_RoofSlate_ORM.png',
+      trim: 'T_Trim_BaseColor.png',
+      trimN: 'T_Trim_Normal.png',
+      trimORM: 'T_Trim_ORM.png',
+      streetDecals: 'T_Street_Decals.png',
+      blinds: 'T_Blinds.png',
+      curtains: 'T_Curtains.png',
+      cornerDmgN: 'T_CornerDamage_Normal.png'
     };
     const keys = Object.keys(srcs);
     let remaining = keys.length;
